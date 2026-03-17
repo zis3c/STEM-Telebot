@@ -201,70 +201,62 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 db_resit = str(row_values[16]).strip() if len(row_values) > 16 else ""
                 db_status = str(row_values[17]).strip().title() if len(row_values) > 17 else ""
                 
-                # 1. If Status is explicit "Pending" or "Rejected" -> Use that.
-                # 2. If Status is "Approved" or "✓" -> Approved.
-                # 3. If Status is Empty -> Pending (Waiting for admin/bot).
+                # 1. If Status is "Approved", "Verified", "✓✓" -> Approved.
+                # 2. If Status is "✓" -> Pending (Notified, but waiting for admin approval).
+                # 3. If Status is "Pending", "Rejected" or anything else -> Not Approved.
                 
-                final_status = "Pending" # Default to Pending for safety
-                
-                if db_status in ["Pending", "Rejected"]:
-                    final_status = db_status
-                elif db_status in ["Approved", "✓"]:
+                final_status = "Pending"
+                db_status_norm = db_status.strip()
+
+                if db_status_norm in ["Approved", "Verified", "✓✓"]:
                     final_status = "Approved"
+                elif db_status_norm == "Rejected":
+                    final_status = "Rejected"
+                elif db_status_norm in ["Pending", "✓"] or not db_status_norm:
+                    final_status = "Pending"
                 else:
-                    # Status is empty or unknown. Check Resit? 
-                    # User says: "if user row didnt have '✓' so it will notified to admin"
-                    # So treat as Pending.
                     final_status = "Pending"
 
                 if db_ic.endswith(user_ic_last4):
                     if final_status == "Approved": 
-                        # Generate Membership ID using Row Index (1-based from sheet, so ID 1 is Row 2)
-                        # We used len(row_values) > 9 check earlier, but row_index comes from find_member
-                        # row_values is now just the list, row_index is the int
+                        # READ Membership ID from Column P (Index 15)
+                        membership_id = str(row_values[15]).strip() if len(row_values) > 15 else ""
                         
-                        # Calculate ID: Row 2 -> 0001. So ID = Row - 1
-                        mem_id_num = row_index - 1 if row_index else 0
-                        membership_id = f"STEM(25/26){mem_id_num:04d}"
-                        
-                        # Format Date: 12/20/2025 (from db_timestamp)
-                        # db_timestamp is usually "2025-12-20 18:50:22" or similar depending on sheet locale
-                        # Let's try to parse and reformat, or just use date part if space split
-                        date_of_entry = db_timestamp.split(' ')[0]
-                        # If date is YYYY-MM-DD, change to MM/DD/YYYY? User requested 12/20/2025
-                        try:
-                            # Try standard formats
-                            dt = None
-                            if '-' in date_of_entry:
-                                dt = datetime.strptime(date_of_entry, "%Y-%m-%d")
-                            elif '/' in date_of_entry:
-                                # Often Sheets gives MM/DD/YYYY. Try parsing that.
-                                try:
-                                    dt = datetime.strptime(date_of_entry, "%m/%d/%Y")
-                                except ValueError:
-                                     # If that fails, try DD/MM/YYYY
-                                    dt = datetime.strptime(date_of_entry, "%d/%m/%Y")
-                            
-                            if dt:
-                                date_of_entry = dt.strftime("%d/%m/%y") # DD/MM/YY Format
-                        except ValueError:
-                            pass # Use raw string if parse fails
+                        if not membership_id or membership_id == "-":
+                            # Fallback if ID not generated yet but status is Approved
+                            msg = strings.get('STATUS_PENDING', lang)
+                        else:
+                            # Format Date: 12/20/2025 (from db_timestamp)
+                            date_of_entry = db_timestamp.split(' ')[0]
+                            try:
+                                dt = None
+                                if '-' in date_of_entry:
+                                    dt = datetime.strptime(date_of_entry, "%Y-%m-%d")
+                                elif '/' in date_of_entry:
+                                    try:
+                                        dt = datetime.strptime(date_of_entry, "%m/%d/%Y")
+                                    except ValueError:
+                                        dt = datetime.strptime(date_of_entry, "%d/%m/%Y")
+                                
+                                if dt:
+                                    date_of_entry = dt.strftime("%d/%m/%y")
+                            except ValueError:
+                                pass
 
-                        msg = strings.get('VERIFICATION_SUCCESS', lang).format(
-                            membership_id=membership_id,
-                            name=db_name,
-                            matric=user_matric,
-                            program=db_prog,
-                            date=date_of_entry
-                        )
+                            msg = strings.get('VERIFICATION_SUCCESS', lang).format(
+                                membership_id=membership_id,
+                                name=db_name,
+                                matric=user_matric,
+                                program=db_prog,
+                                date=date_of_entry
+                            )
                     elif final_status == "Pending":
                         msg = strings.get('STATUS_PENDING', lang)
                     elif final_status == "Rejected":
                          msg = strings.get('STATUS_REJECT', lang)
                     else:
-                         msg = strings.get('STATUS_PENDING', lang) # Fallback
+                         msg = strings.get('STATUS_PENDING', lang) 
                 else:
-                     # Specific localized error construction if needed, or simple string
                      msg = "*Verification Failed*\nMatric found, but IC digits do not match." 
                      if lang == 'MS': msg = "*Pengesahan Gagal*\nMatrik dijumpai, tetapi digit IC tidak sepadan."
             else:

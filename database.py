@@ -224,11 +224,11 @@ class Database:
         for row, _ in self.student_cache.values():
             total += 1
             # Status is at index 17 (Col R).
-            status = row[17].strip().title() if len(row) > 17 else ""
+            status = row[17].strip() if len(row) > 17 else ""
             
-            if status == "Approved":
+            if status in ["Approved", "Verified", "✓✓"]:
                 verified += 1
-            elif not status or status == "Pending":
+            elif not status or status == "Pending" or status == "✓":
                 pending += 1
                 
         return {
@@ -420,11 +420,11 @@ class Database:
                 # Status is Col R (index 17)
                 status = row[17].strip().title() if len(row) > 17 else ""
                 
-                # Normalize '✓' to 'Approved' for filtering
-                if status == "✓": 
+                # Normalize status for filtering
+                if status in ["Approved", "Verified", "✓✓"]: 
                     status = "Approved"
-                elif status not in ["Pending", "Rejected", "Approved"]:
-                    # If empty or unknown, treat as Pending (Waiting for admin check)
+                elif status in ["Pending", "✓"] or not status:
+                    # If empty or "✓", treat as Pending for the admin view
                     status = "Pending"
                 
                 if status == status_filter:

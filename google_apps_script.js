@@ -157,9 +157,15 @@ function processRow(sheet, rowIdx) {
     var dataRange = sheet.getRange(rowIdx, 1, 1, 21); // Read cols A to U (Index 21)
     var values = dataRange.getValues()[0];
 
+    // DEBUG LOG
+    // Logger.log("Row " + rowIdx + " Dump: " + JSON.stringify(values));
+
     // 1. Get Timestamp (Col A) - Index 0
     var timestamp = values[0];
-    if (!timestamp) return; // Empty row?
+    if (!timestamp || timestamp === "") {
+        Logger.log("⚠️ Row " + rowIdx + " SKIPPED. Reason: Timestamp (Col A) is empty.");
+        return;
+    }
 
     var dateObj = new Date(timestamp);
 
@@ -207,13 +213,19 @@ function processRow(sheet, rowIdx) {
     // Force write if it's empty
     if (!currentId || currentId === "") {
         sheet.getRange(rowIdx, COL_MEMBERSHIP).setValue(memberId);
+        currentId = memberId; // Update so we can use it below
+    }
 
-        // --- SEND RECEIPT EMAIL (Only if ID was just generated/new processing) ---
-        // This prevents double emailing if you run the script again on existing rows
+    // --- CHECK RECEIPT URL (Col S - Index 18) ---
+    var currentReceiptUrl = values[COL_RECEIPT_URL - 1]; // Index 18
+
+    // If Receipt URL is missing, generate it & send email (Even if ID existed)
+    if (!currentReceiptUrl || currentReceiptUrl === "") {
         if (personalEmail && personalEmail.includes("@")) {
-            var receiptUrl = sendReceiptEmail(personalEmail, name, matric, memberId, dateEntry, invoiceNo);
+            Logger.log("📧 Generating Receipt for: " + name);
+            var receiptUrl = sendReceiptEmail(personalEmail, name, matric, currentId, dateEntry, invoiceNo);
 
-            // Save Receipt URL to Col T (Index 20)
+            // Save Receipt URL to Col T (Index 20) in DB
             if (receiptUrl) {
                 sheet.getRange(rowIdx, COL_RECEIPT_URL).setValue(receiptUrl);
             }
@@ -221,11 +233,18 @@ function processRow(sheet, rowIdx) {
             Logger.log("⚠️ No valid email found for receipt: " + personalEmail);
         }
     } else {
-        // If ID exists, we assume processed. 
-        // Uncomment below to FORCE email even if ID exists (Testing only)
-        // var receiptUrl = sendReceiptEmail(personalEmail, name, matric, currentId, dateEntry, invoiceNo);
-        // if(receiptUrl) sheet.getRange(rowIdx, COL_RECEIPT_URL).setValue(receiptUrl);
+        Logger.log("✅ Already has receipt. Skipping email.");
     }
+
+    // --- FORMATTING (User Request) ---
+    // Right Align, Inter Font, Size 10, All Borders
+    var fullRowRange = sheet.getRange(rowIdx, 1, 1, 21); // Columns A to U
+    fullRowRange
+        .setHorizontalAlignment("right")
+        .setVerticalAlignment("middle") // Good practice
+        .setFontFamily("Inter")
+        .setFontSize(10)
+        .setBorder(true, true, true, true, true, true, "#000000", SpreadsheetApp.BorderStyle.SOLID);
 }
 
 /**
@@ -536,7 +555,7 @@ function createPdfHtml(name, matric, memberId, date, invoiceNo, receiptNo, logoB
         <div class="terms-box" style="margin-top: 15px;">
             <b style="color: #1d1d1f; text-transform: uppercase;">Check Your Status</b><br>
             Join our Official Telegram Bot to verify your eligibility and access your digital ID card.<br>
-            🔗 <b>Link:</b> <a href="https://t.me/steminmyheartbot" style="color: #012951; text-decoration: none;">https://t.me/steminmyheartbot</a>
+            🔗 <b>Link:</b> <a href="https://t.me/stemusasbot" style="color: #012951; text-decoration: none;">https://t.me/stemusasbot</a>
         </div>
 
         <div class="terms-box" style="margin-top: 15px; border-left: 4px solid #f7c525;">
@@ -554,6 +573,25 @@ function createPdfHtml(name, matric, memberId, date, invoiceNo, receiptNo, logoB
     </body>
     </html>
     `;
+}
+
+/**
+ * BROADCAST: Process ALL rows to backfill data and send emails.
+ * Run this MANUALLY to process migrated data.
+ */
+function broadcastAllRows() {
+    var sheet = getTargetSheet();
+    if (!sheet) return;
+
+    var lastRow = sheet.getLastRow();
+    // Start from Row 2 (Skip Header)
+    for (var i = 2; i <= lastRow; i++) {
+        Logger.log("🔄 Processing Row " + i + " of " + lastRow);
+        processRow(sheet, i);
+        // Small delay to prevent hitting Google rate limits (MailApp: ~100/day for free Gmail)
+        Utilities.sleep(1000);
+    }
+    Logger.log("✅ Broadcast Complete!");
 }
 
 /**
@@ -653,7 +691,7 @@ function generateMonthlyStats() {
     var monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     var prevMonthName = monthNames[lastMonthDate.getMonth()];
     var prevYear = lastMonthDate.getFullYear();
-    var statLabel = "--- STATISTIK " + prevMonthName.toUpperCase() + " " + prevYear + " ---";
+    var statLabel = "--- STATISTIC " + prevMonthName.toUpperCase() + " " + prevYear + " ---";
 
     var lastRow = sheet.getLastRow();
     var count = 0;
