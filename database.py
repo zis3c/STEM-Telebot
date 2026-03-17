@@ -226,9 +226,9 @@ class Database:
             # Status is at index 17 (Col R).
             status = row[17].strip() if len(row) > 17 else ""
             
-            if status in ["Approved", "Verified", "✓✓"]:
+            if status in ["Approved", "Verified", "✓✓", "✓"]:
                 verified += 1
-            elif not status or status == "Pending" or status == "✓":
+            elif not status or status == "Pending":
                 pending += 1
                 
         return {
@@ -421,10 +421,10 @@ class Database:
                 status = row[17].strip().title() if len(row) > 17 else ""
                 
                 # Normalize status for filtering
-                if status in ["Approved", "Verified", "✓✓"]: 
+                if status in ["Approved", "Verified", "✓✓", "✓"]: 
                     status = "Approved"
-                elif status in ["Pending", "✓"] or not status:
-                    # If empty or "✓", treat as Pending for the admin view
+                elif status == "Pending" or not status:
+                    # If empty or "Pending", treat as Pending for the admin view
                     status = "Pending"
                 
                 if status == status_filter:

@@ -208,11 +208,11 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 final_status = "Pending"
                 db_status_norm = db_status.strip()
 
-                if db_status_norm in ["Approved", "Verified", "✓✓"]:
+                if db_status_norm in ["Approved", "Verified", "✓✓", "✓"]:
                     final_status = "Approved"
                 elif db_status_norm == "Rejected":
                     final_status = "Rejected"
-                elif db_status_norm in ["Pending", "✓"] or not db_status_norm:
+                elif db_status_norm == "Pending" or not db_status_norm:
                     final_status = "Pending"
                 else:
                     final_status = "Pending"
