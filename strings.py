@@ -12,7 +12,8 @@ STRINGS = {
             "*About This Bot*\n\n"
             "This service checks the STEM USAS membership database.\n"
             "It connects securely to the official records.\n\n"
-            "Dev: @zis3c"
+            "If you face any problems, please contact @STEMUSAS\n\n"
+            "Dev: zis3c ☺️"
         ),
         'PROMPT_MATRIC': "Step 1/2\n\nPlease type your *Matric Number*:\n(Example: `I24067510`)",
         'PROMPT_IC': "Matric: `{matric}`\n\nStep 2/2\nNow enter the *Last 4 Digits* of your IC:\n(Example: `********1807`)",
@@ -29,10 +30,11 @@ STRINGS = {
         
         'ERR_INVALID_MATRIC': "*Invalid Matric Format!*\nPlease try again (e.g. `I24067510`)",
         'ERR_INVALID_IC': "*Invalid IC!*\nPlease enter exactly 4 digits.",
-        'ERR_DB_CONNECTION': "System Error: Database unavailable.",
+        'ERR_DB_CONNECTION': "System Error: Database unavailable. Please contact @STEMUSAS if this persists.",
         'ERR_NOT_FOUND': "*Not Found*\nMatric Number not in records.",
         'ERR_CANCEL': "Oh okay cancelled.",
         'ERR_ACCESS_DENIED': "*Access Denied*\nYou are not an admin.",
+        'ERR_CONTACT_SUPPORT': "If you face any problems, please contact @STEMUSAS",
         
         'STATUS_PENDING': "*MEMBERSHIP PENDING* ⏳",
         'STATUS_REJECT': "*MEMBERSHIP REJECTED* 🚫",
@@ -148,6 +150,7 @@ STRINGS = {
             "*Tentang Bot Ini*\n\n"
             "Perkhidmatan ini menyemak pangkalan data keahlian STEM USAS.\n"
             "Ia bersambung secara selamat ke rekod rasmi.\n\n"
+            "Jika anda menghadapi sebarang masalah, sila hubungi @STEMUSAS\n\n"
             "Dev: @zis3c"
         ),
         'PROMPT_MATRIC': "Langkah 1/2\n\nSila taip *Nombor Matrik* anda:\n(Contoh: `I24067510`)",
@@ -165,10 +168,11 @@ STRINGS = {
         
         'ERR_INVALID_MATRIC': "*Format Matrik Tidak Sah!*\nSila cuba lagi (cth. `I24067510`)",
         'ERR_INVALID_IC': "*IC Tidak Sah!*\nSila masukkan tepat 4 digit.",
-        'ERR_DB_CONNECTION': "Ralat Sistem: Pangkalan data tidak tersedia.",
+        'ERR_DB_CONNECTION': "Ralat Sistem: Pangkalan data tidak tersedia. Sila hubungi @STEMUSAS jika berterusan.",
         'ERR_NOT_FOUND': "*Tidak Dijumpai*\nNombor Matrik tiada dalam rekod.",
         'ERR_CANCEL': "Oh okay dibatalkan.",
         'ERR_ACCESS_DENIED': "*Akses Ditolak*\nAnda bukan admin.",
+        'ERR_CONTACT_SUPPORT': "Jika anda menghadapi sebarang masalah, sila hubungi @STEMUSAS",
         
         'STATUS_PENDING': "*KEAHLIAN SEDANG DIPROSES* ⏳",
         'STATUS_REJECT': "*KEAHLIAN DITOLAK* 🚫",
