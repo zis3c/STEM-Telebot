@@ -6,13 +6,7 @@ STRINGS = {
             "*Hi {name}!*\n\n"
             "I am the *Eligible STEM Bot*.\n"
             "I can verify your membership status instantly.\n\n"
-            "🌟 *Why join STEM?*\n"
-            "• Official STEM Membership ID\n"
-            "• Access to exclusive workshops & events\n"
-            "• Networking with industry professionals\n"
-            "• STEM Merchandise & goodies\n"
-            "• Certificates of participation\n\n"
-            "👇 *Use the menu below to begin or join us!*"
+            "👇 *Use the menu below to begin.*"
         ),
         'BTN_BECOME_MEMBER': "Become Member 🚀",
         'MSG_JOIN_PROMPT': "🚀 *Not a member yet? Join us now!*",
@@ -152,13 +146,7 @@ STRINGS = {
             "*Hai {name}!*\n\n"
             "Saya *Eligible STEM Bot*.\n"
             "Saya boleh semak status keahlian anda dengan pantas.\n\n"
-            "🌟 *Kenapa sertai STEM?*\n"
-            "• ID Keahlian STEM Rasmi\n"
-            "• Akses ke bengkel & acara eksklusif\n"
-            "• Rangkaian dengan profesional industri\n"
-            "• Barangan & cenderahati STEM\n"
-            "• Sijil penyertaan\n\n"
-            "👇 *Gunakan menu di bawah untuk mula atau sertai kami!*"
+            "👇 *Gunakan menu di bawah untuk mula.*"
         ),
         'BTN_BECOME_MEMBER': "Menjadi Ahli 🚀",
         'MSG_JOIN_PROMPT': "🚀 *Belum jadi ahli? Sertai kami sekarang!*",

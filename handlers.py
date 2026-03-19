@@ -41,17 +41,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text("🚧 *System Under Maintenance*\nPlease try again later.", parse_mode="Markdown")
         return ConversationHandler.END
 
-    # 1. Send Welcome Message with Main Menu (ReplyKeyboardMarkup)
+    # Send Welcome Message with Main Menu (Includes Web App registration button)
     await update.message.reply_text(
         strings.get('WELCOME_MSG', lang).format(name=user.first_name), 
         reply_markup=keyboards.get_main_menu(lang), 
-        parse_mode="Markdown"
-    )
-
-    # 2. Send Join Prompt with Become Member Button (InlineKeyboardMarkup)
-    await update.message.reply_text(
-        strings.get('MSG_JOIN_PROMPT', lang),
-        reply_markup=keyboards.get_become_member_keyboard(lang),
         parse_mode="Markdown"
     )
 
