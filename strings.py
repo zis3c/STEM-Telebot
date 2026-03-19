@@ -158,7 +158,7 @@ STRINGS = {
         ),
         'BTN_BECOME_MEMBER': "Menjadi Ahli 🚀",
         'REGISTRATION_MSG': (
-            "🌟 *Kenapa sertai STEM?*\n"
+            "🌟 *Kenapa sertai STEM?*\n\n"
             "• ID Keahlian STEM Rasmi\n"
             "• Akses ke bengkel & acara eksklusif\n"
             "• Rangkaian dengan profesional industri\n"
