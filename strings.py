@@ -10,7 +10,7 @@ STRINGS = {
         ),
         'BTN_BECOME_MEMBER': "Become Member 🚀",
         'REGISTRATION_MSG': (
-            "🌟 *Why join STEM?*\n"
+            "🌟 *Why join STEM?*\n\n"
             "• Official STEM Membership ID\n"
             "• Access to exclusive workshops & events\n"
             "• Networking with industry professionals\n"
