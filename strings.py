@@ -15,6 +15,7 @@ STRINGS = {
             "👇 *Use the menu below to begin or join us!*"
         ),
         'BTN_BECOME_MEMBER': "Become Member 🚀",
+        'MSG_JOIN_PROMPT': "🚀 *Not a member yet? Join us now!*",
         'HELP_MSG': (
             "*About This Bot*\n\n"
             "This service checks the STEM USAS membership database.\n"
@@ -160,6 +161,7 @@ STRINGS = {
             "👇 *Gunakan menu di bawah untuk mula atau sertai kami!*"
         ),
         'BTN_BECOME_MEMBER': "Menjadi Ahli 🚀",
+        'MSG_JOIN_PROMPT': "🚀 *Belum jadi ahli? Sertai kami sekarang!*",
         'HELP_MSG': (
             "*Tentang Bot Ini*\n\n"
             "Perkhidmatan ini menyemak pangkalan data keahlian STEM USAS.\n"
