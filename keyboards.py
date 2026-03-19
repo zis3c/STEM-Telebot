@@ -1,12 +1,11 @@
-from telegram import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButton, WebAppInfo
+from telegram import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 import strings
 
 def get_main_menu(lang='EN'):
-    url = "https://docs.google.com/forms/d/e/1FAIpQLSchZH3A3wvlq2RQE47KorzGNLqDgX48zc4PP46kapENjnBiBA/viewform?fbzx=7657887268860346255"
     return ReplyKeyboardMarkup(
         [
-            [KeyboardButton(strings.get('BTN_CHECK', lang))],
-            [KeyboardButton(strings.get('BTN_BECOME_MEMBER', lang), web_app=WebAppInfo(url=url))],
+            [strings.get('BTN_CHECK', lang)],
+            [strings.get('BTN_BECOME_MEMBER', lang)],
             [strings.get('BTN_HELP', lang), strings.get('BTN_SETTINGS', lang)]
         ], 
         resize_keyboard=True

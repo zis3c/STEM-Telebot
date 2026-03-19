@@ -65,6 +65,7 @@ async def main():
     filter_help = build_filter('BTN_HELP')
     filter_settings = build_filter('BTN_SETTINGS')
     filter_languages = build_filter('BTN_LANGUAGES')
+    filter_become_member = build_filter('BTN_BECOME_MEMBER')
 
     filter_back = build_filter('BTN_BACK')
     filter_cancel = build_filter('BTN_CANCEL')
@@ -100,7 +101,8 @@ async def main():
         entry_points=[
             MessageHandler(filter_check, handlers.check_start),
             MessageHandler(filter_settings, handlers.settings_menu),
-            MessageHandler(filter_languages, handlers.languages_menu)
+            MessageHandler(filter_languages, handlers.languages_menu),
+            MessageHandler(filter_become_member, handlers.registration_menu)
         ],
         states={
             states.ASK_MATRIC: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filter_cancel, handlers.receive_matric)],
@@ -185,6 +187,7 @@ async def main():
     application.add_handler(MessageHandler(filter_help, handlers.help_command))
     application.add_handler(MessageHandler(filter_settings, handlers.settings_menu))
     application.add_handler(MessageHandler(filter_languages, handlers.languages_menu))
+    application.add_handler(MessageHandler(filter_become_member, handlers.registration_menu))
 
     application.add_handler(MessageHandler(filter_lang_en, handlers.set_lang_en))
     application.add_handler(MessageHandler(filter_lang_ms, handlers.set_lang_ms))

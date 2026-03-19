@@ -74,6 +74,15 @@ async def languages_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
     return ConversationHandler.END
 
+async def registration_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    lang = get_user_lang(context)
+    await update.message.reply_text(
+        strings.get('REGISTRATION_MSG', lang),
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_become_member_keyboard(lang)
+    )
+    return ConversationHandler.END
+
 async def set_lang_en(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['lang'] = 'EN'
     # Return to Settings Menu to show context
