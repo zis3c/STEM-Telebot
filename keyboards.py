@@ -1,4 +1,4 @@
-from telegram import ReplyKeyboardMarkup
+from telegram import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 import strings
 
 def get_main_menu(lang='EN'):
@@ -9,6 +9,13 @@ def get_main_menu(lang='EN'):
         ], 
         resize_keyboard=True
     )
+
+def get_become_member_keyboard(lang='EN'):
+    url = "https://docs.google.com/forms/d/e/1FAIpQLSchZH3A3wvlq2RQE47KorzGNLqDgX48zc4PP46kapENjnBiBA/viewform?fbzx=7657887268860346255"
+    keyboard = [
+        [InlineKeyboardButton(strings.get('BTN_BECOME_MEMBER', lang), url=url)]
+    ]
+    return InlineKeyboardMarkup(keyboard)
 
 def get_settings_menu(lang='EN'):
     return ReplyKeyboardMarkup(

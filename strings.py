@@ -6,8 +6,15 @@ STRINGS = {
             "*Hi {name}!*\n\n"
             "I am the *Eligible STEM Bot*.\n"
             "I can verify your membership status instantly.\n\n"
-            "👇 *Use the menu below to begin.*"
+            "🌟 *Why join STEM?*\n"
+            "• Official STEM Membership ID\n"
+            "• Access to exclusive workshops & events\n"
+            "• Networking with industry professionals\n"
+            "• STEM Merchandise & goodies\n"
+            "• Certificates of participation\n\n"
+            "👇 *Use the menu below to begin or join us!*"
         ),
+        'BTN_BECOME_MEMBER': "Become Member 🚀",
         'HELP_MSG': (
             "*About This Bot*\n\n"
             "This service checks the STEM USAS membership database.\n"
@@ -144,8 +151,15 @@ STRINGS = {
             "*Hai {name}!*\n\n"
             "Saya *Eligible STEM Bot*.\n"
             "Saya boleh semak status keahlian anda dengan pantas.\n\n"
-            "👇 *Gunakan menu di bawah untuk mula.*"
+            "🌟 *Kenapa sertai STEM?*\n"
+            "• ID Keahlian STEM Rasmi\n"
+            "• Akses ke bengkel & acara eksklusif\n"
+            "• Rangkaian dengan profesional industri\n"
+            "• Barangan & cenderahati STEM\n"
+            "• Sijil penyertaan\n\n"
+            "👇 *Gunakan menu di bawah untuk mula atau sertai kami!*"
         ),
+        'BTN_BECOME_MEMBER': "Menjadi Ahli 🚀",
         'HELP_MSG': (
             "*Tentang Bot Ini*\n\n"
             "Perkhidmatan ini menyemak pangkalan data keahlian STEM USAS.\n"

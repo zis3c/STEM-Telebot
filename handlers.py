@@ -44,8 +44,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     # Log user for broadcast
     await update.message.reply_text(
         strings.get('WELCOME_MSG', lang).format(name=user.first_name), 
-        reply_markup=keyboards.get_main_menu(lang), 
+        reply_markup=keyboards.get_become_member_keyboard(lang), 
         parse_mode="Markdown"
+    )
+    
+    # Send main menu board separately as ReplyKeyboardMarkup
+    await update.message.reply_text(
+        "---", # Small separator or instruction
+        reply_markup=keyboards.get_main_menu(lang)
     )
 
     # Log user for broadcast (Done in background to improve speed)
