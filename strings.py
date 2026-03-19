@@ -155,7 +155,7 @@ STRINGS = {
             "Perkhidmatan ini menyemak pangkalan data keahlian STEM USAS.\n"
             "Ia bersambung secara selamat ke rekod rasmi.\n\n"
             "Jika anda menghadapi sebarang masalah, sila hubungi @STEMUSAS\n\n"
-            "Dev: @zis3c"
+            "Dev: zis3c ☺️"
         ),
         'PROMPT_MATRIC': "Langkah 1/2\n\nSila taip *Nombor Matrik* anda:\n(Contoh: `I24067510`)",
         'PROMPT_IC': "Matrik: `{matric}`\n\nLangkah 2/2\nSekarang masukkan *4 Digit Terakhir* IC anda:\n(Contoh: `********1807`)",
