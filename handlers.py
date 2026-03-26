@@ -76,6 +76,7 @@ async def languages_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def registration_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
+    db.log_action(update.effective_user.first_name, "OPEN_REGISTRATION", "Viewed Benefits", role="USER")
     await update.message.reply_text(
         strings.get('REGISTRATION_MSG', lang),
         parse_mode="Markdown",
@@ -85,6 +86,7 @@ async def registration_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def set_lang_en(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['lang'] = 'EN'
+    db.log_action(update.effective_user.first_name, "SET_LANG", "English", role="USER")
     # Return to Settings Menu to show context
     await update.message.reply_text(
         strings.get('MSG_LANG_CHANGED', 'EN'),
@@ -94,6 +96,7 @@ async def set_lang_en(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 async def set_lang_ms(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['lang'] = 'MS'
+    db.log_action(update.effective_user.first_name, "SET_LANG", "Bahasa Melayu", role="USER")
     # Return to Settings Menu to show context
     await update.message.reply_text(
         strings.get('MSG_LANG_CHANGED', 'MS'),
@@ -283,6 +286,12 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     #     pass 
 
     await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=keyboards.get_main_menu(lang))
+    
+    # Log the result
+    log_status = "SUCCESS" if "DISAHKAN" in msg or "VERIFIED" in msg else "NOT_FOUND"
+    if "Gagal" in msg or "Failed" in msg: log_status = "FAIL_IC"
+    db.log_action(update.effective_user.first_name, "CHECK_MEMBERSHIP", f"Matric: {user_matric} | Result: {log_status}", role="USER")
+    
     return ConversationHandler.END
 
 # --- LOGGING HANDLER (GROUP -1) ---
@@ -291,11 +300,39 @@ async def log_any_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     if not user: return
     
-    text = update.message.text if update.message else "Action/Button"
+    # Handle non-text messages
+    if not update.message or not update.message.text:
+        msg_type = "MEDIA/OTHER"
+        if update.message:
+            if update.message.sticker: msg_type = "STICKER"
+            elif update.message.photo: msg_type = "PHOTO"
+            elif update.message.document: msg_type = "DOCUMENT"
+            elif update.message.voice: msg_type = "VOICE"
+        db.log_action(f"{user.first_name} ({user.id})", "MSG_NON_TEXT", msg_type, role="USER")
+        return
+
+    text = update.message.text.strip()
     
-    # Avoid logging sensitive passwords if any? (Ideally we don't have passwords in chat)
-    # Log: User Name (ID) | Message
-    db.log_action(f"{user.first_name} ({user.id})", "MSG", text, role="USER")
+    # Identify Keyboard Clicks
+    action = "MSG"
+    details = text
+    
+    # All Button Keys from strings.py
+    btn_keys = [
+        'BTN_CHECK', 'BTN_HELP', 'BTN_SETTINGS', 'BTN_LANGUAGES', 'BTN_BACK', 'BTN_CANCEL', 
+        'BTN_TRY_AGAIN', 'BTN_BECOME_MEMBER', 'BTN_LANG_EN', 'BTN_LANG_MS',
+        'BTN_ADMIN_MANAGE', 'BTN_ADMIN_BROADCAST', 'BTN_ADMIN_STATS', 'BTN_ADMIN_EXIT',
+        'BTN_ADMIN_DEL', 'BTN_ADMIN_LIST', 'BTN_ADMIN_SEARCH',
+        'BTN_SA_MAINTENANCE', 'BTN_SA_ADMINS', 'BTN_SA_HEALTH', 'BTN_SA_REFRESH', 'BTN_SA_LOGS'
+    ]
+    
+    for key in btn_keys:
+        if text in strings.get_all(key):
+            action = "KEYBOARD_CLICK"
+            details = f"Button: {key} ({text})"
+            break
+
+    db.log_action(f"{user.first_name} ({user.id})", action, details, role="USER")
 
 # --- JOB QUEUE & CALLBACKS ---
 async def check_pending_now(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -365,8 +402,8 @@ async def check_registrations(context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Check Regs Error: {e}")
 
 async def send_daily_logs(context: ContextTypes.DEFAULT_TYPE):
-    """Job: Sends admin_actions.log to superadmins and clears it."""
-    filename = "admin_actions.log"
+    """Job: Sends activity.log to superadmins and clears it."""
+    filename = "activity.log"
     
     if not os.path.exists(filename):
         return # Nothing to send

@@ -115,13 +115,16 @@ This bot is configured for auto-deployment on [Render](https://render.com).
 
 ---
 
-## 📜 System Logging (New)
-1.  **Global User Tracking**: Logs **every** command/message from all users for anomaly detection.
-2.  **Admin Audit**: Logs sensitive actions (Add/Delete Member, Broadcast).
-3.  **Deduplicated User List**: Ensures broadcasts are sent only to unique users, preventing spam.
-4.  **Auto-Cleanup**:
-    *   Logs are stored locally in `admin_actions.log`.
-    *   Every day at **00:00 UTC**, the bot saves the log file, sends it to Superadmins, and **wipes it clean** to save space.
+## 📜 System Activity Logging
+
+1.  **Global User Tracking**: Logs **every** interaction (text, buttons, stickers, media) for all users.
+2.  **Keyboard Logic**: Detects and labels specific button clicks (e.g., "Check Membership") for easier auditing.
+3.  **Detailed Auditing**: Explicitly logs results of sensitive actions (Membership checks, Language changes, Registrations).
+4.  **Admin Audit**: Logs administrative actions (Add/Delete Member, Broadcast).
+5.  **Deduplicated User List**: Ensures broadcasts are sent only to unique users, preventing spam.
+6.  **Auto-Cleanup & Reporting**:
+    *   Logs are stored locally in `activity.log`.
+    *   Every day at **00:00 UTC**, the bot sends the log file to Superadmins and **clears it** to maintain performance.
 
 ## 🔒 Security
 

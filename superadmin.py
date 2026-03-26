@@ -94,8 +94,8 @@ async def toggle_maintenance(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def view_logs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
         await update.message.reply_document(
-            document=open("admin_actions.log", "rb"),
-            filename="admin_actions.log"
+            document=open("activity.log", "rb"),
+            filename="activity.txt"
         )
     except FileNotFoundError:
         await update.message.reply_text("📂 Log file is empty or missing.")

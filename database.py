@@ -372,7 +372,7 @@ class Database:
         log_entry = f"[{timestamp}] {role}: {name} | ACTION: {action} | {details}\n"
         
         try:
-            with open("admin_actions.log", "a", encoding="utf-8") as f:
+            with open("activity.log", "a", encoding="utf-8") as f:
                 f.write(log_entry)
         except Exception as e:
             logger.error(f"Failed to write to log: {e}")
