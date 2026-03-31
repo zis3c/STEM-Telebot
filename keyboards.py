@@ -55,6 +55,11 @@ def get_help_inline_keyboard(lang='EN'):
     return InlineKeyboardMarkup(
         [[InlineKeyboardButton("How it works?", callback_data="how_it_works")]]
     )
+
+def get_help_back_inline_keyboard(lang='EN'):
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton(strings.get('BTN_BACK', lang), callback_data="help_back")]]
+    )
 def get_admin_menu(lang='EN'):
     return ReplyKeyboardMarkup([
         [strings.get('BTN_ADMIN_MANAGE', lang)],

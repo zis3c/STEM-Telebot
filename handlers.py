@@ -12,8 +12,6 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-MANUAL_GUIDE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "STEM Bot Manual Guide.pdf"))
-VIDEO_TUTORIAL_URL = "https://youtu.be/PAk9x6VrDkE"
 
 # --- HELPERS ---
 def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
@@ -120,32 +118,30 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 
 async def how_it_works_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send manual guide PDF with tutorial link in one caption."""
+    """Switch to detailed how-it-works view in the same message bubble."""
     query = update.callback_query
     await query.answer()
 
-    if not query.message:
-        return
-
-    caption = (
-        "*How it works?*\n\n"
-        "*STEM Bot Manual Guide*\n\n"
-        f"[Video Tutorial]({VIDEO_TUTORIAL_URL})"
+    lang = get_user_lang(context)
+    await query.edit_message_text(
+        strings.get('HOW_IT_WORKS_MSG', lang),
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_help_back_inline_keyboard(lang),
+        disable_web_page_preview=True,
     )
 
-    try:
-        with open(MANUAL_GUIDE_PATH, "rb") as manual_pdf:
-            await query.message.reply_document(
-                document=manual_pdf,
-                filename=os.path.basename(MANUAL_GUIDE_PATH),
-                caption=caption,
-                parse_mode="Markdown",
-            )
-    except FileNotFoundError:
-        await query.message.reply_text(
-            "*Manual guide not found.*\n\nPlease contact @STEMUSAS",
-            parse_mode="Markdown",
-        )
+
+async def help_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Return to the main help view in the same message bubble."""
+    query = update.callback_query
+    await query.answer()
+
+    lang = get_user_lang(context)
+    await query.edit_message_text(
+        strings.get('HELP_MSG', lang),
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_help_inline_keyboard(lang),
+    )
 
 async def check_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)

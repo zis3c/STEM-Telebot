@@ -20,10 +20,22 @@ STRINGS = {
         ),
         'HELP_MSG': (
             "*About This Bot*\n\n"
-            "This service checks the STEM USAS membership database.\n"
-            "It connects securely to the official records.\n\n"
-            "If you face any problems, please contact @STEMUSAS\n\n"
-            "Dev: zis3c ☺️"
+            "This service monitors the USAS LMS for new assignments and notifies you instantly.\n\n"
+            "Register - Link LMS account\n"
+            "Check Now - Scan tasks now\n"
+            "Status - View account info\n"
+            "Logout - Remove your data\n\n"
+            "Made by zis3c 🔥"
+        ),
+        'HOW_IT_WORKS_MSG': (
+            "*How it works?*\n\n"
+            "I securely connect to your USAS LMS using your credentials to monitor for updates.\n\n"
+            "Every hour, my system runs an automated check (a heartbeat scan) across all your courses. It looks for new assignments, quizzes, or task updates that you haven't been notified about yet.\n\n"
+            "When a change is detected, I immediately generate a notification bubble and send it to your chat here.\n\n"
+            "*Example:*\n"
+            "Think of it like a scheduled bus. If the bot is set to scan every hour at :00, and your lecturer uploads a task at 10:20 PM, the bot will pick it up at the next scheduled scan at 11:00 PM. This ensures you are always kept in the loop without having to manually refresh the LMS.\n\n"
+            "Contact @STEMUSAS for support.\n\n"
+            "[Video Tutorial](https://youtu.be/PAk9x6VrDkE)"
         ),
         'PROMPT_MATRIC': "Step 1/2\n\nPlease type your *Matric Number*:\n(Example: `I24067510`)",
         'PROMPT_IC': "Matric: `{matric}`\n\nStep 2/2\nNow enter the *Last 4 Digits* of your IC:\n(Example: `********1807`)",
