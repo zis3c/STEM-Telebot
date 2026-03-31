@@ -50,6 +50,11 @@ def get_retry_menu(lang='EN'):
         one_time_keyboard=True
     )
 
+
+def get_help_inline_keyboard(lang='EN'):
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("How it works?", callback_data="how_it_works")]]
+    )
 def get_admin_menu(lang='EN'):
     return ReplyKeyboardMarkup([
         [strings.get('BTN_ADMIN_MANAGE', lang)],
@@ -101,3 +106,4 @@ def get_program_menu(lang='EN'):
         ],
         resize_keyboard=True
     )
+

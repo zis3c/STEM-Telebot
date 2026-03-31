@@ -12,6 +12,9 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+MANUAL_GUIDE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "STEM Bot Manual Guide.pdf"))
+VIDEO_TUTORIAL_URL = "https://youtu.be/PAk9x6VrDkE"
+
 # --- HELPERS ---
 def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
     """Retrieve user language, default to EN."""
@@ -111,9 +114,38 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     await update.message.reply_text(
         strings.get('HELP_MSG', lang),
         parse_mode="Markdown",
-        reply_markup=keyboards.get_main_menu(lang)
+        reply_markup=keyboards.get_help_inline_keyboard(lang)
     )
     return ConversationHandler.END
+
+
+async def how_it_works_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send manual guide PDF with tutorial link in one caption."""
+    query = update.callback_query
+    await query.answer()
+
+    if not query.message:
+        return
+
+    caption = (
+        "*How it works?*\n\n"
+        "*STEM Bot Manual Guide*\n\n"
+        f"[Video Tutorial]({VIDEO_TUTORIAL_URL})"
+    )
+
+    try:
+        with open(MANUAL_GUIDE_PATH, "rb") as manual_pdf:
+            await query.message.reply_document(
+                document=manual_pdf,
+                filename=os.path.basename(MANUAL_GUIDE_PATH),
+                caption=caption,
+                parse_mode="Markdown",
+            )
+    except FileNotFoundError:
+        await query.message.reply_text(
+            "*Manual guide not found.*\n\nPlease contact @STEMUSAS",
+            parse_mode="Markdown",
+        )
 
 async def check_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
@@ -434,3 +466,4 @@ async def send_daily_logs(context: ContextTypes.DEFAULT_TYPE):
         db.update_last_maintenance()
     except Exception as e:
         logger.error(f"Failed to clear logs: {e}")
+

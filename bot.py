@@ -218,6 +218,7 @@ async def main():
     application.add_handler(MessageHandler(filter_lang_en, handlers.set_lang_en))
     application.add_handler(MessageHandler(filter_lang_ms, handlers.set_lang_ms))
     application.add_handler(MessageHandler(filter_back, handlers.start)) # Back goes to main menu
+    application.add_handler(CallbackQueryHandler(handlers.how_it_works_callback, pattern="^how_it_works$"))
     
     # Global Logger (Group -1) - Runs for EVERYTHING
     application.add_handler(MessageHandler(filters.ALL, handlers.log_any_update), group=-1)
