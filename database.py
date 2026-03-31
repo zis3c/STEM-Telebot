@@ -30,6 +30,33 @@ class Database:
         self.logged_users_cache = set()
         
         self.refresh_system_config()
+        self._init_maint_file()
+
+    def _init_maint_file(self):
+        """Initializes the local maintenance tracking file if missing."""
+        if not os.path.exists("last_maint.txt"):
+            with open("last_maint.txt", "w") as f:
+                f.write("2000-01-01") # Old date
+
+    def get_last_maintenance(self):
+        """Returns the last maintenance date from local file."""
+        try:
+            if os.path.exists("last_maint.txt"):
+                with open("last_maint.txt", "r") as f:
+                    return f.read().strip()
+        except: pass
+        return "2000-01-01"
+
+    def update_last_maintenance(self):
+        """Updates the last maintenance date to today."""
+        try:
+            today = datetime.now().strftime("%Y-%m-%d")
+            with open("last_maint.txt", "w") as f:
+                f.write(today)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update last_maint.txt: {e}")
+            return False
 
     def _parse_ids(self, env_key):
         raw = os.getenv(env_key, "")

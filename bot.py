@@ -48,6 +48,32 @@ async def self_pinger():
              except Exception as e:
                  logger.error(f"⚠️ Self-Ping Failed: {e}")
 
+# --- MAINTENANCE LOOP (ROBUST SCHEDULING) ---
+async def maintenance_loop(application):
+    """Checks every 15 minutes if daily maintenance is due."""
+    from database import db
+    from handlers import send_daily_logs
+    
+    while True:
+        try:
+            current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+            last_date = db.get_last_maintenance()
+            
+            if current_date != last_date:
+                logger.info(f"📅 Maintenance Due! Last run: {last_date}, Current: {current_date}")
+                # Create a pseudo-context for the handler if it expects one
+                # send_daily_logs expects ContextTypes.DEFAULT_TYPE
+                # We can just pass the application object (or a mock) since it only needs bot.
+                class MockContext:
+                    def __init__(self, bot): self.bot = bot
+                
+                await send_daily_logs(MockContext(application.bot))
+            
+        except Exception as e:
+            logger.error(f"❌ Maintenance Loop Error: {e}")
+            
+        await asyncio.sleep(15 * 60) # Check every 15 minutes
+
 # --- HELPER FOR FILTERS ---
 def build_filter(key):
     """Builds a Regex filter that matches ANY language variation of a button"""
@@ -199,8 +225,6 @@ async def main():
     # Job Queue
     if application.job_queue:
         application.job_queue.run_repeating(handlers.check_registrations, interval=60, first=10)
-        # Daily Logs at 00:00 UTC (or server time)
-        application.job_queue.run_daily(handlers.send_daily_logs, time=datetime.time(hour=0, minute=0, second=0))
     
     webhook_path = f"{WEBHOOK_URL}/telegram" if WEBHOOK_URL else None
     
@@ -251,7 +275,9 @@ async def main():
     await site.start()
     
     # Start Self Pinger
+    # Start Background Tasks
     asyncio.create_task(self_pinger())
+    asyncio.create_task(maintenance_loop(application))
     
     # Keep alive loop
     while True: await asyncio.sleep(3600)

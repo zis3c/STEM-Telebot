@@ -430,37 +430,7 @@ async def send_daily_logs(context: ContextTypes.DEFAULT_TYPE):
         with open(filename, "w") as f:
             f.truncate(0)
         logger.info("Daily logs sent and cleared.")
+        # Update last maintenance record
+        db.update_last_maintenance()
     except Exception as e:
         logger.error(f"Failed to clear logs: {e}")
-        # Notify Admins
-        for reg in new_regs:
-            row_idx = reg['row']
-            data = reg['data']
-            # Data: 0=Timestamp, 2=Name, 3=Matric, 16=Receipt
-            name = data[2]
-            matric = data[3]
-            resit = data[16] if len(data) > 16 else "No Receipt"
-            
-            # Escape Markdown V1 Special Chars: _, *, `, [
-            def escape_md(text):
-                return text.replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
-                
-            name = escape_md(name)
-            matric = escape_md(matric)
-            resit = escape_md(resit)
-            
-            # Immediately mark as Notified/Verified ('✓') to avoid double notification on next poll
-            db.update_status(row_idx, "✓")
-            
-            # Send to all admins (Text Only, No Buttons)
-            admin_ids = db.admin_ids
-            text = strings.get('NOTIFY_NEW_REG', 'EN').format(name=name, matric=matric, resit=resit)
-            
-            for admin_id in admin_ids:
-                try:
-                    await context.bot.send_message(chat_id=admin_id, text=text, parse_mode="Markdown")
-                except Exception as e:
-                    logger.error(f"Failed to notify admin {admin_id}: {e}")
-                    
-    except Exception as e:
-        logger.error(f"Check Job Error: {e}")
