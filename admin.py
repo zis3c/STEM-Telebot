@@ -41,7 +41,6 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     except Exception as e:
         logger.error(e)
         await update.message.reply_text(strings.get('ERR_DB_CONNECTION', lang))
-        await update.message.reply_text(strings.get('ERR_DB_CONNECTION', lang))
     return states.ADMIN_MENU
 
 async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -69,9 +68,13 @@ async def back_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     # Used for "Back" button inside Manage Menu
     return await start(update, context)
 
-async def back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    # Used for "Cancel" inside Add/Del flows -> returns to Manage Menu now
+async def back_to_manage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # Used for "Cancel" inside Add/Del/Search flows.
     lang = get_user_lang(context)
+    await update.message.reply_text(
+        strings.get('BTN_ADMIN_MANAGE', lang),
+        reply_markup=keyboards.get_admin_manage_menu(lang)
+    )
     return states.ADMIN_MANAGE
 
 # --- LIST MEMBERS ---
@@ -100,10 +103,6 @@ async def list_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         logger.error(e)
         await loading.edit_text(strings.get('ERR_DB_CONNECTION', lang))
 
-    except Exception as e:
-        logger.error(e)
-        await loading.edit_text(strings.get('ERR_DB_CONNECTION', lang))
-
     return states.ADMIN_MANAGE
 
 # --- SEARCH MEMBERS ---
@@ -121,7 +120,7 @@ async def receive_search_mode(update: Update, context: ContextTypes.DEFAULT_TYPE
     text = update.message.text.strip()
     
     if text in strings.get_all('BTN_CANCEL') or text == "CANCEL": 
-        return await back(update, context)
+        return await back_to_manage(update, context)
 
     # Determine mode
     mode = "simple"
@@ -153,7 +152,7 @@ async def search_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     mode = context.user_data.get('search_mode', 'simple')
     
     if query in strings.get_all('BTN_CANCEL') or query == "CANCEL": 
-        return await back(update, context)
+        return await back_to_manage(update, context)
 
     loading = await update.message.reply_text(strings.get('ADMIN_SEARCHING', lang))
 
@@ -250,7 +249,7 @@ async def del_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def del_matric(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     text = update.message.text.strip().upper()
-    if text in strings.get_all('BTN_CANCEL') or text == "CANCEL": return await back(update, context)
+    if text in strings.get_all('BTN_CANCEL') or text == "CANCEL": return await back_to_manage(update, context)
     
     loading = await update.message.reply_text(strings.get('ADMIN_SEARCHING', lang), parse_mode="Markdown")
     

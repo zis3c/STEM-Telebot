@@ -368,24 +368,29 @@ class Database:
             logger.error(f"Log User Error: {e}")
 
     def get_all_users(self):
-        """Returns unique list of all user IDs from the log sheet."""
+        """Returns a unique list of all numeric user IDs from the log sheet."""
         sheet = self.get_users_sheet()
-        if not sheet: return []
-        
-        try:
-            # Col 1 is ID
-            ids = sheet.col_values(1)
-            # Row 1 is header "User ID"
-            if len(ids) > 1:
-                return list(set(ids[1:])) # Deduplicate
+        if not sheet:
             return []
-        except Exception as e:
-            logger.error(f"Get Users Error: {e}")
-            return []
+
         try:
-            # Return list of user_ids (Col 1), skip header
-            vals = sheet.col_values(1)[1:] 
-            return [int(x) for x in vals if x.isdigit()]
+            # Col 1 is ID, row 1 is header "User ID".
+            raw_ids = sheet.col_values(1)[1:]
+            unique_ids = []
+            seen = set()
+
+            for raw_id in raw_ids:
+                if not raw_id.isdigit():
+                    continue
+
+                user_id = int(raw_id)
+                if user_id in seen:
+                    continue
+
+                seen.add(user_id)
+                unique_ids.append(user_id)
+
+            return unique_ids
         except Exception as e:
             logger.error(f"Get Users Error: {e}")
             return []

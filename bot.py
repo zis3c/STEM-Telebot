@@ -148,7 +148,6 @@ async def main():
                 MessageHandler(filter_sa_maint, superadmin.toggle_maintenance),
                 MessageHandler(filter_sa_health, superadmin.check_health),
                 MessageHandler(filter_sa_admins, superadmin.manage_admins),
-                MessageHandler(filter_sa_admins, superadmin.manage_admins),
                 MessageHandler(filter_sa_refresh, superadmin.refresh_config),
                 MessageHandler(filter_sa_logs, superadmin.view_logs),
                 MessageHandler(filter_sa_exit, superadmin.exit)
