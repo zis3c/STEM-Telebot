@@ -20,17 +20,13 @@ STRINGS = {
         ),
         'HELP_MSG': (
             "*About This Bot*\n\n"
-            "This service checks the STEM USAS membership database. It connects securely to the official records.\n"
+            "This bot checks the STEM USAS membership database. It connects securely to the official records.\n\n"
             "If you face any problems, please contact @STEMUSAS\n\n"
             "Dev: zis3c ☺️"
         ),
         'HOW_IT_WORKS_MSG': (
             "*How it works?*\n\n"
-            "1. Tap *Check Membership*.\n"
-            "2. Enter your matric number and IC last 4 digits.\n"
-            "3. The bot checks the official STEM USAS record.\n"
-            "4. If matched, you get your latest membership details.\n"
-            "5. If not matched, verification fails safely.\n\n"
+            "Tap *Check Membership*, enter your matric number and IC last 4 digits, and the bot will verify your details against the official STEM USAS record; if both match, your latest membership information is shown instantly, and if not, verification will fail safely.\n\n"
             "If you face any problems, please contact @STEMUSAS.\n\n"
             "*Video Tutorial*\n"
             "https://youtu.be/PAk9x6VrDkE"
