@@ -21,7 +21,7 @@ STRINGS = {
         'HELP_MSG': (
             "*About This Bot*\n\n"
             "This bot checks the STEM USAS membership database. It connects securely to the official records.\n\n"
-            "Dev: zis3c ☺️"
+            "Made by *zis3c* ☺️"
         ),
         'HOW_IT_WORKS_MSG': (
             "*How it works?*\n\n"
