@@ -25,7 +25,7 @@ STRINGS = {
         ),
         'HOW_IT_WORKS_MSG': (
             "*How it works?*\n\n"
-            "Tap *Check Membership*, enter your matric number and IC last 4 digits, and the bot will verify your details against the official STEM USAS record; if both match, your latest membership information is shown instantly, and if not, verification will fail safely.\n\n"
+            "Tap *Check Membership*, enter your matric number and IC last 4 digits, and the bot will verify your details against the official STEM USAS record. if both match, your latest membership information is shown instantly, and if not, verification will fail safely.\n\n"
             "If you face any problems, please contact @STEMUSAS.\n\n"
             "*Video Tutorial*\n"
             "https://youtu.be/PAk9x6VrDkE"
