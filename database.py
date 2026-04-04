@@ -47,12 +47,12 @@ class Database:
         except: pass
         return "2000-01-01"
 
-    def update_last_maintenance(self):
-        """Updates the last maintenance date to today."""
+    def update_last_maintenance(self, date_value=None):
+        """Updates the last maintenance/report date."""
         try:
-            today = datetime.now().strftime("%Y-%m-%d")
+            value = date_value or datetime.now().strftime("%Y-%m-%d")
             with open("last_maint.txt", "w") as f:
-                f.write(today)
+                f.write(value)
             return True
         except Exception as e:
             logger.error(f"Failed to update last_maint.txt: {e}")

@@ -3,6 +3,7 @@ import logging
 import asyncio
 import re
 import datetime
+from zoneinfo import ZoneInfo
 from aiohttp import web, ClientSession
 from telegram import Update
 from telegram.ext import (
@@ -32,6 +33,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+KL_TZ = ZoneInfo("Asia/Kuala_Lumpur")
 
 # --- SELF PINGER (KEEP ALIVE) ---
 async def self_pinger():
@@ -56,11 +58,11 @@ async def maintenance_loop(application):
     
     while True:
         try:
-            current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+            report_date = (datetime.datetime.now(KL_TZ).date() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
             last_date = db.get_last_maintenance()
             
-            if current_date != last_date:
-                logger.info(f"📅 Maintenance Due! Last run: {last_date}, Current: {current_date}")
+            if report_date != last_date:
+                logger.info(f"Daily log report due. Last run: {last_date}, Target: {report_date}")
                 # Create a pseudo-context for the handler if it expects one
                 # send_daily_logs expects ContextTypes.DEFAULT_TYPE
                 # We can just pass the application object (or a mock) since it only needs bot.

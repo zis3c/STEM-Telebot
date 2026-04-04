@@ -8,9 +8,15 @@ import logging
 import re
 import asyncio
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+from io import BytesIO
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
+
+KL_TZ = ZoneInfo("Asia/Kuala_Lumpur")
+LOG_DATE_RE = re.compile(r"^\[(\d{4}-\d{2}-\d{2}) \d{2}:\d{2}:\d{2}\]")
+_DAILY_LOG_LOCK = asyncio.Lock()
 
 
 # --- HELPERS ---
@@ -430,36 +436,71 @@ async def check_registrations(context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Check Regs Error: {e}")
 
 async def send_daily_logs(context: ContextTypes.DEFAULT_TYPE):
-    """Job: Sends activity.log to superadmins and clears it."""
-    filename = "activity.log"
-    
-    if not os.path.exists(filename):
-        return # Nothing to send
-        
-    # Check if empty
-    if os.path.getsize(filename) == 0:
+    """Send only yesterday's logs (KL time), once per report day."""
+    if _DAILY_LOG_LOCK.locked():
         return
-        
-    # Send to all Superadmins
-    super_ids = db.superadmin_ids
-    for uid in super_ids:
+
+    async with _DAILY_LOG_LOCK:
+        target_date = (datetime.now(KL_TZ).date() - timedelta(days=1)).strftime("%Y-%m-%d")
+        if db.get_last_maintenance() == target_date:
+            return
+
+        filename = "activity.log"
+        if not os.path.exists(filename):
+            db.update_last_maintenance(target_date)
+            return
+
         try:
-            await context.bot.send_document(
-                chat_id=uid,
-                document=open(filename, "rb"),
-                filename=f"Logs_{datetime.now().strftime('%Y-%m-%d')}.txt",
-                caption="📜 Daily Admin Logs"
-            )
+            with open(filename, "r", encoding="utf-8") as f:
+                lines = f.readlines()
         except Exception as e:
-            logger.error(f"Failed to send logs to {uid}: {e}")
-            
-    # Clear file
-    try:
-        with open(filename, "w") as f:
-            f.truncate(0)
-        logger.info("Daily logs sent and cleared.")
-        # Update last maintenance record
-        db.update_last_maintenance()
-    except Exception as e:
-        logger.error(f"Failed to clear logs: {e}")
+            logger.error(f"Failed to read activity.log: {e}")
+            return
+
+        if not lines:
+            db.update_last_maintenance(target_date)
+            return
+
+        report_lines = []
+        keep_lines = []
+        for line in lines:
+            match = LOG_DATE_RE.match(line)
+            if match and match.group(1) == target_date:
+                report_lines.append(line)
+            else:
+                keep_lines.append(line)
+
+        # Nothing from yesterday: mark processed so it won't keep retrying.
+        if not report_lines:
+            db.update_last_maintenance(target_date)
+            return
+
+        report_content = "".join(report_lines)
+        report_name = f"Logs_{target_date}.txt"
+        sent_count = 0
+        for uid in db.superadmin_ids:
+            try:
+                payload = BytesIO(report_content.encode("utf-8"))
+                payload.name = report_name
+                await context.bot.send_document(
+                    chat_id=uid,
+                    document=payload,
+                    filename=report_name,
+                    caption="📜 Daily Admin Logs"
+                )
+                sent_count += 1
+            except Exception as e:
+                logger.error(f"Failed to send logs to {uid}: {e}")
+
+        # Keep logs if nobody received them (retry next run).
+        if sent_count == 0:
+            return
+
+        try:
+            with open(filename, "w", encoding="utf-8") as f:
+                f.writelines(keep_lines)
+            db.update_last_maintenance(target_date)
+            logger.info(f"Daily logs sent for {target_date}.")
+        except Exception as e:
+            logger.error(f"Failed to rotate activity.log: {e}")
 
