@@ -1,26 +1,27 @@
-import os
-import logging
 import asyncio
-import re
 import datetime
+import logging
+import os
+import re
+from contextlib import suppress
 from zoneinfo import ZoneInfo
-from aiohttp import web, ClientSession
+
+from aiohttp import ClientSession, web
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
+    CallbackQueryHandler,
     CommandHandler,
-    MessageHandler,
-    ConversationHandler,
-    filters,
     ContextTypes,
-    CallbackQueryHandler
+    ConversationHandler,
+    MessageHandler,
+    filters,
 )
 
-# Import Modules
-import strings
-import states
-import handlers
 import admin
+import handlers
+import states
+import strings
 import superadmin
 
 # --- CONFIGURATION ---
@@ -35,94 +36,102 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 KL_TZ = ZoneInfo("Asia/Kuala_Lumpur")
 
+
 # --- SELF PINGER (KEEP ALIVE) ---
 async def self_pinger():
     """Pings the bot's own URL every 14 minutes to prevent sleep."""
     while True:
-        await asyncio.sleep(14 * 60) # 14 minutes
+        await asyncio.sleep(14 * 60)
         if WEBHOOK_URL:
-             try:
-                 url = f"{WEBHOOK_URL}/health"
-                 async with ClientSession() as session:
-                     async with session.get(url) as resp:
-                         status = resp.status
-                         logger.info(f"💓 Self-Ping: {status}")
-             except Exception as e:
-                 logger.error(f"⚠️ Self-Ping Failed: {e}")
+            try:
+                url = f"{WEBHOOK_URL}/health"
+                async with ClientSession() as session:
+                    async with session.get(url) as resp:
+                        logger.info("Self-Ping status: %s", resp.status)
+            except Exception as e:
+                logger.error("Self-Ping failed: %s", e)
+
 
 # --- MAINTENANCE LOOP (ROBUST SCHEDULING) ---
 async def maintenance_loop(application):
     """Checks every 15 minutes if daily maintenance is due."""
     from database import db
     from handlers import send_daily_logs
-    
+
     while True:
         try:
-            report_date = (datetime.datetime.now(KL_TZ).date() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-            last_date = db.get_last_maintenance()
-            
+            report_date = (
+                datetime.datetime.now(KL_TZ).date() - datetime.timedelta(days=1)
+            ).strftime("%Y-%m-%d")
+            last_date = await asyncio.to_thread(db.get_last_maintenance)
+
             if report_date != last_date:
-                logger.info(f"Daily log report due. Last run: {last_date}, Target: {report_date}")
-                # Create a pseudo-context for the handler if it expects one
-                # send_daily_logs expects ContextTypes.DEFAULT_TYPE
-                # We can just pass the application object (or a mock) since it only needs bot.
+                logger.info(
+                    "Daily log report due. Last run: %s, Target: %s",
+                    last_date,
+                    report_date,
+                )
+
                 class MockContext:
-                    def __init__(self, bot): self.bot = bot
-                
+                    def __init__(self, bot):
+                        self.bot = bot
+
                 await send_daily_logs(MockContext(application.bot))
-            
         except Exception as e:
-            logger.error(f"❌ Maintenance Loop Error: {e}")
-            
-        await asyncio.sleep(15 * 60) # Check every 15 minutes
+            logger.error("Maintenance loop error: %s", e)
+
+        await asyncio.sleep(15 * 60)
+
 
 # --- HELPER FOR FILTERS ---
 def build_filter(key):
-    """Builds a Regex filter that matches ANY language variation of a button"""
+    """Builds a Regex filter that matches ANY language variation of a button."""
     options = strings.get_all(key)
-    # Escape all options and join with OR (|)
     pattern = "^(" + "|".join([re.escape(opt) for opt in options]) + ")$"
     return filters.Regex(pattern)
 
+
 # --- WEBHOOK & MAIN ---
 async def main():
+    if not TOKEN:
+        raise RuntimeError("TELEGRAM_TOKEN is missing.")
+
     application = ApplicationBuilder().token(TOKEN).build()
 
     # Dynamic Filters (Multi-Language)
-    filter_check = build_filter('BTN_CHECK')
-    filter_help = build_filter('BTN_HELP')
-    filter_settings = build_filter('BTN_SETTINGS')
-    filter_languages = build_filter('BTN_LANGUAGES')
-    filter_become_member = build_filter('BTN_BECOME_MEMBER')
+    filter_check = build_filter("BTN_CHECK")
+    filter_help = build_filter("BTN_HELP")
+    filter_settings = build_filter("BTN_SETTINGS")
+    filter_languages = build_filter("BTN_LANGUAGES")
+    filter_become_member = build_filter("BTN_BECOME_MEMBER")
 
-    filter_back = build_filter('BTN_BACK')
-    filter_cancel = build_filter('BTN_CANCEL')
-    filter_lang_en = build_filter('BTN_LANG_EN')
-    filter_lang_ms = build_filter('BTN_LANG_MS')
-    
-    # Admin Filters (Usually Admin is one lang, but we support all just in case)
-    filter_admin_manage = build_filter('BTN_ADMIN_MANAGE')
-    filter_admin_del = build_filter('BTN_ADMIN_DEL')
-    filter_admin_list = build_filter('BTN_ADMIN_LIST')
-    filter_admin_search = build_filter('BTN_ADMIN_SEARCH')
-    filter_admin_broadcast = build_filter('BTN_ADMIN_BROADCAST')
-    filter_admin_stats = build_filter('BTN_ADMIN_STATS')
-    filter_admin_check_pending = build_filter('BTN_ADMIN_CHECK_PENDING') # Keeping for backward compat logic if needed
-    
-    filter_admin_exit = build_filter('BTN_ADMIN_EXIT')
-    
+    filter_back = build_filter("BTN_BACK")
+    filter_cancel = build_filter("BTN_CANCEL")
+    filter_lang_en = build_filter("BTN_LANG_EN")
+    filter_lang_ms = build_filter("BTN_LANG_MS")
+
+    # Admin Filters
+    filter_admin_manage = build_filter("BTN_ADMIN_MANAGE")
+    filter_admin_del = build_filter("BTN_ADMIN_DEL")
+    filter_admin_list = build_filter("BTN_ADMIN_LIST")
+    filter_admin_search = build_filter("BTN_ADMIN_SEARCH")
+    filter_admin_broadcast = build_filter("BTN_ADMIN_BROADCAST")
+    filter_admin_stats = build_filter("BTN_ADMIN_STATS")
+    filter_admin_check_pending = build_filter("BTN_ADMIN_CHECK_PENDING")
+    filter_admin_exit = build_filter("BTN_ADMIN_EXIT")
+
     # Superadmin Filters
-    filter_sa_maint = build_filter('BTN_SA_MAINTENANCE')
-    filter_sa_admins = build_filter('BTN_SA_ADMINS')
-    filter_sa_health = build_filter('BTN_SA_HEALTH')
-    filter_sa_refresh = build_filter('BTN_SA_REFRESH')
-    filter_sa_logs = build_filter('BTN_SA_LOGS')
-    
+    filter_sa_maint = build_filter("BTN_SA_MAINTENANCE")
+    filter_sa_admins = build_filter("BTN_SA_ADMINS")
+    filter_sa_health = build_filter("BTN_SA_HEALTH")
+    filter_sa_refresh = build_filter("BTN_SA_REFRESH")
+    filter_sa_logs = build_filter("BTN_SA_LOGS")
+
     # Superadmin Sub-menu Filters
-    filter_sa_add = build_filter('BTN_SA_ADD_ADMIN')
-    filter_sa_list = build_filter('BTN_SA_LIST_ADMIN')
-    filter_sa_del = build_filter('BTN_SA_DEL_ADMIN')
-    filter_sa_exit = build_filter('BTN_SA_EXIT')
+    filter_sa_add = build_filter("BTN_SA_ADD_ADMIN")
+    filter_sa_list = build_filter("BTN_SA_LIST_ADMIN")
+    filter_sa_del = build_filter("BTN_SA_DEL_ADMIN")
+    filter_sa_exit = build_filter("BTN_SA_EXIT")
 
     # User Config
     user_conv = ConversationHandler(
@@ -130,19 +139,29 @@ async def main():
             MessageHandler(filter_check, handlers.check_start),
             MessageHandler(filter_settings, handlers.settings_menu),
             MessageHandler(filter_languages, handlers.languages_menu),
-            MessageHandler(filter_become_member, handlers.registration_menu)
+            MessageHandler(filter_become_member, handlers.registration_menu),
         ],
         states={
-            states.ASK_MATRIC: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filter_cancel, handlers.receive_matric)],
-            states.ASK_IC: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filter_cancel, handlers.receive_ic)],
+            states.ASK_MATRIC: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND & ~filter_cancel,
+                    handlers.receive_matric,
+                )
+            ],
+            states.ASK_IC: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND & ~filter_cancel,
+                    handlers.receive_ic,
+                )
+            ],
         },
         fallbacks=[
             MessageHandler(filter_cancel | filters.COMMAND, handlers.cancel),
             MessageHandler(filter_settings, handlers.settings_menu),
-            MessageHandler(filter_languages, handlers.languages_menu)
+            MessageHandler(filter_languages, handlers.languages_menu),
         ],
     )
-    
+
     super_conv = ConversationHandler(
         entry_points=[CommandHandler("superadmin", superadmin.start)],
         states={
@@ -152,26 +171,32 @@ async def main():
                 MessageHandler(filter_sa_admins, superadmin.manage_admins),
                 MessageHandler(filter_sa_refresh, superadmin.refresh_config),
                 MessageHandler(filter_sa_logs, superadmin.view_logs),
-                MessageHandler(filter_sa_exit, superadmin.exit)
+                MessageHandler(filter_sa_exit, superadmin.exit),
             ],
             states.SUPER_ADMIN_MANAGE: [
                 MessageHandler(filter_sa_add, superadmin.add_admin_start),
                 MessageHandler(filter_sa_list, superadmin.list_admins),
                 MessageHandler(filter_sa_del, superadmin.del_admin_start),
                 MessageHandler(filter_back, superadmin.back_to_super),
-                MessageHandler(filter_sa_exit, superadmin.exit)
+                MessageHandler(filter_sa_exit, superadmin.exit),
             ],
             states.SUPER_ADD_ID: [
                 MessageHandler(filter_cancel, superadmin.back_to_manage),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filter_cancel, superadmin.add_admin_save)
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND & ~filter_cancel,
+                    superadmin.add_admin_save,
+                ),
             ],
             states.SUPER_DEL_ID: [
                 MessageHandler(filter_cancel, superadmin.back_to_manage),
-                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filter_cancel, superadmin.del_admin_perform)
-            ]
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND & ~filter_cancel,
+                    superadmin.del_admin_perform,
+                ),
+            ],
         },
         fallbacks=[CommandHandler("cancel", superadmin.exit)],
-        allow_reentry=True
+        allow_reentry=True,
     )
 
     # Admin Config
@@ -184,20 +209,30 @@ async def main():
                 MessageHandler(filter_admin_check_pending, admin.check_pending_click),
                 MessageHandler(filter_admin_stats, admin.stats),
                 MessageHandler(filter_admin_exit, admin.exit),
-                CommandHandler("admin", admin.start) # Allow refresh
+                CommandHandler("admin", admin.start),
             ],
             states.ADMIN_MANAGE: [
                 MessageHandler(filter_admin_del, admin.del_start),
                 MessageHandler(filter_admin_list, admin.list_members),
                 MessageHandler(filter_admin_search, admin.search_start),
                 MessageHandler(filter_back, admin.back_to_admin),
-                CommandHandler("admin", admin.back_to_admin) # Refresh to main admin
+                CommandHandler("admin", admin.back_to_admin),
             ],
-            states.DEL_MATRIC: [MessageHandler(filters.TEXT & ~filters.COMMAND, admin.del_matric)],
-            states.SEARCH_MODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, admin.receive_search_mode)],
-            states.SEARCH_QUERY: [MessageHandler(filters.TEXT & ~filters.COMMAND, admin.search_perform)],
-            states.BROADCAST_MSG: [MessageHandler(filters.TEXT & ~filters.COMMAND, admin.broadcast_confirm)],
-            states.BROADCAST_CONFIRM: [MessageHandler(filters.TEXT & ~filters.COMMAND, admin.broadcast_send)],
+            states.DEL_MATRIC: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, admin.del_matric)
+            ],
+            states.SEARCH_MODE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, admin.receive_search_mode)
+            ],
+            states.SEARCH_QUERY: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, admin.search_perform)
+            ],
+            states.BROADCAST_MSG: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, admin.broadcast_confirm)
+            ],
+            states.BROADCAST_CONFIRM: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, admin.broadcast_send)
+            ],
         },
         fallbacks=[CommandHandler("cancel", admin.exit)],
     )
@@ -209,8 +244,8 @@ async def main():
     application.add_handler(CommandHandler("start", handlers.start))
     application.add_handler(CommandHandler("help", handlers.help_command))
     application.add_handler(CommandHandler("settings", handlers.settings_menu))
-    application.add_handler(CommandHandler("check_pending", handlers.check_pending_now)) # Manual Trigger
-    
+    application.add_handler(CommandHandler("check_pending", handlers.check_pending_now))
+
     application.add_handler(MessageHandler(filter_help, handlers.help_command))
     application.add_handler(MessageHandler(filter_settings, handlers.settings_menu))
     application.add_handler(MessageHandler(filter_languages, handlers.languages_menu))
@@ -218,73 +253,105 @@ async def main():
 
     application.add_handler(MessageHandler(filter_lang_en, handlers.set_lang_en))
     application.add_handler(MessageHandler(filter_lang_ms, handlers.set_lang_ms))
-    application.add_handler(MessageHandler(filter_back, handlers.start)) # Back goes to main menu
-    application.add_handler(CallbackQueryHandler(handlers.how_it_works_callback, pattern="^how_it_works$"))
-    application.add_handler(CallbackQueryHandler(handlers.help_back_callback, pattern="^help_back$"))
-    
+    application.add_handler(MessageHandler(filter_back, handlers.start))
+    application.add_handler(
+        CallbackQueryHandler(handlers.how_it_works_callback, pattern="^how_it_works$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handlers.help_back_callback, pattern="^help_back$")
+    )
+
     # Global Logger (Group -1) - Runs for EVERYTHING
     application.add_handler(MessageHandler(filters.ALL, handlers.log_any_update), group=-1)
-    
+
     # Job Queue
     if application.job_queue:
-        application.job_queue.run_repeating(handlers.check_registrations, interval=60, first=10)
-    
-    webhook_path = f"{WEBHOOK_URL}/telegram" if WEBHOOK_URL else None
-    
-    if WEBHOOK_URL:
-        await application.bot.set_webhook(webhook_path)
-    else:
-        # Local Polling
-        logger.info("📡 No WEBHOOK_URL found. Starting Polling...")
-        await application.bot.delete_webhook(drop_pending_updates=True) # Good practice to clear old webhooks
-        # Initialize updater explicitly if not using run_polling
-        # But wait, run_polling handles signals. 
-        # For simplicity in this async structure:
-        # We need to start polling.
-        # Note: application.initialize() initializes the bot, but maybe not updater if not built? 
-        # ApplicationBuilder builds it.
-        # Let's try use standard run_polling if we can? No we have a webserver too.
-        # Fixed:
-        await application.updater.initialize() 
-        await application.updater.start_polling()
-        
-    # Set Bot Commands (Suggestions)
-    from telegram import BotCommand
-    commands = [
-        BotCommand("start", "Start the bot"),
-        BotCommand("help", "Get help information"),
-        BotCommand("settings", "Open Settings"),
-    ]
-    await application.bot.set_my_commands(commands)
+        application.job_queue.run_repeating(
+            handlers.check_registrations, interval=60, first=10
+        )
+
+    app_ready = asyncio.Event()
+    background_tasks = []
 
     async def telegram_webhook(request):
-        update_data = await request.json()
-        await application.process_update(Update.de_json(update_data, application.bot))
-        return web.Response(text="OK")
+        if not app_ready.is_set():
+            return web.Response(status=503, text="Starting")
 
-    async def health(request): return web.Response(text="Alive")
+        try:
+            update_data = await request.json()
+            await application.process_update(Update.de_json(update_data, application.bot))
+            return web.Response(text="OK")
+        except Exception:
+            logger.exception("Webhook processing error")
+            return web.Response(status=500, text="Webhook error")
+
+    async def health(request):
+        status = "Alive" if app_ready.is_set() else "Starting"
+        return web.Response(text=status)
 
     app = web.Application()
     app.router.add_post("/telegram", telegram_webhook)
     app.router.add_get("/", health)
-    app.router.add_get("/health", health) # Dedicated endpoint for self-pinger
-    
-    await application.initialize()
-    await application.start()
-    
+    app.router.add_get("/health", health)
+
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", PORT)
     await site.start()
-    
-    # Start Self Pinger
-    # Start Background Tasks
-    asyncio.create_task(self_pinger())
-    asyncio.create_task(maintenance_loop(application))
-    
-    # Keep alive loop
-    while True: await asyncio.sleep(3600)
+    logger.info("HTTP server started on port %s", PORT)
+
+    try:
+        await application.initialize()
+        await application.start()
+
+        if WEBHOOK_URL:
+            webhook_path = f"{WEBHOOK_URL}/telegram"
+            await application.bot.set_webhook(webhook_path)
+            logger.info("Webhook configured: %s", webhook_path)
+        else:
+            logger.info("No WEBHOOK_URL found. Starting polling...")
+            await application.bot.delete_webhook(drop_pending_updates=True)
+            if application.updater:
+                await application.updater.start_polling()
+
+        from telegram import BotCommand
+
+        commands = [
+            BotCommand("start", "Start the bot"),
+            BotCommand("help", "Get help information"),
+            BotCommand("settings", "Open Settings"),
+        ]
+        await application.bot.set_my_commands(commands)
+
+        background_tasks.append(asyncio.create_task(self_pinger(), name="self_pinger"))
+        background_tasks.append(
+            asyncio.create_task(maintenance_loop(application), name="maintenance_loop")
+        )
+        app_ready.set()
+
+        while True:
+            await asyncio.sleep(3600)
+    finally:
+        app_ready.clear()
+
+        for task in background_tasks:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+
+        with suppress(Exception):
+            if application.updater:
+                await application.updater.stop()
+        with suppress(Exception):
+            await application.stop()
+        with suppress(Exception):
+            await application.shutdown()
+        with suppress(Exception):
+            await runner.cleanup()
+
 
 if __name__ == "__main__":
-    try: asyncio.run(main())
-    except KeyboardInterrupt: pass
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass

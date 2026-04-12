@@ -24,6 +24,10 @@ def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
     """Retrieve user language, default to EN."""
     return context.user_data.get('lang', strings.DEFAULT_LANG)
 
+async def run_db_call(func, *args, **kwargs):
+    """Runs blocking DB/sheets work on a thread so the event loop stays responsive."""
+    return await asyncio.to_thread(func, *args, **kwargs)
+
 async def check_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Global keyword checker for main menu navigation (Multi-lingual matches)"""
     text = update.message.text.strip()
@@ -233,7 +237,7 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     msg = strings.get('ERR_DB_CONNECTION', lang)
     
     try:
-        row_values, row_index = db.find_member(user_matric)
+        row_values, row_index = await run_db_call(db.find_member, user_matric)
         
         if row_values:
             if len(row_values) > 9: # Need at least up to IC (Index 9)
@@ -381,11 +385,11 @@ async def check_pending_now(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def check_registrations(context: ContextTypes.DEFAULT_TYPE):
     """Job to check for new unprocessed registrations."""
     try:
-        new_regs = db.get_unprocessed_registrations()
+        new_regs = await run_db_call(db.get_unprocessed_registrations)
         if not new_regs: return
         
         # Notify ALL Admins (Super + Env + Sheet)
-        admins = db.get_all_admin_ids()
+        admins = await run_db_call(db.get_all_admin_ids)
         for reg in new_regs:
             row_idx = reg['row']
             data = reg['data']
@@ -430,7 +434,7 @@ async def check_registrations(context: ContextTypes.DEFAULT_TYPE):
             
             # Mark as '✓' (Seen by Bot) to avoid spamming. 
             # Admin still needs to /approve or /reject later.
-            db.update_status(row_idx, "✓")
+            await run_db_call(db.update_status, row_idx, "✓")
             
     except Exception as e:
         logger.error(f"Check Regs Error: {e}")
@@ -442,12 +446,12 @@ async def send_daily_logs(context: ContextTypes.DEFAULT_TYPE):
 
     async with _DAILY_LOG_LOCK:
         target_date = (datetime.now(KL_TZ).date() - timedelta(days=1)).strftime("%Y-%m-%d")
-        if db.get_last_maintenance() == target_date:
+        if await run_db_call(db.get_last_maintenance) == target_date:
             return
 
         filename = "activity.log"
         if not os.path.exists(filename):
-            db.update_last_maintenance(target_date)
+            await run_db_call(db.update_last_maintenance, target_date)
             return
 
         try:
@@ -458,7 +462,7 @@ async def send_daily_logs(context: ContextTypes.DEFAULT_TYPE):
             return
 
         if not lines:
-            db.update_last_maintenance(target_date)
+            await run_db_call(db.update_last_maintenance, target_date)
             return
 
         report_lines = []
@@ -472,7 +476,7 @@ async def send_daily_logs(context: ContextTypes.DEFAULT_TYPE):
 
         # Nothing from yesterday: mark processed so it won't keep retrying.
         if not report_lines:
-            db.update_last_maintenance(target_date)
+            await run_db_call(db.update_last_maintenance, target_date)
             return
 
         report_content = "".join(report_lines)
@@ -499,7 +503,7 @@ async def send_daily_logs(context: ContextTypes.DEFAULT_TYPE):
         try:
             with open(filename, "w", encoding="utf-8") as f:
                 f.writelines(keep_lines)
-            db.update_last_maintenance(target_date)
+            await run_db_call(db.update_last_maintenance, target_date)
             logger.info(f"Daily logs sent for {target_date}.")
         except Exception as e:
             logger.error(f"Failed to rotate activity.log: {e}")

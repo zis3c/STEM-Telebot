@@ -6,12 +6,16 @@ import states
 import handlers
 from database import db
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
 # Helper to get lang (Admins might use local too)
 def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
     return context.user_data.get('lang', strings.DEFAULT_LANG)
+
+async def run_db_call(func, *args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
@@ -30,7 +34,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     try:
-        data = db.get_stats()
+        data = await run_db_call(db.get_stats)
         await update.message.reply_text(
             strings.get('ADMIN_STATS', lang).format(
                 total=data['total']
@@ -83,7 +87,7 @@ async def list_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     loading = await update.message.reply_text(strings.get('ADMIN_SEARCHING', lang))
     
     try:
-        members = db.get_members(limit=30) # Safe limit for message size
+        members = await run_db_call(db.get_members, limit=30) # Safe limit for message size
         
         if not members:
             await loading.edit_text(strings.get('ADMIN_LIST_EMPTY', lang), parse_mode="Markdown")
@@ -157,7 +161,7 @@ async def search_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     loading = await update.message.reply_text(strings.get('ADMIN_SEARCHING', lang))
 
     try:
-        results = db.search_members(query)
+        results = await run_db_call(db.search_members, query)
         
         if not results:
             await loading.edit_text(strings.get('ADMIN_SEARCH_EMPTY', lang).format(query=query), parse_mode="Markdown")
@@ -254,7 +258,7 @@ async def del_matric(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     loading = await update.message.reply_text(strings.get('ADMIN_SEARCHING', lang), parse_mode="Markdown")
     
     try:
-        success, row = db.delete_member(text)
+        success, row = await run_db_call(db.delete_member, text)
         if success:
             db.log_action(update.effective_user.first_name, "DELETE_MEMBER", f"Matric: {text} (Row {row})")
             await loading.edit_text(strings.get('ADMIN_DEL_SUCCESS', lang).format(row=row), parse_mode="Markdown")
@@ -292,7 +296,7 @@ async def broadcast_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     context.user_data['broadcast_msg'] = text
     
     # Get user count preview
-    users = db.get_all_users()
+    users = await run_db_call(db.get_all_users)
     count = len(users)
     
     await update.message.reply_text(
@@ -319,7 +323,7 @@ async def broadcast_send(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     status_msg = await update.message.reply_text(strings.get('ADMIN_BROADCAST_START', lang))
     
-    users = db.get_all_users()
+    users = await run_db_call(db.get_all_users)
     success = 0
     failed = 0
     

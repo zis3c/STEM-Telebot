@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
     return context.user_data.get('lang', strings.DEFAULT_LANG)
 
+async def run_db_call(func, *args, **kwargs):
+    return await asyncio.to_thread(func, *args, **kwargs)
+
 def get_super_menu(lang='EN'):
     return ReplyKeyboardMarkup([
         [strings.get('BTN_SA_MAINTENANCE', lang), strings.get('BTN_SA_REFRESH', lang)],
@@ -59,7 +62,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 # --- FEATURES ---
 async def refresh_config(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    db.refresh_system_config(force=True)
+    await run_db_call(db.refresh_system_config, force=True)
     lang = get_user_lang(context)
     await update.message.reply_text(strings.get('MSG_CONFIG_REFRESHED', lang), parse_mode="Markdown")
     return states.SUPER_MENU
@@ -84,7 +87,7 @@ async def check_health(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def toggle_maintenance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     new_state = not db.maintenance_mode
-    if db.set_maintenance(new_state):
+    if await run_db_call(db.set_maintenance, new_state):
         status = "ENABLED" if new_state else "DISABLED"
         await update.message.reply_text(f"Maintenance Mode: *{status}*", parse_mode="Markdown")
     else:
@@ -164,7 +167,7 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return states.SUPER_ADMIN_MANAGE
 
     # Add to sheet
-    if db.add_admin(user_id, "Unknown", f"SA:{update.effective_user.id}"):
+    if await run_db_call(db.add_admin, user_id, "Unknown", f"SA:{update.effective_user.id}"):
         await update.message.reply_text(strings.get('MSG_SA_ADDED', lang), parse_mode="Markdown", reply_markup=get_manage_admins_menu(lang))
         
         # Notify the new admin
@@ -201,7 +204,7 @@ async def del_admin_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return states.SUPER_DEL_ID
         
     user_id = int(text)
-    if db.remove_admin(user_id):
+    if await run_db_call(db.remove_admin, user_id):
         db.log_action(update.effective_user.first_name, "REMOVE_ADMIN", f"Demoted User {user_id}")
         await update.message.reply_text(strings.get('MSG_SA_DELETED', lang), parse_mode="Markdown", reply_markup=get_manage_admins_menu(lang))
     else:

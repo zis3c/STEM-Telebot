@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import time  # Imported time
+import threading
 import gspread
 from google.oauth2.service_account import Credentials
 import traceback
@@ -29,8 +30,13 @@ class Database:
         # User Log Cache (to avoid repeated writes)
         self.logged_users_cache = set()
         
-        self.refresh_system_config()
         self._init_maint_file()
+        # Avoid blocking process startup on network I/O.
+        threading.Thread(
+            target=self.refresh_system_config,
+            kwargs={"force": True},
+            daemon=True
+        ).start()
 
     def _init_maint_file(self):
         """Initializes the local maintenance tracking file if missing."""
