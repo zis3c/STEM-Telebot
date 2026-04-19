@@ -137,6 +137,22 @@ Deployment target: DigitalOcean Droplet (`systemd` + polling) is the maintained 
 
 ---
 
+## Auto Deploy (GitHub Actions)
+
+This repository includes `.github/workflows/deploy-digitalocean.yml`.
+Every push to `main` triggers automatic deployment to the droplet.
+
+Required repository secrets:
+- `DROPLET_HOST` (example: `203.0.113.10`)
+- `DROPLET_USER` (recommended: `deploy`)
+- `DROPLET_SSH_KEY` (private SSH key for the deploy user)
+
+Server assumptions:
+- App path: `/opt/stem-telebot`
+- Service name: `stem-telebot`
+- Deploy user can run `sudo systemctl restart stem-telebot`
+
+---
 ## 📜 System Activity Logging
 
 1.  **Global User Tracking**: Logs **every** interaction (text, buttons, stickers, media) for all users.
