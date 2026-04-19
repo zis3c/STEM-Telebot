@@ -37,7 +37,7 @@ A high-performance, bilingual **Telegram Bot** designed to streamline membership
 *   **Database**: Google Sheets API via [gspread](https://github.com/burnash/gspread)
 *   **Automation**: [Google Apps Script](https://developers.google.com/apps-script) (for server-side sheet logic)
 *   **Concurrency**: Python `asyncio` & `threading`
-*   **Deployment**: Optimized for Render / Docker
+*   **Deployment**: Optimized for DigitalOcean Droplet (polling + systemd)
 
 ---
 
@@ -57,8 +57,8 @@ For a quick setup:
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/zis3c/stem-bot.git
-    cd stem-bot
+    git clone https://github.com/zis3c/STEM-Telebot.git
+    cd STEM-Telebot
     ```
 
 2.  **Install Dependencies**
@@ -103,15 +103,37 @@ python bot.py
 
 ---
 
-## ☁️ Deployment (Render)
+## Deployment (DigitalOcean Droplet)
 
-This bot is configured for auto-deployment on [Render](https://render.com).
+This bot is deployed on a DigitalOcean Droplet using polling mode with `systemd`.
 
-1.  **New Web Service**: Connect your GitHub repo.
-2.  **Runtime**: Python 3.
-3.  **Build Command**: `pip install -r requirements.txt`
-4.  **Start Command**: `python bot.py`
-5.  **Environment Variables**: Add your `.env` keys to Render's Environment tab.
+1.  **Prepare server packages**
+    ```bash
+    sudo apt update
+    sudo apt install -y git python3 python3-venv python3-pip
+    ```
+2.  **Clone and install**
+    ```bash
+    git clone https://github.com/zis3c/STEM-Telebot.git
+    cd STEM-Telebot
+    python3 -m venv .venv
+    . .venv/bin/activate
+    pip install -r requirements.txt
+    ```
+3.  **Configure secrets**
+    * Create `.env` in project root with:
+      `TELEGRAM_TOKEN`, `SHEET_ID`, `SUPERADMIN_IDS`, `ADMIN_IDS`.
+    * Place `service_account.json` in project root.
+4.  **Run as system service**
+    * Create `/etc/systemd/system/stem-telebot.service`
+      with `ExecStart=/path/to/STEM-Telebot/.venv/bin/python /path/to/STEM-Telebot/bot.py`.
+    * Enable and start:
+      ```bash
+      sudo systemctl daemon-reload
+      sudo systemctl enable --now stem-telebot
+      ```
+
+Legacy note: `render.yaml` is kept in-repo for migration history, but active production deployment is DigitalOcean.
 
 ---
 
