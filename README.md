@@ -133,7 +133,7 @@ This bot is deployed on a DigitalOcean Droplet using polling mode with `systemd`
       sudo systemctl enable --now stem-telebot
       ```
 
-Legacy note: `render.yaml` is kept in-repo for migration history, but active production deployment is DigitalOcean.
+Deployment target: DigitalOcean Droplet (`systemd` + polling) is the maintained production setup.
 
 ---
 

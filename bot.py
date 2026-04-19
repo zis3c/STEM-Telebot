@@ -27,7 +27,7 @@ import superadmin
 # --- CONFIGURATION ---
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 PORT = int(os.getenv("PORT", 10000))
-WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "").rstrip("/")
 
 # Logging
 logging.basicConfig(

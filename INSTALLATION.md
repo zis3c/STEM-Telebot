@@ -205,16 +205,32 @@ If successful, you will see `Bot is polling...` in the console.
 
 ---
 
-## 🌐 Step 8: Deployment (Render.com)
+## 🌐 Step 8: Deployment (DigitalOcean Droplet)
 
-1.  Push your code to **GitHub**.
-2.  Log in to [Render](https://render.com).
-3.  New **Web Service** (or Background Worker).
-4.  Connect your repo.
-5.  **Build Command**: `pip install -r requirements.txt`
-6.  **Start Command**: `python bot.py`
-7.  **Environment Variables**:
-    *   Add `TELEGRAM_TOKEN`, `SHEET_ID`, `SUPERADMIN_IDS`, etc.
-    *   For `GOOGLE_CREDENTIALS`, paste the content of your JSON key file.
+1.  SSH into your droplet and install runtime packages:
+    ```bash
+    sudo apt update
+    sudo apt install -y python3 python3-venv python3-pip git
+    ```
+2.  Clone the repository:
+    ```bash
+    sudo mkdir -p /opt/stem-telebot
+    sudo chown "$USER":"$USER" /opt/stem-telebot
+    git clone --depth 1 --branch main https://github.com/zis3c/STEM-Telebot /opt/stem-telebot
+    cd /opt/stem-telebot
+    ```
+3.  Create and populate environment values:
+    - Create `/etc/stem-telebot/bot.env` with `TELEGRAM_TOKEN`, `SHEET_ID`, `SUPERADMIN_IDS`, `ADMIN_IDS`.
+    - Optional webhook mode: set `WEBHOOK_URL`; keep it empty for polling mode.
+4.  Put Google credentials at `/opt/stem-telebot/service_account.json` and lock permissions:
+    ```bash
+    sudo chown deploy:deploy /opt/stem-telebot/service_account.json
+    sudo chmod 600 /opt/stem-telebot/service_account.json
+    ```
+5.  Create and start the `systemd` service:
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now stem-telebot
+    ```
 
-**Done! Your bot is live.** 🚀
+**Done! Your bot is live on DigitalOcean.**
