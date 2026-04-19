@@ -141,6 +141,7 @@ Deployment target: DigitalOcean Droplet (`systemd` + polling) is the maintained 
 
 This repository includes `.github/workflows/deploy-digitalocean.yml`.
 Every push to `main` triggers automatic deployment to the droplet.
+For full setup and troubleshooting, see [AUTO_DEPLOY.md](AUTO_DEPLOY.md).
 
 Required repository secrets:
 - `DROPLET_HOST` (example: `203.0.113.10`)
