@@ -8,29 +8,42 @@
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
 ![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen.svg)
 
-A high-performance, bilingual Telegram bot designed to automate membership verification, register new members with automated ID generation, and provide a robust administrative dashboard for student organizations.
+A high-performance, bilingual automation ecosystem for student organizations. Built for speed, security, and scalability, this bot handles everything from membership verification and registration to system health monitoring and global administrative auditing.
 
 > [!NOTE]
-> **Data Integrity**: This bot uses Google Sheets as its primary database. It features an automated status-tracking system to prevent duplicate registrations and ensure real-time synchronization between the bot and your organization's records.
+> **Hybrid Database Architecture**: This bot utilizes a highly optimized hybrid approach, using Google Sheets as a low-code database for organization managers while implementing a local thread-safe config cache and asynchronous logging for production-grade responsiveness.
 
-## Features
+## Features & Functionality
 
-- **Multi-lingual Support**: Full support for both English and Bahasa Melayu (Toggle via `/settings`).
-- **Instant Verification**: Real-time membership status checks via Matric Number and IC.
-- **Automated Registration**:
-  - Auto-generation of USAS format emails and Membership IDs (`STEM(YY/YY)XXXX`).
-  - Automatic session calculation based on date of entry.
-  - Automated PDF receipt delivery via email (hosted on Google Drive).
-- **Comprehensive Admin Dashboard**:
-  - Search members with Simple (List) or Detailed (Card UI) views.
-  - Approve/Reject registrations and manage members.
-  - Global broadcast system with deduplication logic.
-  - Monthly growth statistics and system health monitoring.
-- **Superadmin Controls**:
-  - Global maintenance mode toggle.
-  - Admin permission management.
-  - Robust activity logging with daily automated reports.
-- **Async Architecture**: Built with `asyncio` and `python-telegram-bot` v20+ for high concurrency (100+ requests).
+### 👤 User Experience
+- **Bilingual Interface**: Seamlessly switch between English and Bahasa Melayu (Persistence handled via `user_data`).
+- **Secure 2-Step Verification**: Real-time cross-referencing of Matric Number and the last 4 digits of IC against the organization registry.
+- **Automated Metadata Engine**:
+  - Instant generation of formatted IDs (e.g., `STEM(24/25)0123`).
+  - Auto-calculation of academic sessions based on raw entry timestamps.
+  - Success notifications with automated PDF receipt delivery via email (integrated with Google Drive).
+- **Interactive Help System**: Inline callback queries for "How it Works" guides without cluttering the chat history.
+
+### 🛡️ Administrative Dashboard (`/admin`)
+- **Member Lifecycle Management**: List, Detail-Search, and Delete members directly from Telegram.
+- **Advanced Search UI**: Toggle between **Simple View** (ID/Matric cards) and **Detailed View** (Full member profile including evidence links, phone numbers, and addresses).
+- **Real-Time Registration Alerts**: Background jobs scan for new entries and notify admins immediately, implementing a "Seen" tag system (`✓`) to prevent multi-admin processing overlap.
+- **Intelligent Broadcasting**: Global message delivery with deduplication logic, retry handling, and delivery success/failure reporting.
+- **Live Metrics**: Instant statistics on total membership and registration trends.
+
+### 👑 Superadmin Control Center (`/superadmin`)
+- **System Maintenance**: Global toggle to lock the bot interface during updates, with prioritized access for admins.
+- **System Health Dashboard**: Real-time monitoring of CPU usage, RAM utilization, and Service Uptime using `psutil`.
+- **RBAC Management**: Dynamically add or remove secondary admins via the bot interface, synced to Google Sheets.
+- **Log Management**: On-demand activity log retrieval and automated daily rotation with reporting to Superadmins at 00:00 UTC.
+- **Hot-Reload Config**: Synchronize system settings and admin lists from Google Sheets without restarting the service.
+
+### ⚙️ System Integrity
+- **Async IO (AIO)**: Non-blocking handlers for all network and database operations to maintain responsiveness under high load.
+- **Anomaly Detection Logging**: Logs all interactions (including non-text like stickers/media) for security auditing and usage analysis.
+- **Self-Healing Cron**: Maintenance loops that automatically recover stale connections and ensure daily tasks are executed even after service downtime.
+
+---
 
 ## Installation
 
@@ -40,133 +53,140 @@ A high-performance, bilingual Telegram bot designed to automate membership verif
    cd STEM-Telebot
    ```
 
-2. **Create and activate virtual environment**
+2. **Initialize Environment**
    ```bash
    python -m venv .venv
-   # Windows PowerShell
+   # Windows
    .\.venv\Scripts\Activate.ps1
    # Linux/macOS
-   # source .venv/bin/activate
+   source .venv/bin/activate
    ```
 
-3. **Install dependencies**
+3. **Install Dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Configure environment**
-   ```bash
-   copy .env.example .env   # Windows
-   # cp .env.example .env   # Linux/macOS
-   ```
+4. **Credential Setup**
+   - Rename `.env.example` to `.env` and fill the variables.
+   - Place your Google Cloud `service_account.json` in the root directory.
 
-5. **Setup Google Cloud**
-   - Place your `service_account.json` in the project root or configure the `GOOGLE_CREDENTIALS` env var.
-   - Share your Google Sheet with the Service Account email.
-
-6. **Run bot**
+5. **Execute**
    ```bash
    python bot.py
    ```
 
+---
+
 ## Environment Variables
 
-**Core:**
-- `TELEGRAM_TOKEN` - Bot token from [@BotFather](https://t.me/BotFather)
-- `PORT` - Local health endpoint port (default `10000`)
-- `WEBHOOK_URL` - Optional for webhook mode (leave empty for polling)
+| Variable | Category | Description |
+| :--- | :--- | :--- |
+| `TELEGRAM_TOKEN` | **Core** | Official API token from @BotFather. |
+| `SHEET_ID` | **Sheets** | Unique ID found in your Google Spreadsheet URL. |
+| `GOOGLE_CREDENTIALS` | **Sheets** | (Optional) Full JSON key string for cloud-native deployment. |
+| `SUPERADMIN_IDS` | **Access** | CSV of Telegram User IDs for system-level controllers. |
+| `ADMIN_IDS` | **Access** | CSV of Telegram User IDs for regional/club managers. |
+| `PORT` | **Runtime** | Local port for health routes (Webhooks/Healthchecks). |
+| `WEBHOOK_URL` | **Runtime** | Required only if running in Webhook mode. |
 
-**Google Sheets:**
-- `SHEET_ID` - The unique ID of your Google Spreadsheet
-- `GOOGLE_CREDENTIALS` - Optional JSON string of your service account key
+---
 
-**Access Control:**
-- `SUPERADMIN_IDS` - Comma-separated Telegram IDs of Superadmins
-- `ADMIN_IDS` - Comma-separated Telegram IDs of regular Admins
+## 🛠️ Production Deployment (DigitalOcean)
 
-## Deploy to DigitalOcean (Recommended)
+### Systemd Service Configuration
+We recommend running as a background service for 99.9% uptime. Create `/etc/systemd/system/stem-telebot.service`:
 
-This project is currently deployed on a DigitalOcean Droplet using polling + `systemd`.
+```ini
+[Unit]
+Description=Eligible STEM Bot Service
+After=network.target
 
-1. Clone the repo on the droplet into `/opt/stem-telebot`.
-2. Set up the virtual environment and install dependencies.
-3. Configure the `.env` file and `service_account.json`.
-4. Create a systemd service file:
-   - `WorkingDirectory=/opt/stem-telebot`
-   - `ExecStart=/opt/stem-telebot/.venv/bin/python /opt/stem-telebot/bot.py`
-5. Enable service:
-   ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now stem-telebot
-   ```
+[Service]
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/stem-telebot
+EnvironmentFile=/opt/stem-telebot/.env
+ExecStart=/opt/stem-telebot/.venv/bin/python bot.py
+Restart=always
+RestartSec=5
 
-## Auto Deploy (GitHub Actions)
+[Install]
+WantedBy=multi-user.target
+```
 
-This repository includes `.github/workflows/deploy-digitalocean.yml`.
-Every push to `main` triggers automatic deployment to the droplet.
-For full setup and troubleshooting, see [AUTO_DEPLOY.md](AUTO_DEPLOY.md).
+### GitHub Actions Auto-Deploy
+Every push to `main` triggers `.github/workflows/deploy-digitalocean.yml`, which:
+1. SSHs into the Droplet.
+2. Pulls latest changes and updates dependencies.
+3. Restarts the systemd service.
+4. Verifies service health via the `/health` endpoint.
 
-Required repository secrets:
-- `DROPLET_HOST` (example: `203.0.113.10`)
-- `DROPLET_USER` (recommended: `deploy`)
-- `DROPLET_SSH_KEY` (private SSH key for the deploy user)
+---
 
-Server assumptions:
-- App path: `/opt/stem-telebot`
-- Service name: `stem-telebot`
-- Deploy user can run `sudo systemctl restart stem-telebot`
-
-## Project Structure
+## 📂 Project Structure
 
 ```text
 STEM-Telebot/
-├── bot.py                # Main entrypoint and scheduler bootstrap
-├── handlers.py           # Core user registration and verification flows
-├── admin.py              # Admin dashboard and member management
-├── superadmin.py         # System settings and maintenance controls
-├── database.py           # Google Sheets API wrapper and local cache
-├── keyboards.py          # Dynamic UI/Keyboard layouts
-├── strings.py            # Multi-language string repository (EN/MS)
-├── states.py             # Conversation state constants
-├── google_apps_script.js # Script for Google Sheets automated logic
-├── LICENSE               # MIT License
-└── requirements.txt      # Project dependencies
+├── bot.py                # Application entrypoint, Webhook/Polling bootstrap & Health routes
+├── handlers.py           # Core logic: User workflows, Keyword navigation & Background Jobs
+├── admin.py              # Admin Dashboard implementation (Search, Manage, Broadcast)
+├── superadmin.py         # System level controls (Health, Maintenance, RBAC)
+├── database.py           # Gspread API wrapper, Config caching & Thread-safe Logging
+├── keyboards.py          # Centralized UI Factory for multi-lingual dynamic menus
+├── strings.py            # Internationalization (EN/MS) & Content Repository
+├── states.py             # FSM (Finite State Machine) constants for conversation flows
+├── activity.log          # Runtime interaction logs (Rotated daily)
+├── .env.example          # Template for environment secrets
+├── requirements.txt      # Python package dependencies
+├── google_apps_script.js # Apps Script for automated Row/ID/Date logic in Sheets
+├── INSTALLATION.md       # Comprehensive setup guide
+└── AUTO_DEPLOY.md        # Detailed CI/CD documentation
 ```
 
-## Commands
+---
 
-| Command | Description |
-|:--------|:------------|
-| `/start` | Open main menu |
-| `/help` | Show usage and guidance |
-| `/settings` | Open language/settings menu |
-| `/check_pending` | Manually trigger pending registration check |
-| `/admin` | Open Admin Dashboard (Admins only) |
-| `/superadmin` | Open Superadmin Panel (Superadmins only) |
-| `/cancel` | Exit current conversation flow |
+## ⌨️ Command Reference
 
-## How It Works
+| Command | Scope | Description |
+| :--- | :--- | :--- |
+| `/start` | Public | Launch the bot and open main menu |
+| `/help` | Public | Open interactive guidance system |
+| `/settings` | Public | Configure language and user preferences |
+| `/admin` | Admin | Open Administrative Dashboard |
+| `/superadmin` | Superadmin | Open System Control Panel |
+| `/check_pending` | Admin | Force scan for new registrations |
+| `/cancel` | Multi-role | Reset current conversation FSM state |
 
-1. **User Interaction**: Users start the bot and select their language.
-2. **Verification**: If checking membership, the bot queries the `Registrations` sheet for a Matric/IC match.
-3. **Registration**: New users submit details and payment proof; data is pushed to Google Sheets with `Pending` status.
-4. **Automation**: Google Apps Script automatically generates Membership IDs and formats and dates.
-5. **Approval**: Admins review members via the `/admin` menu; approving a member triggers the "Success" flow.
-6. **Logging**: All actions are logged to `activity.log` and reported daily to Superadmins.
+---
 
-## Troubleshooting
+## 🔄 How It Works: Under the Hood
 
-- **Bot not responding**: Verify `TELEGRAM_TOKEN` and check if the process is running via `ps aux`.
-- **Sheet access denied**: Ensure the Service Account email has "Editor" permissions on the spreadsheet.
-- **Maintenance Mode**: Check if a Superadmin has enabled maintenance mode via `/superadmin`.
-- **Missing IDs**: Ensure the `google_apps_script.js` is correctly installed in your spreadsheet.
+### 1. The Verification Lifecycle
+When a user initiates `/check`, the bot enters an FSM (Finite State Machine). It validates the **Matric Number** format via Regex, then requests the **IC last 4 digits**. `database.py` executes a threaded search in Google Sheets using a local cache to minimize API latency.
 
-## Additional Docs
+### 2. Approval & ID Generation
+New registrations are picked up by the `check_registrations` job queue. This job marks the row as `✓` in Google Sheets to prevent race conditions. When an admin approves, the `google_apps_script.js` handles the complex ID generation logic within the sheet environment, which the bot then reads to notify the user.
 
-- [AUTO_DEPLOY.md](AUTO_DEPLOY.md)
-- [INSTALLATION.md](INSTALLATION.md)
-- [CONTRIBUTING.md](CONTRIBUTING.md)
-- [SECURITY.md](SECURITY.md)
-- [LICENSE](LICENSE)
+### 3. Log Rotation & Security
+The `MessageHandler(filters.ALL, ...)` in `bot.py` ensures every interaction is audited. Every 24 hours, the `maintenance_loop` performs a log rotation, packaging the day's activity into a CSV and delivering it to the Superadmins before clearing the local buffer.
 
-<center>Built with 🔥 by <b>@zis3c</b></center>
+---
+
+## 🆘 Troubleshooting
+
+- **"Sheet Access Denied"**: Verify the Service Account email has **Editor** permissions on the Spreadsheet.
+- **"Bot is Unresponsive"**: Check `ps aux | grep bot.py`. If on DigitalOcean, run `journalctl -u stem-telebot -f`.
+- **"ID Generation Stuck"**: Ensure the **Apps Script Trigger** (setupTrigger) is active in the Google Sheet's script editor.
+- **"Admin Unauthorized"**: Ensure your Telegram ID is added to `ADMIN_IDS` in `.env` OR added via `/superadmin` menu.
+
+---
+
+<div align="center">
+
+Built with 🔥 by **[@zis3c](https://github.com/zis3c)**  
+*Empowering Student Communities through Intelligent Automation*
+
+[Report Bug](https://github.com/zis3c/STEM-Telebot/issues) • [Request Feature](https://github.com/zis3c/STEM-Telebot/issues)
+
+</div>
