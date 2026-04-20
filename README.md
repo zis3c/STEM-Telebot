@@ -154,6 +154,68 @@ Server assumptions:
 - Deploy user can run `sudo systemctl restart stem-telebot`
 
 ---
+
+## Project Structure
+
+```text
+STEM-Telebot/
+|- bot.py                    # Entrypoint, polling/webhook bootstrap, health routes
+|- handlers.py               # User flow handlers (registration, checks, language, logging)
+|- admin.py                  # Admin panel actions (member management, broadcast, stats)
+|- superadmin.py             # Superadmin controls (maintenance, admin management, health)
+|- database.py               # Google Sheets and local state helpers
+|- keyboards.py              # Reply/inline keyboard layouts
+|- strings.py                # User-facing text (multi-language)
+|- states.py                 # Conversation state constants
+|- google_apps_script.js     # Optional Apps Script automation helper
+|- INSTALLATION.md           # Detailed setup guide
+|- AUTO_DEPLOY.md            # GitHub Actions + DigitalOcean deploy guide
+|- SECURITY.md               # Security policy
+`- CONTRIBUTING.md           # Contribution guide
+```
+
+## Commands
+
+| Command | Description |
+|:--------|:------------|
+| `/start` | Open main menu |
+| `/help` | Show usage and guidance |
+| `/settings` | Open language/settings menu |
+| `/check_pending` | Manually run pending membership check |
+| `/admin` | Open admin dashboard (admin only) |
+| `/superadmin` | Open superadmin panel (superadmin only) |
+| `/cancel` | Exit current conversation flow |
+
+## How It Works
+
+1. User starts the bot and selects verification flow.
+2. Bot validates data against Google Sheets (`Registrations`).
+3. If eligible, bot creates or updates membership metadata (email, ID, session fields).
+4. Admin/superadmin modules handle approvals, lookups, and broadcast operations.
+5. Activity logging records all important user and admin actions to `activity.log`.
+6. Daily maintenance tasks send logs to superadmins and rotate log state.
+
+## Troubleshooting
+
+- Bot not starting:
+  - Check `TELEGRAM_TOKEN`, `SHEET_ID`, `SUPERADMIN_IDS`, `ADMIN_IDS`.
+- Membership checks fail:
+  - Verify Google Sheet tab names and service-account sharing permissions.
+- Service keeps restarting:
+  - Check `journalctl -u stem-telebot -n 100 --no-pager`.
+- Auto deploy fails:
+  - Follow [AUTO_DEPLOY.md](AUTO_DEPLOY.md) troubleshooting section.
+
+## Additional Docs
+
+- [AUTO_DEPLOY.md](AUTO_DEPLOY.md)
+- [INSTALLATION.md](INSTALLATION.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [SECURITY.md](SECURITY.md)
+- [LICENSE](LICENSE)
+
+---
+
 ## 📜 System Activity Logging
 
 1.  **Global User Tracking**: Logs **every** interaction (text, buttons, stickers, media) for all users.
