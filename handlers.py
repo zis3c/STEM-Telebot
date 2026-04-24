@@ -357,7 +357,7 @@ async def log_any_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
         'BTN_CHECK', 'BTN_HELP', 'BTN_SETTINGS', 'BTN_LANGUAGES', 'BTN_BACK', 'BTN_CANCEL', 
         'BTN_TRY_AGAIN', 'BTN_BECOME_MEMBER', 'BTN_LANG_EN', 'BTN_LANG_MS',
         'BTN_ADMIN_MANAGE', 'BTN_ADMIN_BROADCAST', 'BTN_ADMIN_STATS', 'BTN_ADMIN_EXIT',
-        'BTN_ADMIN_DEL', 'BTN_ADMIN_LIST', 'BTN_ADMIN_SEARCH',
+        'BTN_ADMIN_DEL', 'BTN_ADMIN_LIST', 'BTN_ADMIN_SEARCH', 'BTN_ADMIN_CHECK_PENDING',
         'BTN_SA_MAINTENANCE', 'BTN_SA_ADMINS', 'BTN_SA_HEALTH', 'BTN_SA_REFRESH', 'BTN_SA_LOGS'
     ]
     
@@ -442,7 +442,66 @@ async def check_registrations(context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f"Check Regs Error: {e}")
 
+def _escape_md(text):
+    return str(text or "").replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
+
+def _build_review_summary(row_values):
+    name = _escape_md(row_values[2] if len(row_values) > 2 else "-")
+    matric = _escape_md(row_values[3] if len(row_values) > 3 else "-")
+    receipt = row_values[16] if len(row_values) > 16 else "-"
+    receipt_md = f"[View Receipt]({receipt})" if str(receipt).startswith("http") else _escape_md(receipt)
+    return (
+        f"*NEW REGISTRATION*\n\n"
+        f"Name: *{name}*\n"
+        f"Matric: *{matric}*\n"
+        f"Receipt: {receipt_md}"
+    )
+
 async def review_accept_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    lang = get_user_lang(context)
+
+    if not db.is_admin(query.from_user.id):
+        await query.answer("Admins only.", show_alert=True)
+        return
+
+    try:
+        _, row_raw, matric = query.data.split(":", 2)
+        row_idx = int(row_raw)
+    except Exception:
+        await query.edit_message_text("Invalid action payload.")
+        return
+
+    await query.edit_message_text(
+        f"Confirm accept for *{_escape_md(matric)}*?",
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_admin_confirm_keyboard("accept", row_idx, matric, lang)
+    )
+
+async def review_reject_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    lang = get_user_lang(context)
+
+    if not db.is_admin(query.from_user.id):
+        await query.answer("Admins only.", show_alert=True)
+        return
+
+    try:
+        _, row_raw, matric = query.data.split(":", 2)
+        row_idx = int(row_raw)
+    except Exception:
+        await query.edit_message_text("Invalid action payload.")
+        return
+
+    await query.edit_message_text(
+        f"Confirm reject for *{_escape_md(matric)}*?\nThis will remove the record from database.",
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_admin_confirm_keyboard("reject", row_idx, matric, lang)
+    )
+
+async def review_do_accept_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
@@ -466,16 +525,16 @@ async def review_accept_callback(update: Update, context: ContextTypes.DEFAULT_T
             role="ADMIN"
         )
         await query.edit_message_text(
-            f"Accepted: *{matric}*\nMember kept in database.",
+            f"Accepted: *{_escape_md(matric)}*\nMember kept in database.",
             parse_mode="Markdown"
         )
     else:
         await query.edit_message_text(
-            f"Could not accept `{matric}`\nRecord may have moved or been removed.",
+            f"Could not accept `{_escape_md(matric)}`\nRecord may have moved or been removed.",
             parse_mode="Markdown"
         )
 
-async def review_reject_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def review_do_reject_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
@@ -499,14 +558,80 @@ async def review_reject_callback(update: Update, context: ContextTypes.DEFAULT_T
             role="ADMIN"
         )
         await query.edit_message_text(
-            f"Rejected: *{matric}*\nRecord removed from database.",
+            f"Rejected: *{_escape_md(matric)}*\nRecord removed from database.",
             parse_mode="Markdown"
         )
     else:
         await query.edit_message_text(
-            f"Could not reject `{matric}`\nRecord may have moved or been removed.",
+            f"Could not reject `{_escape_md(matric)}`\nRecord may have moved or been removed.",
             parse_mode="Markdown"
         )
+
+async def review_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer("Action cancelled.")
+    lang = get_user_lang(context)
+    try:
+        _, row_raw, matric = query.data.split(":", 2)
+        row_idx = int(row_raw)
+    except Exception:
+        await query.edit_message_text("Action cancelled.")
+        return
+
+    row_values, _ = await run_db_call(db.get_member_by_row_or_matric, row_idx, matric)
+    if not row_values:
+        await query.edit_message_text("Action cancelled. Record not found anymore.")
+        return
+
+    await query.edit_message_text(
+        _build_review_summary(row_values),
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_admin_review_keyboard(row_idx, matric, lang)
+    )
+
+async def review_detail_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if not db.is_admin(query.from_user.id):
+        await query.answer("Admins only.", show_alert=True)
+        return
+
+    try:
+        _, row_raw, matric = query.data.split(":", 2)
+        row_idx = int(row_raw)
+    except Exception:
+        await query.answer("Invalid detail payload.", show_alert=True)
+        return
+
+    row_values, _ = await run_db_call(db.get_member_by_row_or_matric, row_idx, matric)
+    if not row_values:
+        await query.answer("Record not found.", show_alert=True)
+        return
+
+    name = _escape_md(row_values[2] if len(row_values) > 2 else "-")
+    matric_v = _escape_md(row_values[3] if len(row_values) > 3 else "-")
+    prog = _escape_md(row_values[4] if len(row_values) > 4 else "-")
+    phone = _escape_md(row_values[6] if len(row_values) > 6 else "-")
+    personal_email = _escape_md(row_values[7] if len(row_values) > 7 else "-")
+    usas_email = _escape_md(row_values[8] if len(row_values) > 8 else "-")
+    ic = _escape_md(row_values[9] if len(row_values) > 9 else "-")
+    status = _escape_md(row_values[17] if len(row_values) > 17 else "Pending")
+
+    await query.message.reply_text(
+        (
+            f"*Pending Member Details*\n\n"
+            f"Name: *{name}*\n"
+            f"Matric: `{matric_v}`\n"
+            f"Program: {prog}\n"
+            f"Phone: {phone}\n"
+            f"Personal Email: {personal_email}\n"
+            f"USAS Email: {usas_email}\n"
+            f"IC: {ic}\n"
+            f"Status: *{status}*"
+        ),
+        parse_mode="Markdown",
+    )
 
 async def send_daily_logs(context: ContextTypes.DEFAULT_TYPE):
     """Send only yesterday's logs (KL time), once per report day."""

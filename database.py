@@ -585,6 +585,28 @@ class Database:
             logger.error(f"Update Status Safe Error: {e}")
             return False
 
+    def get_member_by_row_or_matric(self, row_index, matric):
+        """Fetch a member row safely by row, fallback to matric search if row shifted."""
+        sheet = self.get_sheet("Registrations")
+        if not sheet:
+            return None, None
+        target_row = row_index
+        safe_matric = str(matric).strip().upper()
+        try:
+            row_values = sheet.row_values(target_row)
+            row_matric = row_values[3].strip().upper() if len(row_values) > 3 else ""
+            if row_matric != safe_matric:
+                cell = sheet.find(safe_matric, in_column=4)
+                if not cell:
+                    return None, None
+                target_row = cell.row
+                row_values = sheet.row_values(target_row)
+
+            return row_values, target_row
+        except Exception as e:
+            logger.error(f"Get Member Safe Error: {e}")
+            return None, None
+
     def delete_registration_by_row_or_matric(self, row_index, matric):
         """Safely deletes a registration by row, with matric fallback if row shifted."""
         sheet = self.get_sheet("Registrations")

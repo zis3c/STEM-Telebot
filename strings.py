@@ -8,7 +8,7 @@ STRINGS = {
             "I can verify your membership status instantly.\n\n"
             "👇 *Use the menu below to begin.*"
         ),
-        'BTN_BECOME_MEMBER': "Become Member 🚀",
+        'BTN_BECOME_MEMBER': "Become Member",
         'REGISTRATION_MSG': (
             "🌟 *Why join STEM?*\n\n"
             "• Official STEM Membership ID\n"
@@ -51,11 +51,14 @@ STRINGS = {
         'ERR_ACCESS_DENIED': "*Access Denied*\nYou are not an admin.",
         'ERR_CONTACT_SUPPORT': "If you face any problems, please contact @STEMUSAS",
         
-        'STATUS_PENDING': "*MEMBERSHIP PENDING* ⏳",
+        'STATUS_PENDING': "*MEMBERSHIP PENDING* ⏳\nYour registration is under admin review.",
         'STATUS_REJECT': "*MEMBERSHIP REJECTED* 🚫",
         'NOTIFY_NEW_REG': "🚨 *New Registration*\n\nName: {name}\nMatric: {matric}\nResit: {resit}",
-        'BTN_APPROVE': "Accept ✅",
-        'BTN_REJECT': "Reject 🚫",
+        'BTN_APPROVE': "Accept",
+        'BTN_REJECT': "Reject",
+        'BTN_VIEW_DETAILS': "View Details",
+        'BTN_CONFIRM_ACTION': "Confirm",
+        'BTN_CANCEL_ACTION': "Cancel",
         'MSG_APPROVED': "✅ Accepted {name}.",
         'MSG_REJECTED': "🚫 Rejected {name}.",
         
@@ -103,6 +106,8 @@ STRINGS = {
         'BTN_SEARCH_DETAIL': "Detailed View",
         'ADMIN_SEARCH_RESULT': "*Search Results* ({mode}) for '{query}':\n\n{items}",
         'ADMIN_SEARCH_EMPTY': "No matches found for '{query}'.",
+        'ADMIN_PENDING_HEADER': "*Pending Reviews* ({count})\nSelect a member below:",
+        'ADMIN_PENDING_EMPTY': "No pending members right now.",
         'BROADCAST_TITLE': "📢 *Admin Announcement*\n\n{msg}",
         
         'BTN_ADMIN_MANAGE': "Manage Members",
@@ -135,7 +140,7 @@ STRINGS = {
         
         'BTN_ADMIN_LIST': "List Members",
         'BTN_ADMIN_SEARCH': "Search Member",
-        'BTN_ADMIN_CHECK_PENDING': "Check Pending",
+        'BTN_ADMIN_CHECK_PENDING': "Pending Reviews",
         'BTN_ADMIN_BROADCAST': "Broadcast",
         'BTN_ADMIN_STATS': "Stats",
         'BTN_ADMIN_EXIT': "Exit Admin",
@@ -163,7 +168,7 @@ STRINGS = {
             "Saya boleh semak status keahlian anda dengan pantas.\n\n"
             "👇 *Gunakan menu di bawah untuk mula.*"
         ),
-        'BTN_BECOME_MEMBER': "Menjadi Ahli 🚀",
+        'BTN_BECOME_MEMBER': "Menjadi Ahli",
         'REGISTRATION_MSG': (
             "🌟 *Kenapa sertai STEM?*\n\n"
             "• ID Keahlian STEM Rasmi\n"
@@ -201,11 +206,14 @@ STRINGS = {
         'ERR_ACCESS_DENIED': "*Akses Ditolak*\nAnda bukan admin.",
         'ERR_CONTACT_SUPPORT': "Jika anda menghadapi sebarang masalah, sila hubungi @STEMUSAS",
         
-        'STATUS_PENDING': "*KEAHLIAN SEDANG DIPROSES* ⏳",
+        'STATUS_PENDING': "*KEAHLIAN SEDANG DIPROSES* ⏳\nPermohonan anda sedang disemak oleh admin.",
         'STATUS_REJECT': "*KEAHLIAN DITOLAK* 🚫",
         'NOTIFY_NEW_REG': "🚨 *Pendaftaran Baru*\n\nNama: {name}\nMatrik: {matric}\nResit: {resit}",
-        'BTN_APPROVE': "Terima ✅",
-        'BTN_REJECT': "Tolak 🚫",
+        'BTN_APPROVE': "Terima",
+        'BTN_REJECT': "Tolak",
+        'BTN_VIEW_DETAILS': "Lihat Butiran",
+        'BTN_CONFIRM_ACTION': "Sahkan",
+        'BTN_CANCEL_ACTION': "Batal",
         'MSG_APPROVED': "✅ Diterima {name}.",
         'MSG_REJECTED': "🚫 Ditolak {name}.",
         
@@ -253,6 +261,8 @@ STRINGS = {
         'BTN_SEARCH_DETAIL': "Paparan Terperinci",
         'ADMIN_SEARCH_RESULT': "*Keputusan Carian* ({mode}) untuk '{query}':\n\n{items}",
         'ADMIN_SEARCH_EMPTY': "Tiada padanan untuk '{query}'.",
+        'ADMIN_PENDING_HEADER': "*Semakan Tertunda* ({count})\nPilih ahli di bawah:",
+        'ADMIN_PENDING_EMPTY': "Tiada ahli tertunda sekarang.",
         'BROADCAST_TITLE': "📢 *Pengumuman Admin*\n\n{msg}",
         
         'BTN_ADMIN_MANAGE': "Urus Ahli",
@@ -264,7 +274,7 @@ STRINGS = {
         'BTN_ADMIN_DEL': "Padam Ahli",
         'BTN_ADMIN_LIST': "Senarai Ahli",
         'BTN_ADMIN_SEARCH': "Cari Ahli",
-        'BTN_ADMIN_CHECK_PENDING': "Semak Tertunda ⏳",
+        'BTN_ADMIN_CHECK_PENDING': "Semakan Tertunda",
         'BTN_ADMIN_BROADCAST': "Hebahan",
         'BTN_ADMIN_STATS': "Statistik",
         'BTN_ADMIN_EXIT': "Keluar Admin",
