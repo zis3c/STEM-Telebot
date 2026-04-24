@@ -83,6 +83,29 @@ def get_admin_review_keyboard(row_idx, matric, lang='EN'):
         ]
     )
 
+def get_admin_review_detail_keyboard(row_idx, matric, lang='EN'):
+    safe_matric = str(matric).strip().upper()
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    strings.get('BTN_BACK', lang),
+                    callback_data=f"review_back:{row_idx}:{safe_matric}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    strings.get('BTN_APPROVE', lang),
+                    callback_data=f"review_accept:{row_idx}:{safe_matric}",
+                ),
+                InlineKeyboardButton(
+                    strings.get('BTN_REJECT', lang),
+                    callback_data=f"review_reject:{row_idx}:{safe_matric}",
+                ),
+            ],
+        ]
+    )
+
 def get_admin_confirm_keyboard(action, row_idx, matric, lang='EN'):
     safe_action = str(action).strip().lower()
     safe_matric = str(matric).strip().upper()
@@ -102,9 +125,8 @@ def get_admin_confirm_keyboard(action, row_idx, matric, lang='EN'):
     )
 def get_admin_menu(lang='EN'):
     return ReplyKeyboardMarkup([
-        [strings.get('BTN_ADMIN_MANAGE', lang)],
-        [strings.get('BTN_ADMIN_CHECK_PENDING', lang), strings.get('BTN_ADMIN_STATS', lang)],
-        [strings.get('BTN_ADMIN_BROADCAST', lang)],
+        [strings.get('BTN_ADMIN_MANAGE', lang), strings.get('BTN_ADMIN_CHECK_PENDING', lang)],
+        [strings.get('BTN_ADMIN_STATS', lang), strings.get('BTN_ADMIN_BROADCAST', lang)],
         [strings.get('BTN_ADMIN_EXIT', lang)]
     ], resize_keyboard=True, one_time_keyboard=False)
 

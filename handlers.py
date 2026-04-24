@@ -610,27 +610,93 @@ async def review_detail_callback(update: Update, context: ContextTypes.DEFAULT_T
         await query.answer("Record not found.", show_alert=True)
         return
 
-    name = _escape_md(row_values[2] if len(row_values) > 2 else "-")
-    matric_v = _escape_md(row_values[3] if len(row_values) > 3 else "-")
-    prog = _escape_md(row_values[4] if len(row_values) > 4 else "-")
-    phone = _escape_md(row_values[6] if len(row_values) > 6 else "-")
-    personal_email = _escape_md(row_values[7] if len(row_values) > 7 else "-")
-    usas_email = _escape_md(row_values[8] if len(row_values) > 8 else "-")
-    ic = _escape_md(row_values[9] if len(row_values) > 9 else "-")
-    status = _escape_md(row_values[17] if len(row_values) > 17 else "Pending")
+    def v(idx):
+        return str(row_values[idx]).strip() if len(row_values) > idx and row_values[idx] is not None else "-"
+
+    name = v(2)
+    matric_v = v(3)
+    prog = v(4)
+    sem = v(5)
+    phone = v(6)
+    personal_email = v(7)
+    usas_email = v(8)
+    ic = v(9)
+    birthday = v(10)
+    birthplace = v(11)
+    address = v(12)
+    entry_raw = v(13)
+    minute_no = v(14)
+    membership_id = v(15)
+    proof_url = v(16)
+    status = v(17)
+    receipt_url = v(18)
+    invoice_no = v(19)
+
+    entry_display = entry_raw
+    try:
+        if entry_raw and entry_raw != "-":
+            dt = None
+            for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d/%m/%y", "%Y-%m-%d %H:%M:%S"):
+                try:
+                    dt = datetime.strptime(entry_raw.split(" ")[0], fmt)
+                    break
+                except ValueError:
+                    continue
+            if dt:
+                entry_display = dt.strftime("%d-%b-%y").lstrip("0")
+    except Exception:
+        entry_display = entry_raw
+
+    proof_display = f"Proof PDF ({proof_url})" if proof_url.startswith("http") else proof_url
+    receipt_display = f"Download PDF ({receipt_url})" if receipt_url.startswith("http") else receipt_url
+
+    details_text = (
+        f"👤 {name}\n"
+        f"🆔 {matric_v}\n"
+        f"🎓 Prog: {prog} | Sem: {sem}\n"
+        f"📞 {phone}\n"
+        f"📧 {personal_email}\n"
+        f"🏫 {usas_email}\n"
+        f"🪪 IC: {ic}\n"
+        f"🎂 {birthday} ({birthplace})\n"
+        f"🏠 {address}\n"
+        f"📅 Entry: {entry_display}\n"
+        f"⏱️ Min: {minute_no}\n"
+        f"🔑 ID: {membership_id}\n"
+        f"📄 Proof: {proof_display}\n"
+        f"🧾 Invoice: {invoice_no}\n"
+        f"📎 Receipt: {receipt_display}\n"
+        f"✅ Status: {status}"
+    )
 
     await query.edit_message_text(
-        (
-            f"*Pending Member Details*\n\n"
-            f"Name: *{name}*\n"
-            f"Matric: `{matric_v}`\n"
-            f"Program: {prog}\n"
-            f"Phone: {phone}\n"
-            f"Personal Email: {personal_email}\n"
-            f"USAS Email: {usas_email}\n"
-            f"IC: {ic}\n"
-            f"Status: *{status}*"
-        ),
+        details_text,
+        reply_markup=keyboards.get_admin_review_detail_keyboard(row_idx, matric, lang)
+    )
+
+async def review_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    lang = get_user_lang(context)
+
+    if not db.is_admin(query.from_user.id):
+        await query.answer("Admins only.", show_alert=True)
+        return
+
+    try:
+        _, row_raw, matric = query.data.split(":", 2)
+        row_idx = int(row_raw)
+    except Exception:
+        await query.edit_message_text("Invalid action payload.")
+        return
+
+    row_values, _ = await run_db_call(db.get_member_by_row_or_matric, row_idx, matric)
+    if not row_values:
+        await query.edit_message_text("Record not found.")
+        return
+
+    await query.edit_message_text(
+        _build_review_summary(row_values),
         parse_mode="Markdown",
         reply_markup=keyboards.get_admin_review_keyboard(row_idx, matric, lang)
     )

@@ -529,6 +529,14 @@ class Database:
             filtered = []
             # Skip header (row 1)
             for i, row in enumerate(rows[1:], start=2):
+                # Skip non-member / malformed rows.
+                if len(row) <= 3:
+                    continue
+                name = str(row[2]).strip() if len(row) > 2 else ""
+                matric = str(row[3]).strip() if len(row) > 3 else ""
+                if not matric:
+                    continue
+
                 raw_status = row[17].strip().lower() if len(row) > 17 else ""
 
                 if raw_status in ("approved", "verified", "✓", "âœ“"):
@@ -541,8 +549,8 @@ class Database:
                 if status == status_filter:
                     filtered.append({
                         'row': i,
-                        'name': row[2] if len(row) > 2 else "Unknown",
-                        'matric': row[3] if len(row) > 3 else "Unknown",
+                        'name': name if name else "Unknown",
+                        'matric': matric,
                         'ic': row[9] if len(row) > 9 else "Unknown", # J=9
                         'prog': row[4] if len(row) > 4 else "Unknown", # E=4
                         'status': status
