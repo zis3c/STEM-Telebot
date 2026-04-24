@@ -97,31 +97,31 @@ async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE
                 proof_display = f"[Proof PDF]({raw_proof})" if str(raw_proof).startswith("http") else escape_md(raw_proof)
 
                 detail_card = (
-                    f"?? *{safe_get(2)}*\n"
-                    f"?? `{safe_get(3)}`\n"
-                    f"?? Prog: {safe_get(4)} | Sem: {safe_get(5)}\n"
-                    f"?? {safe_get(6)}\n"
-                    f"?? {safe_get(7)}\n"
-                    f"?? {safe_get(8)}\n"
-                    f"?? IC: {safe_get(9)}\n"
-                    f"?? {safe_get(10)} ({safe_get(11)})\n"
-                    f"?? {safe_get(12)}\n"
-                    f"?? Entry: {safe_get(13)}\n"
-                    f"?? Min: {safe_get(14)}\n"
-                    f"?? ID: `{safe_get(15)}`\n"
-                    f"?? Proof: {proof_display}\n"
-                    f"?? Invoice: `{safe_get(19)}`\n"
-                    f"?? Receipt: {receipt_display}\n"
-                    f"? Status: {safe_get(17)}"
+                    f"\U0001F464 *{safe_get(2)}*\n"
+                    f"\U0001F194 `{safe_get(3)}`\n"
+                    f"\U0001F393 Prog: {safe_get(4)} | Sem: {safe_get(5)}\n"
+                    f"\U0001F4DE {safe_get(6)}\n"
+                    f"\U0001F4E7 {safe_get(7)}\n"
+                    f"\U0001F3EB {safe_get(8)}\n"
+                    f"\U0001FAAA IC: {safe_get(9)}\n"
+                    f"\U0001F382 {safe_get(10)} ({safe_get(11)})\n"
+                    f"\U0001F3E0 {safe_get(12)}\n"
+                    f"\U0001F4C5 Entry: {safe_get(13)}\n"
+                    f"\u23F1\uFE0F Min: {safe_get(14)}\n"
+                    f"\U0001F511 ID: `{safe_get(15)}`\n"
+                    f"\U0001F4C4 Proof: {proof_display}\n"
+                    f"\U0001F9FE Invoice: `{safe_get(19)}`\n"
+                    f"\U0001F4CE Receipt: {receipt_display}\n"
+                    f"\u2705 Status: {safe_get(17)}"
                 )
             else:
                 name = esc(item.get('name', '-'))
                 prog = esc(item.get('prog', '-'))
                 detail_card = (
-                    f"?? *{name}*\n"
-                    f"?? `{matric}`\n"
-                    f"?? Prog: {prog}\n"
-                    f"? Status: *Pending*"
+                    f"\U0001F464 *{name}*\n"
+                    f"\U0001F194 `{matric}`\n"
+                    f"\U0001F393 Prog: {prog}\n"
+                    f"\u2705 Status: *Pending*"
                 )
 
             await update.message.reply_text(
