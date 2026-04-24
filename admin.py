@@ -71,7 +71,10 @@ async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
             return states.ADMIN_MENU
 
-        await loading.edit_text(strings.get('ADMIN_PENDING_HEADER', lang).format(count=len(pending)))
+        await loading.edit_text(
+            strings.get('ADMIN_PENDING_HEADER', lang).format(count=len(pending)),
+            parse_mode="Markdown"
+        )
 
         def esc(t):
             return str(t).replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
