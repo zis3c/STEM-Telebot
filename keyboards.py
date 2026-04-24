@@ -4,8 +4,7 @@ import strings
 def get_main_menu(lang='EN'):
     return ReplyKeyboardMarkup(
         [
-            [strings.get('BTN_CHECK', lang)],
-            [strings.get('BTN_BECOME_MEMBER', lang)],
+            [strings.get('BTN_CHECK', lang), strings.get('BTN_BECOME_MEMBER', lang)],
             [strings.get('BTN_HELP', lang), strings.get('BTN_SETTINGS', lang)]
         ], 
         resize_keyboard=True
