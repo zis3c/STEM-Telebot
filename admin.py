@@ -7,6 +7,7 @@ import handlers
 from database import db
 import logging
 import asyncio
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,10 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     try:
         data = await run_db_call(db.get_stats)
+        stats_month_year = datetime.now().strftime("%B %Y")
         await update.message.reply_text(
             strings.get('ADMIN_STATS', lang).format(
+                stats_month_year=stats_month_year,
                 total_last_30=data['total_last_30'],
                 approved_last_30=data['approved_last_30'],
                 rejected_last_30=data['rejected_last_30'],

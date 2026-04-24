@@ -54,15 +54,20 @@ async def self_pinger():
 
 # --- MAINTENANCE LOOP (ROBUST SCHEDULING) ---
 async def maintenance_loop(application):
-    """Checks every 15 minutes if daily maintenance is due."""
+    """Checks every 15 minutes and sends daily logs only after 8:00 AM KL."""
     from database import db
     from handlers import send_daily_logs
 
     while True:
         try:
-            report_date = (
-                datetime.datetime.now(KL_TZ).date() - datetime.timedelta(days=1)
-            ).strftime("%Y-%m-%d")
+            now_kl = datetime.datetime.now(KL_TZ)
+
+            # Only allow daily log dispatch from 08:00 onward (KL time).
+            if now_kl.hour < 8:
+                await asyncio.sleep(15 * 60)
+                continue
+
+            report_date = (now_kl.date() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
             last_date = await asyncio.to_thread(db.get_last_maintenance)
 
             if report_date != last_date:

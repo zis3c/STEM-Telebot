@@ -78,7 +78,7 @@ STRINGS = {
         # Admin - Keep English for Admins usually, but good to have structure
         'ADMIN_DASHBOARD': "*Admin Dashboard*\nSelect an action:",
         'ADMIN_STATS': (
-            "*Secretary Statistics (Past 30 Days)*\n\n"
+            "*Statistics ({stats_month_year})*\n\n"
             "New Applications: *{total_last_30}*\n"
             "Approved: *{approved_last_30}*\n"
             "Rejected: *{rejected_last_30}*\n"
@@ -228,7 +228,7 @@ STRINGS = {
         # Admin - Fallback to English often okay, but can translate
         'ADMIN_DASHBOARD': "*Admin Dashboard*\nPilih tindakan:",
         'ADMIN_STATS': (
-            "*Statistik Setiausaha (30 Hari Lepas)*\n\n"
+            "*Statistik ({stats_month_year})*\n\n"
             "Permohonan Baharu: *{total_last_30}*\n"
             "Diluluskan: *{approved_last_30}*\n"
             "Ditolak: *{rejected_last_30}*\n"
