@@ -610,6 +610,19 @@ async def review_detail_callback(update: Update, context: ContextTypes.DEFAULT_T
         await query.answer("Record not found.", show_alert=True)
         return
 
+    # Enrich pending-detail output with latest cached row for the same matric,
+    # so fields generated later (USAS email, entry date, ID, invoice, receipt)
+    # still appear when available.
+    cached_row, _ = await run_db_call(db.find_member, str(matric).strip().upper())
+    if cached_row:
+        max_len = max(len(row_values), len(cached_row))
+        merged = []
+        for i in range(max_len):
+            primary = row_values[i] if i < len(row_values) else ""
+            fallback = cached_row[i] if i < len(cached_row) else ""
+            merged.append(primary if str(primary).strip() else fallback)
+        row_values = merged
+
     def v(idx):
         return str(row_values[idx]).strip() if len(row_values) > idx and row_values[idx] is not None else "-"
 

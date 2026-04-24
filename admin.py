@@ -78,16 +78,54 @@ async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE
 
         for item in pending[:30]:
             row_idx = item.get('row')
-            name = esc(item.get('name', '-'))
             matric = esc(item.get('matric', '-'))
-            prog = esc(item.get('prog', '-'))
+            row, _ = await run_db_call(db.get_member_by_row_or_matric, row_idx, matric)
+
+            if row:
+                def escape_md(text):
+                    return str(text).replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
+
+                def safe_get(idx):
+                    return escape_md(row[idx] if len(row) > idx else "-")
+
+                raw_receipt = row[18] if len(row) > 18 else "-"
+                receipt_display = f"[Download PDF]({raw_receipt})" if str(raw_receipt).startswith("http") else escape_md(raw_receipt)
+
+                raw_proof = row[16] if len(row) > 16 else "-"
+                if "drive.google.com" in str(raw_proof) and "id=" in str(raw_proof):
+                    raw_proof = str(raw_proof).replace("open?", "uc?export=download&")
+                proof_display = f"[Proof PDF]({raw_proof})" if str(raw_proof).startswith("http") else escape_md(raw_proof)
+
+                detail_card = (
+                    f"?? *{safe_get(2)}*\n"
+                    f"?? `{safe_get(3)}`\n"
+                    f"?? Prog: {safe_get(4)} | Sem: {safe_get(5)}\n"
+                    f"?? {safe_get(6)}\n"
+                    f"?? {safe_get(7)}\n"
+                    f"?? {safe_get(8)}\n"
+                    f"?? IC: {safe_get(9)}\n"
+                    f"?? {safe_get(10)} ({safe_get(11)})\n"
+                    f"?? {safe_get(12)}\n"
+                    f"?? Entry: {safe_get(13)}\n"
+                    f"?? Min: {safe_get(14)}\n"
+                    f"?? ID: `{safe_get(15)}`\n"
+                    f"?? Proof: {proof_display}\n"
+                    f"?? Invoice: `{safe_get(19)}`\n"
+                    f"?? Receipt: {receipt_display}\n"
+                    f"? Status: {safe_get(17)}"
+                )
+            else:
+                name = esc(item.get('name', '-'))
+                prog = esc(item.get('prog', '-'))
+                detail_card = (
+                    f"?? *{name}*\n"
+                    f"?? `{matric}`\n"
+                    f"?? Prog: {prog}\n"
+                    f"? Status: *Pending*"
+                )
+
             await update.message.reply_text(
-                (
-                    f"*{name}*\n"
-                    f"Matric: `{matric}`\n"
-                    f"Program: {prog}\n"
-                    f"Status: *Pending*"
-                ),
+                detail_card,
                 parse_mode="Markdown",
                 reply_markup=keyboards.get_admin_review_keyboard(row_idx, matric, lang)
             )
@@ -107,7 +145,6 @@ async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup=keyboards.get_admin_menu(lang)
         )
         return states.ADMIN_MENU
-
 # --- MANAGE MEMBERS MENU ---
 async def manage_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
@@ -400,4 +437,5 @@ async def exit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     await update.message.reply_text(strings.get('ADMIN_EXIT', lang), reply_markup=keyboards.get_main_menu(lang))
     return ConversationHandler.END
+
 
