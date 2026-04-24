@@ -247,6 +247,7 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 db_name = row_values[2] 
                 db_ic = str(row_values[9]).strip().replace(" ", "") # J is 9
                 db_prog = row_values[4] # E is 4
+                db_prog_short = strings.format_program_short(db_prog)
                 # Col Q (index 16) is Receipt, Col R (index 17) is Status
                 db_resit = str(row_values[16]).strip() if len(row_values) > 16 else ""
                 db_status_raw = str(row_values[17]).strip() if len(row_values) > 17 else ""
@@ -292,7 +293,7 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                                 membership_id=membership_id,
                                 name=db_name,
                                 matric=user_matric,
-                                program=db_prog,
+                                program=db_prog_short,
                                 date=date_of_entry
                             )
                     elif final_status == "Pending":
@@ -628,7 +629,7 @@ async def review_detail_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     name = v(2)
     matric_v = v(3)
-    prog = v(4)
+    prog = strings.format_program_short(v(4))
     sem = v(5)
     phone = v(6)
     personal_email = v(7)
@@ -660,8 +661,8 @@ async def review_detail_callback(update: Update, context: ContextTypes.DEFAULT_T
     except Exception:
         entry_display = entry_raw
 
-    proof_display = f"Proof PDF ({proof_url})" if proof_url.startswith("http") else proof_url
-    receipt_display = f"Download PDF ({receipt_url})" if receipt_url.startswith("http") else receipt_url
+    proof_display = "Proof PDF" if proof_url.startswith("http") else proof_url
+    receipt_display = "Download PDF" if receipt_url.startswith("http") else receipt_url
 
     details_text = (
         f"👤 {name}\n"

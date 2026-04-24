@@ -98,11 +98,12 @@ async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE
                 if "drive.google.com" in str(raw_proof) and "id=" in str(raw_proof):
                     raw_proof = str(raw_proof).replace("open?", "uc?export=download&")
                 proof_display = f"[Proof PDF]({raw_proof})" if str(raw_proof).startswith("http") else escape_md(raw_proof)
+                prog_display = escape_md(strings.format_program_short(row[4] if len(row) > 4 else "-"))
 
                 detail_card = (
                     f"\U0001F464 *{safe_get(2)}*\n"
                     f"\U0001F194 `{safe_get(3)}`\n"
-                    f"\U0001F393 Prog: {safe_get(4)} | Sem: {safe_get(5)}\n"
+                    f"\U0001F393 Prog: {prog_display} | Sem: {safe_get(5)}\n"
                     f"\U0001F4DE {safe_get(6)}\n"
                     f"\U0001F4E7 {safe_get(7)}\n"
                     f"\U0001F3EB {safe_get(8)}\n"
@@ -119,7 +120,7 @@ async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE
                 )
             else:
                 name = esc(item.get('name', '-'))
-                prog = esc(item.get('prog', '-'))
+                prog = esc(strings.format_program_short(item.get('prog', '-')))
                 detail_card = (
                     f"\U0001F464 *{name}*\n"
                     f"\U0001F194 `{matric}`\n"
@@ -267,7 +268,7 @@ async def search_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 matric = row[3] if len(row) > 3 else "-"
                 
                 if mode == 'simple':
-                    prog = row[4] if len(row) > 4 else "-"
+                    prog = strings.format_program_short(row[4] if len(row) > 4 else "-")
                     mem_id = row[15] if len(row) > 15 else "-" # P=15 is Membership ID
                     
                     # Local escape helper (duplicated for scope safety or move it up - moving it up is better but hard with replace tool constraints)
@@ -289,6 +290,7 @@ async def search_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                         return str(text).replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
 
                     def safe_get(idx): return escape_md(row[idx] if len(row) > idx else "-")
+                    prog_detail = escape_md(strings.format_program_short(row[4] if len(row) > 4 else "-"))
                     
                     # Special handler for Receipt URL (Col S - Index 18)
                     raw_receipt = row[18] if len(row) > 18 else "-"
@@ -305,7 +307,7 @@ async def search_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     detail_card = (
                         f"👤 *{safe_get(2)}*\n" # C Name
                         f"🆔 `{safe_get(3)}`\n" # D Matric
-                        f"🎓 Prog: {safe_get(4)} | Sem: {safe_get(5)}\n" # E, F
+                        f"🎓 Prog: {prog_detail} | Sem: {safe_get(5)}\n" # E, F
                         f"📞 {safe_get(6)}\n" # G Phone
                         f"📧 {safe_get(7)}\n" # H Personal Email
                         f"🏫 {safe_get(8)}\n" # I USAS Email

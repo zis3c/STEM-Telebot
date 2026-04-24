@@ -319,6 +319,29 @@ STRINGS = {
 
 DEFAULT_LANG = 'EN'
 
+
+def format_program_short(program: str) -> str:
+    """Return compact program code for UI display when recognized."""
+    text = str(program or "").strip()
+    key = " ".join(text.upper().split())
+    if not key or key == "-":
+        return "-"
+
+    if "SAINS KOMPUTER" in key:
+        return "BCS"
+    if "MULTIMEDIA KREATIF" in key:
+        return "BCM"
+    if "PERTANIAN" in key:
+        return "BAgr"
+    if "SENI BINA LANDSKAP" in key:
+        return "BLA"
+    if "DIPLOMA TEKNOLOGI MAKLUMAT" in key:
+        return "Dip. IT"
+    if "DIPLOMA MULTIMEDIA DENGAN DAKWAH" in key:
+        return "Dip.MD"
+
+    return text
+
 def get(key, lang='EN'):
     """Get string by key and language, fall back to Default if missing"""
     return STRINGS.get(lang, STRINGS[DEFAULT_LANG]).get(key, STRINGS[DEFAULT_LANG].get(key, key))
