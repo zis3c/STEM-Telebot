@@ -251,23 +251,40 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 # Col Q (index 16) is Receipt, Col R (index 17) is Status
                 db_resit = str(row_values[16]).strip() if len(row_values) > 16 else ""
                 db_status_raw = str(row_values[17]).strip() if len(row_values) > 17 else ""
-                db_status_norm = db_status_raw.lower()
+                db_status_norm = " ".join(db_status_raw.lower().split())
+                membership_id = str(row_values[15]).strip() if len(row_values) > 15 else ""
 
-                # Accept flow:
-                # Approved/Verified => accepted member
-                # Rejected/Reject   => rejected record
-                # Pending/empty/other => still pending review
+                # Accept flow with legacy compatibility:
+                # - old rows can use symbols (✓/✅) or custom words instead of "Approved"
+                # - some rows are effectively approved if Membership ID already exists
+                approved_tokens = (
+                    "approved", "verified", "verify", "accept", "accepted",
+                    "disahkan", "lulus", "aktif", "valid"
+                )
+                rejected_tokens = (
+                    "rejected", "reject", "tolak", "ditolak", "batal", "cancel"
+                )
+                pending_tokens = (
+                    "pending", "proses", "review", "semakan"
+                )
+
                 final_status = "Pending"
-                if db_status_norm in ("approved", "verified"):
+                if any(tok in db_status_norm for tok in approved_tokens):
                     final_status = "Approved"
-                elif db_status_norm in ("rejected", "reject"):
+                elif (
+                    any(tok in db_status_norm for tok in rejected_tokens)
+                ):
                     final_status = "Rejected"
+                elif any(tok in db_status_norm for tok in pending_tokens):
+                    final_status = "Pending"
+                elif membership_id and membership_id != "-":
+                    # Fallback for historical rows with empty/non-standard status.
+                    final_status = "Approved"
+                elif not db_status_norm:
+                    final_status = "Pending"
 
                 if db_ic.endswith(user_ic_last4):
                     if final_status == "Approved": 
-                        # READ Membership ID from Column P (Index 15)
-                        membership_id = str(row_values[15]).strip() if len(row_values) > 15 else ""
-                        
                         if not membership_id or membership_id == "-":
                             # Fallback if ID not generated yet but status is Approved
                             msg = strings.get('STATUS_PENDING', lang)
