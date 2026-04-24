@@ -60,38 +60,46 @@ async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE
     """List all pending members requiring admin review."""
     lang = get_user_lang(context)
     loading = await update.message.reply_text(strings.get('ADMIN_SEARCHING', lang))
+    try:
+        pending = await run_db_call(db.get_members_by_filter, "Pending")
+        if not pending:
+            await loading.edit_text(
+                strings.get('ADMIN_PENDING_EMPTY', lang),
+                reply_markup=keyboards.get_admin_menu(lang)
+            )
+            return states.ADMIN_MENU
 
-    # Refresh any new rows into pending status first.
-    await handlers.check_registrations(context)
+        await loading.edit_text(strings.get('ADMIN_PENDING_HEADER', lang).format(count=len(pending)))
 
-    pending = await run_db_call(db.get_members_by_filter, "Pending")
-    if not pending:
-        await loading.edit_text(strings.get('ADMIN_PENDING_EMPTY', lang), reply_markup=keyboards.get_admin_menu(lang))
-        return states.ADMIN_MENU
+        def esc(t):
+            return str(t).replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
 
-    await loading.edit_text(strings.get('ADMIN_PENDING_HEADER', lang).format(count=len(pending)))
+        for item in pending[:30]:
+            row_idx = item.get('row')
+            name = esc(item.get('name', '-'))
+            matric = esc(item.get('matric', '-'))
+            prog = esc(item.get('prog', '-'))
+            await update.message.reply_text(
+                (
+                    f"*{name}*\n"
+                    f"Matric: `{matric}`\n"
+                    f"Program: {prog}\n"
+                    f"Status: *Pending*"
+                ),
+                parse_mode="Markdown",
+                reply_markup=keyboards.get_admin_review_keyboard(row_idx, matric, lang)
+            )
 
-    def esc(t):
-        return str(t).replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
-
-    for item in pending[:30]:
-        row_idx = item.get('row')
-        name = esc(item.get('name', '-'))
-        matric = esc(item.get('matric', '-'))
-        prog = esc(item.get('prog', '-'))
         await update.message.reply_text(
-            (
-                f"*{name}*\n"
-                f"Matric: `{matric}`\n"
-                f"Program: {prog}\n"
-                f"Status: *Pending*"
-            ),
+            strings.get('ADMIN_DASHBOARD', lang),
             parse_mode="Markdown",
-            reply_markup=keyboards.get_admin_review_keyboard(row_idx, matric, lang)
+            reply_markup=keyboards.get_admin_menu(lang)
         )
-
-    await update.message.reply_text(strings.get('ADMIN_DASHBOARD', lang), parse_mode="Markdown", reply_markup=keyboards.get_admin_menu(lang))
-    return states.ADMIN_MENU
+        return states.ADMIN_MENU
+    except Exception as e:
+        logger.error(f"Pending list error: {e}")
+        await loading.edit_text(strings.get('ERR_DB_CONNECTION', lang), reply_markup=keyboards.get_admin_menu(lang))
+        return states.ADMIN_MENU
 
 # --- MANAGE MEMBERS MENU ---
 async def manage_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
