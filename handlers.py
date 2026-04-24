@@ -249,21 +249,18 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 db_prog = row_values[4] # E is 4
                 # Col Q (index 16) is Receipt, Col R (index 17) is Status
                 db_resit = str(row_values[16]).strip() if len(row_values) > 16 else ""
-                db_status = str(row_values[17]).strip().title() if len(row_values) > 17 else ""
-                
-                # 1. If Status is "Approved", "Verified", "✓✓" -> Approved.
-                # 2. If Status is "✓" -> Pending (Notified, but waiting for admin approval).
-                # 3. If Status is "Pending", "Rejected" or anything else -> Not Approved.
-                
-                final_status = "Pending"
-                db_status_norm = db_status.strip()
+                db_status_raw = str(row_values[17]).strip() if len(row_values) > 17 else ""
+                db_status_norm = db_status_raw.lower()
 
-                if db_status_norm == "✓":
+                # Accept flow:
+                # Approved/Verified => accepted member
+                # Rejected/Reject   => rejected record
+                # Pending/empty/other => still pending review
+                final_status = "Pending"
+                if db_status_norm in ("approved", "verified"):
                     final_status = "Approved"
-                elif db_status_norm == "Rejected":
+                elif db_status_norm in ("rejected", "reject"):
                     final_status = "Rejected"
-                else:
-                    final_status = "Pending"
 
                 if db_ic.endswith(user_ic_last4):
                     if final_status == "Approved": 
@@ -425,19 +422,91 @@ async def check_registrations(context: ContextTypes.DEFAULT_TYPE):
                 f"Receipt: {receipt_display}"
             )
             
+            review_keyboard = keyboards.get_admin_review_keyboard(row_idx, matric, "EN")
+
             # Send to all admins
             for admin_id in admins:
                 try:
-                    await context.bot.send_message(chat_id=admin_id, text=msg, parse_mode="Markdown")
+                    await context.bot.send_message(
+                        chat_id=admin_id,
+                        text=msg,
+                        parse_mode="Markdown",
+                        reply_markup=review_keyboard
+                    )
                 except Exception as e:
                     logger.error(f"Failed to notify admin {admin_id}: {e}")
             
-            # Mark as '✓' (Seen by Bot) to avoid spamming. 
-            # Admin still needs to /approve or /reject later.
-            await run_db_call(db.update_status, row_idx, "✓")
+            # Mark pending so the bot does not notify repeatedly.
+            await run_db_call(db.update_status, row_idx, "Pending")
             
     except Exception as e:
         logger.error(f"Check Regs Error: {e}")
+
+async def review_accept_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if not db.is_admin(query.from_user.id):
+        await query.answer("Admins only.", show_alert=True)
+        return
+
+    try:
+        _, row_raw, matric = query.data.split(":", 2)
+        row_idx = int(row_raw)
+    except Exception:
+        await query.edit_message_text("Invalid action payload.")
+        return
+
+    ok = await run_db_call(db.update_status_by_row_or_matric, row_idx, matric, "Approved")
+    if ok:
+        db.log_action(
+            f"{query.from_user.first_name} ({query.from_user.id})",
+            "ACCEPT_MEMBER",
+            f"Matric: {matric} | Row: {row_idx}",
+            role="ADMIN"
+        )
+        await query.edit_message_text(
+            f"Accepted: *{matric}*\nMember kept in database.",
+            parse_mode="Markdown"
+        )
+    else:
+        await query.edit_message_text(
+            f"Could not accept `{matric}`\nRecord may have moved or been removed.",
+            parse_mode="Markdown"
+        )
+
+async def review_reject_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if not db.is_admin(query.from_user.id):
+        await query.answer("Admins only.", show_alert=True)
+        return
+
+    try:
+        _, row_raw, matric = query.data.split(":", 2)
+        row_idx = int(row_raw)
+    except Exception:
+        await query.edit_message_text("Invalid action payload.")
+        return
+
+    ok = await run_db_call(db.delete_registration_by_row_or_matric, row_idx, matric)
+    if ok:
+        db.log_action(
+            f"{query.from_user.first_name} ({query.from_user.id})",
+            "REJECT_MEMBER",
+            f"Matric: {matric} | Row: {row_idx} | Action: Removed",
+            role="ADMIN"
+        )
+        await query.edit_message_text(
+            f"Rejected: *{matric}*\nRecord removed from database.",
+            parse_mode="Markdown"
+        )
+    else:
+        await query.edit_message_text(
+            f"Could not reject `{matric}`\nRecord may have moved or been removed.",
+            parse_mode="Markdown"
+        )
 
 async def send_daily_logs(context: ContextTypes.DEFAULT_TYPE):
     """Send only yesterday's logs (KL time), once per report day."""
@@ -507,4 +576,3 @@ async def send_daily_logs(context: ContextTypes.DEFAULT_TYPE):
             logger.info(f"Daily logs sent for {target_date}.")
         except Exception as e:
             logger.error(f"Failed to rotate activity.log: {e}")
-

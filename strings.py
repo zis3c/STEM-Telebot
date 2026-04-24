@@ -54,9 +54,9 @@ STRINGS = {
         'STATUS_PENDING': "*MEMBERSHIP PENDING* ⏳",
         'STATUS_REJECT': "*MEMBERSHIP REJECTED* 🚫",
         'NOTIFY_NEW_REG': "🚨 *New Registration*\n\nName: {name}\nMatric: {matric}\nResit: {resit}",
-        'BTN_APPROVE': "Approve ✅",
+        'BTN_APPROVE': "Accept ✅",
         'BTN_REJECT': "Reject 🚫",
-        'MSG_APPROVED': "✅ Approved {name}.",
+        'MSG_APPROVED': "✅ Accepted {name}.",
         'MSG_REJECTED': "🚫 Rejected {name}.",
         
         # Buttons
@@ -204,9 +204,9 @@ STRINGS = {
         'STATUS_PENDING': "*KEAHLIAN SEDANG DIPROSES* ⏳",
         'STATUS_REJECT': "*KEAHLIAN DITOLAK* 🚫",
         'NOTIFY_NEW_REG': "🚨 *Pendaftaran Baru*\n\nNama: {name}\nMatrik: {matric}\nResit: {resit}",
-        'BTN_APPROVE': "Luluskan ✅",
+        'BTN_APPROVE': "Terima ✅",
         'BTN_REJECT': "Tolak 🚫",
-        'MSG_APPROVED': "✅ Diluluskan {name}.",
+        'MSG_APPROVED': "✅ Diterima {name}.",
         'MSG_REJECTED': "🚫 Ditolak {name}.",
         
         # Buttons

@@ -59,6 +59,23 @@ def get_help_back_inline_keyboard(lang='EN'):
     return InlineKeyboardMarkup(
         [[InlineKeyboardButton(strings.get('BTN_BACK', lang), callback_data="help_back")]]
     )
+
+def get_admin_review_keyboard(row_idx, matric, lang='EN'):
+    safe_matric = str(matric).strip().upper()
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    strings.get('BTN_APPROVE', lang),
+                    callback_data=f"review_accept:{row_idx}:{safe_matric}",
+                ),
+                InlineKeyboardButton(
+                    strings.get('BTN_REJECT', lang),
+                    callback_data=f"review_reject:{row_idx}:{safe_matric}",
+                ),
+            ]
+        ]
+    )
 def get_admin_menu(lang='EN'):
     return ReplyKeyboardMarkup([
         [strings.get('BTN_ADMIN_MANAGE', lang)],

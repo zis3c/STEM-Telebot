@@ -519,7 +519,6 @@ class Database:
         except Exception as e:
             logger.error(f"Error fetching members: {e}")
             return []
-
     def get_members_by_filter(self, status_filter):
         """Get members filtered by Status (Col I)."""
         sheet = self.get_sheet("Registrations")
@@ -530,14 +529,13 @@ class Database:
             filtered = []
             # Skip header (row 1)
             for i, row in enumerate(rows[1:], start=2):
-                # Ensure row has enough columns (Col R is index 17)
-                # Status is Col R (index 17)
-                status = row[17].strip().title() if len(row) > 17 else ""
-                
-                # Normalize status for filtering
-                if status == "✓": 
+                raw_status = row[17].strip().lower() if len(row) > 17 else ""
+
+                if raw_status in ("approved", "verified", "✓", "âœ“"):
                     status = "Approved"
-                elif status != "Rejected":
+                elif raw_status in ("rejected", "reject"):
+                    status = "Rejected"
+                else:
                     status = "Pending"
                 
                 if status == status_filter:
@@ -553,7 +551,6 @@ class Database:
         except Exception as e:
             logger.error(f"Error filtering members: {e}")
             return []
-
     def update_status(self, row_index, status):
         """Updates Column I (9) with status."""
         sheet = self.get_sheet("Registrations")
@@ -565,8 +562,52 @@ class Database:
         except Exception as e:
             logger.error(f"Update Status Error: {e}")
             return False
+    def update_status_by_row_or_matric(self, row_index, matric, status):
+        """Safely updates status by row, with matric fallback if row shifted."""
+        sheet = self.get_sheet("Registrations")
+        if not sheet:
+            return False
+        target_row = row_index
+        safe_matric = str(matric).strip().upper()
+        try:
+            row_values = sheet.row_values(target_row)
+            row_matric = row_values[3].strip().upper() if len(row_values) > 3 else ""
+            if row_matric != safe_matric:
+                cell = sheet.find(safe_matric, in_column=4)
+                if not cell:
+                    return False
+                target_row = cell.row
+
+            sheet.update_cell(target_row, 18, status)
+            self.last_student_refresh = 0
+            return True
+        except Exception as e:
+            logger.error(f"Update Status Safe Error: {e}")
+            return False
+
+    def delete_registration_by_row_or_matric(self, row_index, matric):
+        """Safely deletes a registration by row, with matric fallback if row shifted."""
+        sheet = self.get_sheet("Registrations")
+        if not sheet:
+            return False
+        target_row = row_index
+        safe_matric = str(matric).strip().upper()
+        try:
+            row_values = sheet.row_values(target_row)
+            row_matric = row_values[3].strip().upper() if len(row_values) > 3 else ""
+            if row_matric != safe_matric:
+                cell = sheet.find(safe_matric, in_column=4)
+                if not cell:
+                    return False
+                target_row = cell.row
+
+            sheet.delete_rows(target_row)
+            self.last_student_refresh = 0
+            return True
+        except Exception as e:
+            logger.error(f"Delete Registration Safe Error: {e}")
+            return False
 
 # Singleton instance
 db = Database()
-
 

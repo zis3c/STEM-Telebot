@@ -260,6 +260,12 @@ async def main():
     application.add_handler(
         CallbackQueryHandler(handlers.help_back_callback, pattern="^help_back$")
     )
+    application.add_handler(
+        CallbackQueryHandler(handlers.review_accept_callback, pattern="^review_accept:")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handlers.review_reject_callback, pattern="^review_reject:")
+    )
 
     # Global Logger (Group -1) - Runs for EVERYTHING
     application.add_handler(MessageHandler(filters.ALL, handlers.log_any_update), group=-1)
