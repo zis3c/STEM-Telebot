@@ -63,8 +63,10 @@ async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE
     try:
         pending = await run_db_call(db.get_members_by_filter, "Pending")
         if not pending:
-            await loading.edit_text(
-                strings.get('ADMIN_PENDING_EMPTY', lang),
+            await loading.edit_text(strings.get('ADMIN_PENDING_EMPTY', lang))
+            await update.message.reply_text(
+                strings.get('ADMIN_DASHBOARD', lang),
+                parse_mode="Markdown",
                 reply_markup=keyboards.get_admin_menu(lang)
             )
             return states.ADMIN_MENU
@@ -98,7 +100,12 @@ async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE
         return states.ADMIN_MENU
     except Exception as e:
         logger.error(f"Pending list error: {e}")
-        await loading.edit_text(strings.get('ERR_DB_CONNECTION', lang), reply_markup=keyboards.get_admin_menu(lang))
+        await loading.edit_text(strings.get('ERR_DB_CONNECTION', lang))
+        await update.message.reply_text(
+            strings.get('ADMIN_DASHBOARD', lang),
+            parse_mode="Markdown",
+            reply_markup=keyboards.get_admin_menu(lang)
+        )
         return states.ADMIN_MENU
 
 # --- MANAGE MEMBERS MENU ---
