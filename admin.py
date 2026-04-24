@@ -37,7 +37,13 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         data = await run_db_call(db.get_stats)
         await update.message.reply_text(
             strings.get('ADMIN_STATS', lang).format(
-                total=data['total']
+                total_last_30=data['total_last_30'],
+                approved_last_30=data['approved_last_30'],
+                rejected_last_30=data['rejected_last_30'],
+                pending_current=data['pending_current'],
+                approval_rate=data['approval_rate'],
+                expiring_next_30=data['expiring_next_30'],
+                expired_this_month=data['expired_this_month'],
             ), 
             parse_mode="Markdown",
             reply_markup=keyboards.get_admin_menu(lang)

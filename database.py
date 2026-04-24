@@ -6,7 +6,7 @@ import threading
 import gspread
 from google.oauth2.service_account import Credentials
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -246,30 +246,106 @@ class Database:
         # Safe bet: Return None. User can try again in 10 mins or Admin refreshes.
         return None, None
 
-    def get_stats(self):
-        """Returns stats: Total, Verified, Pending."""
-        self.refresh_student_cache()
-        
-        total = 0
-        verified = 0
-        pending = 0
-        
-        for row, _ in self.student_cache.values():
-            total += 1
-            # Status is at index 17 (Col R).
-            status = row[17].strip() if len(row) > 17 else ""
-            
-            if status == "✓":
-                verified += 1
-            elif status != "Rejected":
-                pending += 1
-                
-        return {
-            "total": total,
-            "verified": verified,
-            "pending": pending
-        }
+    def _parse_sheet_date(self, raw_value):
+        """Parse common sheet date/time formats into datetime."""
+        if raw_value is None:
+            return None
 
+        text = str(raw_value).strip()
+        if not text or text == "-":
+            return None
+
+        try:
+            iso_value = text.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(iso_value)
+            return dt.replace(tzinfo=None)
+        except Exception:
+            pass
+
+        formats = (
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d",
+            "%Y/%m/%d %H:%M:%S",
+            "%Y/%m/%d",
+            "%m/%d/%Y %H:%M:%S",
+            "%m/%d/%Y",
+            "%d/%m/%Y %H:%M:%S",
+            "%d/%m/%Y",
+            "%d-%m-%Y %H:%M:%S",
+            "%d-%m-%Y",
+        )
+        for fmt in formats:
+            try:
+                return datetime.strptime(text, fmt)
+            except ValueError:
+                continue
+        return None
+
+    def _normalize_status(self, status_raw):
+        """Normalize raw sheet status into approved/rejected/pending."""
+        status = str(status_raw or "").strip().lower()
+        if status in ("✓", "approved", "verified"):
+            return "approved"
+        if status in ("rejected", "reject"):
+            return "rejected"
+        return "pending"
+
+    def get_stats(self):
+        """Returns secretary-focused monthly stats + expiry counters."""
+        self.refresh_student_cache()
+
+        now = datetime.now()
+        window_start = now - timedelta(days=30)
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if now.month == 12:
+            next_month_start = month_start.replace(year=now.year + 1, month=1)
+        else:
+            next_month_start = month_start.replace(month=now.month + 1)
+
+        total_last_30 = 0
+        approved_last_30 = 0
+        rejected_last_30 = 0
+        pending_current = 0
+        expiring_next_30 = 0
+        expired_this_month = 0
+
+        for row, _ in self.student_cache.values():
+            status = self._normalize_status(row[17] if len(row) > 17 else "")
+
+            if status == "pending":
+                pending_current += 1
+
+            applied_at = self._parse_sheet_date(row[0] if len(row) > 0 else "")
+            if applied_at and applied_at >= window_start:
+                total_last_30 += 1
+                if status == "approved":
+                    approved_last_30 += 1
+                elif status == "rejected":
+                    rejected_last_30 += 1
+
+            if status == "approved":
+                entry_date = self._parse_sheet_date(row[13] if len(row) > 13 else "")
+                if not entry_date:
+                    continue
+
+                expiry_date = entry_date + timedelta(days=365)
+                if now <= expiry_date <= (now + timedelta(days=30)):
+                    expiring_next_30 += 1
+                if month_start <= expiry_date < next_month_start and expiry_date < now:
+                    expired_this_month += 1
+
+        decisions_last_30 = approved_last_30 + rejected_last_30
+        approval_rate = (approved_last_30 / decisions_last_30 * 100.0) if decisions_last_30 else 0.0
+
+        return {
+            "total_last_30": total_last_30,
+            "approved_last_30": approved_last_30,
+            "rejected_last_30": rejected_last_30,
+            "pending_current": pending_current,
+            "approval_rate": round(approval_rate, 1),
+            "expiring_next_30": expiring_next_30,
+            "expired_this_month": expired_this_month
+        }
     def add_member(self, name, matric, ic, prog):
         sheet = self.get_sheet("Registrations")
         if sheet:
@@ -492,3 +568,5 @@ class Database:
 
 # Singleton instance
 db = Database()
+
+

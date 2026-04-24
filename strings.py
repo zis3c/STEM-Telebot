@@ -78,9 +78,15 @@ STRINGS = {
         # Admin - Keep English for Admins usually, but good to have structure
         'ADMIN_DASHBOARD': "*Admin Dashboard*\nSelect an action:",
         'ADMIN_STATS': (
-            "*Member Statistics*\n\n"
-            "Total Members: *{total}*\n"
-            "Data synced with Google Sheets"
+            "*Secretary Statistics (Past 30 Days)*\n\n"
+            "New Applications: *{total_last_30}*\n"
+            "Approved: *{approved_last_30}*\n"
+            "Rejected: *{rejected_last_30}*\n"
+            "Pending Queue (Current): *{pending_current}*\n"
+            "Approval Rate: *{approval_rate}%*\n\n"
+            "*Membership Expiry (1 Year Policy)*\n"
+            "Expiring in Next 30 Days: *{expiring_next_30}*\n"
+            "Expired This Month: *{expired_this_month}*"
         ),
 
         'ADMIN_DEL_START': "*Delete Member*\nEnter Matric Number to delete:",
@@ -222,9 +228,15 @@ STRINGS = {
         # Admin - Fallback to English often okay, but can translate
         'ADMIN_DASHBOARD': "*Admin Dashboard*\nPilih tindakan:",
         'ADMIN_STATS': (
-            "*Statistik Ahli*\n\n"
-            "Jumlah Ahli: {total}\n"
-            "Data disegerakkan dengan Google Sheets"
+            "*Statistik Setiausaha (30 Hari Lepas)*\n\n"
+            "Permohonan Baharu: *{total_last_30}*\n"
+            "Diluluskan: *{approved_last_30}*\n"
+            "Ditolak: *{rejected_last_30}*\n"
+            "Dalam Giliran (Semasa): *{pending_current}*\n"
+            "Kadar Kelulusan: *{approval_rate}%*\n\n"
+            "*Tamat Keahlian (Polisi 1 Tahun)*\n"
+            "Akan Tamat Dalam 30 Hari: *{expiring_next_30}*\n"
+            "Sudah Tamat Bulan Ini: *{expired_this_month}*"
         ),
 
         'ADMIN_DEL_START': "*Padam Ahli*\nMasukkan Nombor Matrik untuk dibuang:",
