@@ -592,6 +592,7 @@ async def review_cancel_callback(update: Update, context: ContextTypes.DEFAULT_T
 async def review_detail_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    lang = get_user_lang(context)
 
     if not db.is_admin(query.from_user.id):
         await query.answer("Admins only.", show_alert=True)
@@ -618,7 +619,7 @@ async def review_detail_callback(update: Update, context: ContextTypes.DEFAULT_T
     ic = _escape_md(row_values[9] if len(row_values) > 9 else "-")
     status = _escape_md(row_values[17] if len(row_values) > 17 else "Pending")
 
-    await query.message.reply_text(
+    await query.edit_message_text(
         (
             f"*Pending Member Details*\n\n"
             f"Name: *{name}*\n"
@@ -631,6 +632,7 @@ async def review_detail_callback(update: Update, context: ContextTypes.DEFAULT_T
             f"Status: *{status}*"
         ),
         parse_mode="Markdown",
+        reply_markup=keyboards.get_admin_review_keyboard(row_idx, matric, lang)
     )
 
 async def send_daily_logs(context: ContextTypes.DEFAULT_TYPE):
