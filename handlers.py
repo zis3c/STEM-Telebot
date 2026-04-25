@@ -124,6 +124,14 @@ def _receipt_md_value(value):
     return _escape_md(raw)
 
 
+def _safe_md_link(value, label):
+    raw = str(value or "").strip()
+    if raw.startswith("http") and TRUSTED_RECEIPT_URL_RE.match(raw):
+        safe_url = raw.replace(")", "%29")
+        return f"[{label}]({safe_url})"
+    return _escape_md(raw)
+
+
 # --- HELPERS ---
 def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
     """Retrieve user language, default to EN."""
@@ -803,30 +811,31 @@ async def review_detail_callback(update: Update, context: ContextTypes.DEFAULT_T
     except Exception:
         entry_display = entry_raw
 
-    proof_display = "Proof PDF" if proof_url.startswith("http") else proof_url
-    receipt_display = "Download PDF" if receipt_url.startswith("http") else receipt_url
+    proof_display = _safe_md_link(proof_url, "Proof PDF")
+    receipt_display = _safe_md_link(receipt_url, "Download PDF")
 
     details_text = (
-        f"👤 {name}\n"
-        f"🆔 {matric_v}\n"
-        f"🎓 Prog: {prog} | Sem: {sem}\n"
-        f"📞 {phone}\n"
-        f"📧 {personal_email}\n"
-        f"🏫 {usas_email}\n"
-        f"🪪 IC: {ic}\n"
-        f"🎂 {birthday} ({birthplace})\n"
-        f"🏠 {address}\n"
-        f"📅 Entry: {entry_display}\n"
-        f"⏱️ Min: {minute_no}\n"
-        f"🔑 ID: {membership_id}\n"
+        f"👤 {_escape_md(name)}\n"
+        f"🆔 {_escape_md(matric_v)}\n"
+        f"🎓 Prog: {_escape_md(prog)} | Sem: {_escape_md(sem)}\n"
+        f"📞 {_escape_md(phone)}\n"
+        f"📧 {_escape_md(personal_email)}\n"
+        f"🏫 {_escape_md(usas_email)}\n"
+        f"🪪 IC: {_escape_md(ic)}\n"
+        f"🎂 {_escape_md(birthday)} ({_escape_md(birthplace)})\n"
+        f"🏠 {_escape_md(address)}\n"
+        f"📅 Entry: {_escape_md(entry_display)}\n"
+        f"⏱️ Min: {_escape_md(minute_no)}\n"
+        f"🔑 ID: {_escape_md(membership_id)}\n"
         f"📄 Proof: {proof_display}\n"
-        f"🧾 Invoice: {invoice_no}\n"
+        f"🧾 Invoice: {_escape_md(invoice_no)}\n"
         f"📎 Receipt: {receipt_display}\n"
-        f"✅ Status: {status}"
+        f"✅ Status: {_escape_md(status)}"
     )
 
     await query.edit_message_text(
         details_text,
+        parse_mode="Markdown",
         reply_markup=keyboards.get_admin_review_detail_keyboard(row_idx, matric, lang)
     )
 
