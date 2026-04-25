@@ -28,6 +28,8 @@ var COL_RECEIPT_URL = 19;   // S (Payment Receipt)
 var COL_INVOICE_NO = 20;    // T (Invoice No)
 
 var FEE_AMOUNT = "RM10.00"; // Fixed Fee
+var EMAIL_ATTACH_PDF = true; // Send PDF as attachment
+var EMAIL_INCLUDE_DRIVE_LINK = false; // Include Drive button in email body
 
 // Secrets managed via Script Properties (File > Project Properties > Script Properties)
 // Or run the 'setupSecrets' function once below.
@@ -214,102 +216,117 @@ function getTargetSheet() {
  * Main Logic to populate columns and Send Email
  */
 function processRow(sheet, rowIdx) {
-    var dataRange = sheet.getRange(rowIdx, 1, 1, 21); // Read cols A to U
-    var values = dataRange.getValues()[0];
+    // Prevent duplicate sends when two triggers process the same row at the same time.
+    var lock = LockService.getDocumentLock();
+    lock.waitLock(30000);
+    try {
+        var dataRange = sheet.getRange(rowIdx, 1, 1, 21); // Read cols A to U
+        var values = dataRange.getValues()[0];
 
-    // DEBUG LOG
-    // Logger.log("Row " + rowIdx + " Dump: " + JSON.stringify(values));
+        // DEBUG LOG
+        // Logger.log("Row " + rowIdx + " Dump: " + JSON.stringify(values));
 
-    // 1. Get Timestamp (Col A) - Index 0
-    var timestamp = values[0];
-    if (!timestamp || timestamp === "") {
-        Logger.log("⚠️ Row " + rowIdx + " SKIPPED. Reason: Timestamp (Col A) is empty.");
-        return;
-    }
+        // 1. Get Timestamp (Col A) - Index 0
+        var timestamp = values[0];
+        if (!timestamp || timestamp === "") {
+            Logger.log("⚠️ Row " + rowIdx + " SKIPPED. Reason: Timestamp (Col A) is empty.");
+            return;
+        }
 
-    var dateObj = new Date(timestamp);
+        var dateObj = new Date(timestamp);
 
-    // 2. Automate Date of Entry (Col N) - Index 13
-    var dateEntry = Utilities.formatDate(dateObj, Session.getScriptTimeZone(), "dd/MM/yy");
+        // 2. Automate Date of Entry (Col N) - Index 13
+        var dateEntry = Utilities.formatDate(dateObj, Session.getScriptTimeZone(), "dd/MM/yy");
 
-    // 3. Sanitize/validate key user input from Google Form.
-    var matricRaw = String(values[3]).trim();
-    var matric = sanitizeMatric(matricRaw);
-    var nameRaw = String(values[2]).trim();
-    var name = sanitizeName(nameRaw);
-    var personalEmailRaw = String(values[COL_PERSONAL_EMAIL - 1]).trim();
-    var personalEmail = sanitizeText(personalEmailRaw, 254);
+        // 3. Sanitize/validate key user input from Google Form.
+        var matricRaw = String(values[3]).trim();
+        var matric = sanitizeMatric(matricRaw);
+        var nameRaw = String(values[2]).trim();
+        var name = sanitizeName(nameRaw);
+        var personalEmailRaw = String(values[COL_PERSONAL_EMAIL - 1]).trim();
+        var personalEmail = sanitizeText(personalEmailRaw, 254);
 
-    if (!isSafeMatric(matric) || !isSafeName(name) || !isSafeEmail(personalEmail)) {
-        Logger.log("Row " + rowIdx + " rejected due to unsafe input.");
-        sheet.getRange(rowIdx, COL_STATUS).setValue("Rejected - Invalid Input");
-        return;
-    }
+        if (!isSafeMatric(matric) || !isSafeName(name) || !isSafeEmail(personalEmail)) {
+            Logger.log("Row " + rowIdx + " rejected due to unsafe input.");
+            sheet.getRange(rowIdx, COL_STATUS).setValue("Rejected - Invalid Input");
+            return;
+        }
 
-    // 3b. Build derived USAS email from validated matric only.
-    var usasEmail = matric + "@student.usas.edu.my";
+        // 3b. Build derived USAS email from validated matric only.
+        var usasEmail = matric + "@student.usas.edu.my";
 
-    // 4. Automate Membership Number (Col P) - Index 15
-    var memberId = generateMembershipId(sheet, dateObj, rowIdx);
+        // 4. Automate Membership Number (Col P) - Index 15
+        var memberId = generateMembershipId(sheet, dateObj, rowIdx);
 
-    // 5. Automate Invoice Number (Col U) - Index 20
-    var invoiceNo = sanitizeInvoice(values[COL_INVOICE_NO - 1]);
-    if (!invoiceNo) {
-        invoiceNo = "INV-" + Math.floor(100000 + Math.random() * 900000); // Generate new
-    }
+        // 5. Automate Invoice Number (Col U) - Index 20
+        var invoiceNo = sanitizeInvoice(values[COL_INVOICE_NO - 1]);
+        if (!invoiceNo) {
+            invoiceNo = "INV-" + Math.floor(100000 + Math.random() * 900000); // Generate new
+        }
 
-    // --- WRITE UPDATES ---
-    // Update Name (3), Matric (4), Email (9), Date (14), MemID (16), Invoice (21)
+        // --- WRITE UPDATES ---
+        // Update Name (3), Matric (4), Email (9), Date (14), MemID (16), Invoice (21)
 
-    // Capitalize Name & Matric in place if needed
-    if (name !== nameRaw) sheet.getRange(rowIdx, 3).setValue(name);
-    if (matric !== matricRaw) sheet.getRange(rowIdx, COL_MATRIC).setValue(matric);
+        // Capitalize Name & Matric in place if needed
+        if (name !== nameRaw) sheet.getRange(rowIdx, 3).setValue(name);
+        if (matric !== matricRaw) sheet.getRange(rowIdx, COL_MATRIC).setValue(matric);
 
-    sheet.getRange(rowIdx, COL_USAS_EMAIL).setValue(usasEmail);
-    sheet.getRange(rowIdx, COL_DATE_ENTRY).setValue(dateEntry);
-    sheet.getRange(rowIdx, COL_INVOICE_NO).setValue(invoiceNo); // Save Invoice
+        sheet.getRange(rowIdx, COL_USAS_EMAIL).setValue(usasEmail);
+        sheet.getRange(rowIdx, COL_DATE_ENTRY).setValue(dateEntry);
+        sheet.getRange(rowIdx, COL_INVOICE_NO).setValue(invoiceNo); // Save Invoice
 
-    // Only write ID if it doesn't exist (prevent overwriting if re-run)
-    var currentId = values[15]; // Index 15 is Col P
+        // Only write ID if it doesn't exist (prevent overwriting if re-run)
+        var currentId = values[15]; // Index 15 is Col P
 
-    // Force write if it's empty
-    if (!currentId || currentId === "") {
-        sheet.getRange(rowIdx, COL_MEMBERSHIP).setValue(memberId);
-        currentId = memberId; // Update so we can use it below
-    }
+        // Force write if it's empty
+        if (!currentId || currentId === "") {
+            sheet.getRange(rowIdx, COL_MEMBERSHIP).setValue(memberId);
+            currentId = memberId; // Update so we can use it below
+        }
 
-    // --- CHECK RECEIPT URL (Col S - Index 18) ---
-    var currentReceiptUrl = values[COL_RECEIPT_URL - 1]; // Index 18
+        // --- CHECK RECEIPT URL (Col S - Index 18) ---
+        // Re-read this cell right before sending to avoid stale data in race conditions.
+        var currentReceiptUrl = sheet.getRange(rowIdx, COL_RECEIPT_URL).getValue();
 
-    // If Receipt URL is missing, generate it & send email (Even if ID existed)
-    if (!currentReceiptUrl || currentReceiptUrl === "") {
-        if (isSafeEmail(personalEmail)) {
-            Logger.log("📧 Generating Receipt for: " + name);
-            var receiptUrl = sendReceiptEmail(personalEmail, name, matric, currentId, dateEntry, invoiceNo);
+        // If Receipt URL is missing, generate it & send email (Even if ID existed)
+        if (!currentReceiptUrl || currentReceiptUrl === "") {
+            if (isSafeEmail(personalEmail)) {
+                var sendingMarker = "SENDING_" + new Date().toISOString();
+                // Mark immediately to block any concurrent/duplicate execution path.
+                sheet.getRange(rowIdx, COL_RECEIPT_URL).setValue(sendingMarker);
+                SpreadsheetApp.flush();
 
-            // Save Receipt URL to Col T (Index 20) in DB
-            if (receiptUrl) {
-                sheet.getRange(rowIdx, COL_RECEIPT_URL).setValue(receiptUrl);
+                Logger.log("📧 Generating Receipt for: " + name);
+                var receiptUrl = sendReceiptEmail(personalEmail, name, matric, currentId, dateEntry, invoiceNo);
+
+                // Save Receipt URL to Col S in DB
+                if (receiptUrl) {
+                    sheet.getRange(rowIdx, COL_RECEIPT_URL).setValue(receiptUrl);
+                } else {
+                    // Clear marker so a future retry can occur.
+                    sheet.getRange(rowIdx, COL_RECEIPT_URL).setValue("");
+                }
+            } else {
+                Logger.log("⚠️ No valid email found for receipt: " + personalEmail);
+                sheet.getRange(rowIdx, COL_STATUS).setValue("Pending - Invalid Email");
             }
         } else {
-            Logger.log("⚠️ No valid email found for receipt: " + personalEmail);
-            sheet.getRange(rowIdx, COL_STATUS).setValue("Pending - Invalid Email");
+            Logger.log("✅ Already has receipt. Skipping email.");
         }
-    } else {
-        Logger.log("✅ Already has receipt. Skipping email.");
+
+        // --- FORMATTING (User Request) ---
+        // Right Align, Inter Font, Size 10, All Borders
+        var fullRowRange = sheet.getRange(rowIdx, 1, 1, 21); // Columns A to U
+        fullRowRange
+            .setHorizontalAlignment("right")
+            .setVerticalAlignment("middle") // Good practice
+            .setFontFamily("Inter")
+            .setFontSize(10)
+            .setBorder(true, true, true, true, true, true, "#000000", SpreadsheetApp.BorderStyle.SOLID);
+    } finally {
+        lock.releaseLock();
     }
-
-    // --- FORMATTING (User Request) ---
-    // Right Align, Inter Font, Size 10, All Borders
-    var fullRowRange = sheet.getRange(rowIdx, 1, 1, 21); // Columns A to U
-    fullRowRange
-        .setHorizontalAlignment("right")
-        .setVerticalAlignment("middle") // Good practice
-        .setFontFamily("Inter")
-        .setFontSize(10)
-        .setBorder(true, true, true, true, true, true, "#000000", SpreadsheetApp.BorderStyle.SOLID);
 }
-
 /**
  * Generates and Sends the HTML Receipt Email with PDF Attachment + Download Link
  * Returns the download URL
@@ -355,15 +372,19 @@ function sendReceiptEmail(email, name, matric, memberId, date, invoiceNo) {
         file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.VIEW);
         var downloadUrl = file.getUrl();
 
-        // 3. Generate HTML for Email Body (Card Style) - With working button!
-        var emailHtml = createEmailHtml(name, matric, memberId, date, invoiceNo, receiptNo, downloadUrl);
+        // 3. Generate HTML for Email Body (Card Style)
+        var linkForEmail = EMAIL_INCLUDE_DRIVE_LINK ? downloadUrl : "";
+        var emailHtml = createEmailHtml(name, matric, memberId, date, invoiceNo, receiptNo, linkForEmail);
 
-        MailApp.sendEmail({
+        var mailOptions = {
             to: email,
             subject: "Payment Receipt - STEM Membership",
-            htmlBody: emailHtml,
-            attachments: [pdfBlob]
-        });
+            htmlBody: emailHtml
+        };
+        if (EMAIL_ATTACH_PDF) {
+            mailOptions.attachments = [pdfBlob];
+        }
+        MailApp.sendEmail(mailOptions);
 
         // Optional: Clean up file from Drive if you don't want to save a copy
         // file.setTrashed(true); // Uncomment to delete after sending
@@ -745,7 +766,7 @@ function forceAuth() {
 function setupTrigger() {
     var triggers = ScriptApp.getProjectTriggers();
     for (var i = 0; i < triggers.length; i++) {
-        if (triggers[i].getHandlerFunction() === "onFormSubmit") {
+        if (triggers[i].getEventType() === ScriptApp.EventType.ON_FORM_SUBMIT) {
             ScriptApp.deleteTrigger(triggers[i]);
         }
     }
@@ -756,3 +777,5 @@ function setupTrigger() {
 
     Logger.log("Trigger set up successfully!");
 }
+
+
