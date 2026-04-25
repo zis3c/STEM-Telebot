@@ -8,6 +8,7 @@ import logging
 import re
 import asyncio
 import os
+import time
 from datetime import datetime, timedelta
 from io import BytesIO
 from zoneinfo import ZoneInfo
@@ -16,7 +17,103 @@ logger = logging.getLogger(__name__)
 
 KL_TZ = ZoneInfo("Asia/Kuala_Lumpur")
 LOG_DATE_RE = re.compile(r"^\[(\d{4}-\d{2}-\d{2}) \d{2}:\d{2}:\d{2}\]")
+TRUSTED_RECEIPT_URL_RE = re.compile(
+    r"^https://(?:drive\.google\.com|docs\.google\.com|lh3\.googleusercontent\.com)/",
+    re.IGNORECASE,
+)
 _DAILY_LOG_LOCK = asyncio.Lock()
+
+_VERIF_WINDOW_SECONDS = 10 * 60
+_VERIF_LOCK_SECONDS = 15 * 60
+_VERIF_MAX_USER_ATTEMPTS = 6
+_VERIF_MAX_MATRIC_ATTEMPTS = 12
+_verif_user_state = {}
+_verif_matric_state = {}
+
+
+def _touch_verif_state(store, key, now_ts):
+    state = store.get(key)
+    if not state:
+        state = {"window_start": now_ts, "attempts": 0, "locked_until": 0}
+        store[key] = state
+
+    if now_ts >= state["locked_until"] and (now_ts - state["window_start"]) > _VERIF_WINDOW_SECONDS:
+        state["window_start"] = now_ts
+        state["attempts"] = 0
+    return state
+
+
+def _check_verif_limit(user_id: int, matric: str):
+    now_ts = time.time()
+    user_state = _touch_verif_state(_verif_user_state, user_id, now_ts)
+    matric_state = _touch_verif_state(_verif_matric_state, matric, now_ts)
+
+    user_retry = max(0, int(user_state["locked_until"] - now_ts))
+    matric_retry = max(0, int(matric_state["locked_until"] - now_ts))
+    retry_after = max(user_retry, matric_retry)
+    return retry_after > 0, retry_after
+
+
+def _mark_verif_attempt(user_id: int, matric: str, success: bool):
+    now_ts = time.time()
+    user_state = _touch_verif_state(_verif_user_state, user_id, now_ts)
+    matric_state = _touch_verif_state(_verif_matric_state, matric, now_ts)
+
+    if success:
+        user_state["attempts"] = 0
+        matric_state["attempts"] = 0
+        user_state["window_start"] = now_ts
+        matric_state["window_start"] = now_ts
+        return
+
+    user_state["attempts"] += 1
+    matric_state["attempts"] += 1
+
+    if user_state["attempts"] >= _VERIF_MAX_USER_ATTEMPTS:
+        user_state["locked_until"] = now_ts + _VERIF_LOCK_SECONDS
+    if matric_state["attempts"] >= _VERIF_MAX_MATRIC_ATTEMPTS:
+        matric_state["locked_until"] = now_ts + _VERIF_LOCK_SECONDS
+
+
+def _mask_sensitive_in_text(text: str) -> str:
+    if not text:
+        return ""
+
+    val = str(text)
+
+    # Mask email local-part.
+    val = re.sub(r'([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[A-Za-z]{2,})', r'\1***@\2', val)
+
+    # Mask 4+ digit numeric chunks.
+    def _mask_digits(match):
+        s = match.group(0)
+        if len(s) <= 4:
+            return "*" * len(s)
+        return s[:2] + ("*" * (len(s) - 4)) + s[-2:]
+
+    val = re.sub(r"\b\d{4,}\b", _mask_digits, val)
+    return val
+
+
+def _escape_md(text):
+    return (
+        str(text or "")
+        .replace("\\", "\\\\")
+        .replace("_", "\\_")
+        .replace("*", "\\*")
+        .replace("`", "\\`")
+        .replace("[", "\\[")
+        .replace("]", "\\]")
+        .replace("(", "\\(")
+    )
+
+
+def _receipt_md_value(value):
+    raw = str(value or "").strip()
+    if raw.startswith("http") and TRUSTED_RECEIPT_URL_RE.match(raw):
+        safe_url = raw.replace(")", "%29")
+        return f"[View Receipt]({safe_url})"
+    return _escape_md(raw)
 
 
 # --- HELPERS ---
@@ -234,7 +331,22 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     
     user_matric = context.user_data['matric']
     user_ic_last4 = text
+    limited, retry_after = _check_verif_limit(update.effective_user.id, user_matric)
+    if limited:
+        lock_msg = "Too many verification attempts. Please try again later."
+        if lang == "MS":
+            lock_msg = "Terlalu banyak cubaan pengesahan. Sila cuba lagi kemudian."
+        await update.message.reply_text(
+            f"{lock_msg} ({retry_after}s)",
+            reply_markup=keyboards.get_main_menu(lang),
+        )
+        return ConversationHandler.END
+
     msg = strings.get('ERR_DB_CONNECTION', lang)
+    verification_ok = False
+    generic_fail_msg = "*Verification Failed*\nYour details could not be verified."
+    if lang == "MS":
+        generic_fail_msg = "*Pengesahan Gagal*\nMaklumat anda tidak dapat disahkan."
     
     try:
         row_values, row_index = await run_db_call(db.find_member, user_matric)
@@ -284,6 +396,7 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                     final_status = "Pending"
 
                 if db_ic.endswith(user_ic_last4):
+                    verification_ok = True
                     if final_status == "Approved": 
                         if not membership_id or membership_id == "-":
                             # Fallback if ID not generated yet but status is Approved
@@ -320,16 +433,15 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                     else:
                          msg = strings.get('STATUS_PENDING', lang) 
                 else:
-                     msg = "*Verification Failed*\nMatric found, but IC digits do not match." 
-                     if lang == 'MS': msg = "*Pengesahan Gagal*\nMatrik dijumpai, tetapi digit IC tidak sepadan."
+                     msg = generic_fail_msg
             else:
-                    msg = "Record found but data is incomplete."
-                    if lang == 'MS': msg = "Rekod dijumpai tetapi data tidak lengkap."
+                    msg = generic_fail_msg
         else:
-            msg = strings.get('ERR_NOT_FOUND', lang)
+            msg = generic_fail_msg
                 
     except Exception as e:
         logger.error(e)
+        verification_ok = False
 
     # AUTO DELETE LOADING MESSAGE
     # AUTO DELETE LOADING MESSAGE (Removed for speed cleanup)
@@ -339,11 +451,16 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     #     pass 
 
     await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=keyboards.get_main_menu(lang))
+    _mark_verif_attempt(update.effective_user.id, user_matric, verification_ok)
     
     # Log the result
-    log_status = "SUCCESS" if "DISAHKAN" in msg or "VERIFIED" in msg else "NOT_FOUND"
-    if "Gagal" in msg or "Failed" in msg: log_status = "FAIL_IC"
-    db.log_action(update.effective_user.first_name, "CHECK_MEMBERSHIP", f"Matric: {user_matric} | Result: {log_status}", role="USER")
+    log_status = "SUCCESS" if verification_ok else "FAILED_VERIFY"
+    db.log_action(
+        update.effective_user.first_name,
+        "CHECK_MEMBERSHIP",
+        f"Matric: {_mask_sensitive_in_text(user_matric)} | Result: {log_status}",
+        role="USER"
+    )
     
     return ConversationHandler.END
 
@@ -368,7 +485,7 @@ async def log_any_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Identify Keyboard Clicks
     action = "MSG"
-    details = text
+    details = f"Text({len(text)} chars)"
     
     # All Button Keys from strings.py
     btn_keys = [
@@ -385,7 +502,12 @@ async def log_any_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
             details = f"Button: {key} ({text})"
             break
 
-    db.log_action(f"{user.first_name} ({user.id})", action, details, role="USER")
+    db.log_action(
+        f"{user.first_name} ({user.id})",
+        action,
+        _mask_sensitive_in_text(details),
+        role="USER",
+    )
 
 # --- JOB QUEUE & CALLBACKS ---
 async def check_pending_now(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -413,25 +535,11 @@ async def check_registrations(context: ContextTypes.DEFAULT_TYPE):
             matric = data[3]
             resit_url = data[16] if len(data) > 16 else "No Receipt"
 
-            # Legacy Markdown escapes: *, _, `, [
-            def escape_md(text):
-                if not text: return ""
-                return str(text).replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
-
-            safe_name = escape_md(name)
-            safe_matric = escape_md(matric)
+            safe_name = _escape_md(name)
+            safe_matric = _escape_md(matric)
             
             # Handle Receipt URL (often contains underscores)
-            if resit_url and resit_url.startswith("http"):
-                # Format as link: [View Receipt](url)
-                # Note: Brackets in URL might break this, but rare in Google Drive/Forms. 
-                # We do NOT escape the URL itself for the link target in legacy mode usually, 
-                # but standard markdown implies the link text is safe.
-                # However, to be extra safe against broken parsing, we can just escape the display text if not a link.
-                # Let's try formatting it as a markdown link 100% of time for URLs.
-                receipt_display = f"[View Receipt]({resit_url})"
-            else:
-                receipt_display = escape_md(resit_url)
+            receipt_display = _receipt_md_value(resit_url)
             
             msg = (
                 f"*NEW REGISTRATION 🔔*\n\n"
@@ -460,14 +568,11 @@ async def check_registrations(context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f"Check Regs Error: {e}")
 
-def _escape_md(text):
-    return str(text or "").replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
-
 def _build_review_summary(row_values):
     name = _escape_md(row_values[2] if len(row_values) > 2 else "-")
     matric = _escape_md(row_values[3] if len(row_values) > 3 else "-")
     receipt = row_values[16] if len(row_values) > 16 else "-"
-    receipt_md = f"[View Receipt]({receipt})" if str(receipt).startswith("http") else _escape_md(receipt)
+    receipt_md = _receipt_md_value(receipt)
     return (
         f"*NEW REGISTRATION*\n\n"
         f"Name: *{name}*\n"

@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import re
 import time  # Imported time
 import threading
 import gspread
@@ -9,6 +10,19 @@ import traceback
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
+
+
+def _redact_log_text(value):
+    if value is None:
+        return ""
+    text = str(value)
+    text = re.sub(
+        r'([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[A-Za-z]{2,})',
+        r'\1***@\2',
+        text,
+    )
+    text = re.sub(r"\b\d{6,}\b", "***REDACTED***", text)
+    return text
 
 class Database:
     def __init__(self):
@@ -483,7 +497,9 @@ class Database:
     def log_action(self, name, action, details, role="ADMIN"):
         """Logs actions to a local file for daily reporting."""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] {role}: {name} | ACTION: {action} | {details}\n"
+        safe_name = _redact_log_text(name)
+        safe_details = _redact_log_text(details)
+        log_entry = f"[{timestamp}] {role}: {safe_name} | ACTION: {action} | {safe_details}\n"
         
         try:
             with open("activity.log", "a", encoding="utf-8") as f:

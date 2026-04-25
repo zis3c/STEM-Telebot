@@ -23,6 +23,7 @@ var COL_MATRIC = 4;         // D
 var COL_USAS_EMAIL = 9;     // I
 var COL_DATE_ENTRY = 14;    // N
 var COL_MEMBERSHIP = 16;    // P
+var COL_STATUS = 18;        // R
 var COL_RECEIPT_URL = 19;   // S (Payment Receipt)
 var COL_INVOICE_NO = 20;    // T (Invoice No)
 
@@ -33,6 +34,61 @@ var FEE_AMOUNT = "RM10.00"; // Fixed Fee
 var RECEIPT_FOLDER_ID = PropertiesService.getScriptProperties().getProperty("RECEIPT_FOLDER_ID");
 var LOGO_FILE_ID = PropertiesService.getScriptProperties().getProperty("LOGO_FILE_ID");
 
+var SAFE_NAME_RE = /^[A-Z0-9 .,'()\/-]{2,80}$/;
+var SAFE_MATRIC_RE = /^[A-Z0-9]{6,15}$/;
+var SAFE_EMAIL_RE = /^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,189}\.[A-Za-z]{2,}$/;
+
+function escapeHtml(value) {
+    return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function sanitizeText(value, maxLen) {
+    var clean = String(value || "")
+        .replace(/[\u0000-\u001F\u007F]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    if (clean.length > maxLen) clean = clean.slice(0, maxLen);
+    if (/^[=+\-@]/.test(clean)) clean = "'" + clean;
+    return clean;
+}
+
+function sanitizeName(value) {
+    return sanitizeText(value, 80).toUpperCase();
+}
+
+function sanitizeMatric(value) {
+    return sanitizeText(value, 15).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+}
+
+function sanitizeInvoice(value) {
+    return sanitizeText(value, 24).replace(/[^A-Za-z0-9\-]/g, "");
+}
+
+function isSafeName(name) {
+    return SAFE_NAME_RE.test(name);
+}
+
+function isSafeMatric(matric) {
+    return SAFE_MATRIC_RE.test(matric);
+}
+
+function isSafeEmail(email) {
+    return SAFE_EMAIL_RE.test(email);
+}
+
+function sanitizeDriveUrl(url) {
+    var val = String(url || "").trim();
+    if (/^https:\/\/drive\.google\.com\/[A-Za-z0-9._~:/?#[\]@!$&'()*+,;=%-]+$/.test(val)) {
+        return val;
+    }
+    return "";
+}
+
 /**
  * ONE-TIME SETUP: Run this function once to save your secrets.
  * Then delete the specific values from this code if sharing.
@@ -40,8 +96,8 @@ var LOGO_FILE_ID = PropertiesService.getScriptProperties().getProperty("LOGO_FIL
 function setupSecrets() {
     var props = PropertiesService.getScriptProperties();
     props.setProperties({
-        "RECEIPT_FOLDER_ID": "PASTE_YOUR_FOLDER_ID_HERE", // Paste ID, Run once, then Delete this line
-        "LOGO_FILE_ID": "PASTE_YOUR_LOGO_ID_HERE"       // Paste ID, Run once, then Delete this line
+        "RECEIPT_FOLDER_ID": "PASTE_YOUR_FOLDER_ID_HERE",
+        "LOGO_FILE_ID": "PASTE_YOUR_LOGO_ID_HERE"
     });
     Logger.log("✅ Secrets saved successfully! You can now remove them from this function.");
 }
@@ -100,6 +156,10 @@ function onFormSubmit(e) {
     // Valid event. Use the sheet where the submission happened.
     var sheet = e.range.getSheet();
     var row = e.range.getRow();
+    if (sheet.getName() !== SHEET_NAME) {
+        Logger.log("âš ï¸ Ignored submit from unexpected sheet: " + sheet.getName());
+        return;
+    }
 
     Logger.log("Form Submitted on Sheet: " + sheet.getName() + ", Row: " + row);
     processRow(sheet, row);
@@ -154,7 +214,7 @@ function getTargetSheet() {
  * Main Logic to populate columns and Send Email
  */
 function processRow(sheet, rowIdx) {
-    var dataRange = sheet.getRange(rowIdx, 1, 1, 21); // Read cols A to U (Index 21)
+    var dataRange = sheet.getRange(rowIdx, 1, 1, 21); // Read cols A to U
     var values = dataRange.getValues()[0];
 
     // DEBUG LOG
@@ -172,27 +232,29 @@ function processRow(sheet, rowIdx) {
     // 2. Automate Date of Entry (Col N) - Index 13
     var dateEntry = Utilities.formatDate(dateObj, Session.getScriptTimeZone(), "dd/MM/yy");
 
-    // 3. Automate USAS Email (Col I) - Index 8
+    // 3. Sanitize/validate key user input from Google Form.
     var matricRaw = String(values[3]).trim();
-    var matric = matricRaw.toUpperCase();
-    var usasEmail = "";
-    if (matric) {
-        usasEmail = matric + "@student.usas.edu.my";
+    var matric = sanitizeMatric(matricRaw);
+    var nameRaw = String(values[2]).trim();
+    var name = sanitizeName(nameRaw);
+    var personalEmailRaw = String(values[COL_PERSONAL_EMAIL - 1]).trim();
+    var personalEmail = sanitizeText(personalEmailRaw, 254);
+
+    if (!isSafeMatric(matric) || !isSafeName(name) || !isSafeEmail(personalEmail)) {
+        Logger.log("Row " + rowIdx + " rejected due to unsafe input.");
+        sheet.getRange(rowIdx, COL_STATUS).setValue("Rejected - Invalid Input");
+        return;
     }
 
-    // 3b. Name (Col C) - Index 2
-    var nameRaw = String(values[2]).trim();
-    var name = nameRaw.toUpperCase();
-
-    // 3c. Personal Email (Col B) - Index 1
-    var personalEmail = String(values[COL_PERSONAL_EMAIL - 1]).trim(); // Index 1
+    // 3b. Build derived USAS email from validated matric only.
+    var usasEmail = matric + "@student.usas.edu.my";
 
     // 4. Automate Membership Number (Col P) - Index 15
     var memberId = generateMembershipId(sheet, dateObj, rowIdx);
 
     // 5. Automate Invoice Number (Col U) - Index 20
-    var invoiceNo = values[COL_INVOICE_NO - 1];
-    if (!invoiceNo || invoiceNo === "") {
+    var invoiceNo = sanitizeInvoice(values[COL_INVOICE_NO - 1]);
+    if (!invoiceNo) {
         invoiceNo = "INV-" + Math.floor(100000 + Math.random() * 900000); // Generate new
     }
 
@@ -221,7 +283,7 @@ function processRow(sheet, rowIdx) {
 
     // If Receipt URL is missing, generate it & send email (Even if ID existed)
     if (!currentReceiptUrl || currentReceiptUrl === "") {
-        if (personalEmail && personalEmail.includes("@")) {
+        if (isSafeEmail(personalEmail)) {
             Logger.log("📧 Generating Receipt for: " + name);
             var receiptUrl = sendReceiptEmail(personalEmail, name, matric, currentId, dateEntry, invoiceNo);
 
@@ -231,6 +293,7 @@ function processRow(sheet, rowIdx) {
             }
         } else {
             Logger.log("⚠️ No valid email found for receipt: " + personalEmail);
+            sheet.getRange(rowIdx, COL_STATUS).setValue("Pending - Invalid Email");
         }
     } else {
         Logger.log("✅ Already has receipt. Skipping email.");
@@ -253,6 +316,15 @@ function processRow(sheet, rowIdx) {
  */
 function sendReceiptEmail(email, name, matric, memberId, date, invoiceNo) {
     try {
+        if (!isSafeEmail(email) || !isSafeMatric(matric) || !isSafeName(name)) {
+            Logger.log("❌ Refused receipt send due to invalid/suspicious fields.");
+            return null;
+        }
+
+        memberId = sanitizeText(memberId, 32);
+        invoiceNo = sanitizeInvoice(invoiceNo);
+        date = sanitizeText(date, 20);
+
         var receiptNo = memberId; // Use MemberID for easy tracking
         var fileName = "STEM_Receipt_" + memberId + ".pdf";
 
@@ -279,12 +351,9 @@ function sendReceiptEmail(email, name, matric, memberId, date, invoiceNo) {
             file = DriveApp.createFile(pdfBlob);
         }
 
-        // Make it viewable by anyone with link so the button works
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-        // Get the direct download-like URL (View URL commonly used as download)
-        // var downloadUrl = file.getUrl(); // OLD: Opens Viewer
-        var downloadUrl = "https://drive.google.com/uc?export=download&id=" + file.getId(); // NEW: Auto Download
+        // Keep receipt private by default.
+        file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.VIEW);
+        var downloadUrl = file.getUrl();
 
         // 3. Generate HTML for Email Body (Card Style) - With working button!
         var emailHtml = createEmailHtml(name, matric, memberId, date, invoiceNo, receiptNo, downloadUrl);
@@ -292,8 +361,8 @@ function sendReceiptEmail(email, name, matric, memberId, date, invoiceNo) {
         MailApp.sendEmail({
             to: email,
             subject: "Payment Receipt - STEM Membership",
-            htmlBody: emailHtml
-            // attachments: [pdfBlob] // Removed as per user request (Drive Link Only)
+            htmlBody: emailHtml,
+            attachments: [pdfBlob]
         });
 
         // Optional: Clean up file from Drive if you don't want to save a copy
@@ -337,6 +406,15 @@ function createEmailHtml(name, matric, memberId, date, invoiceNo, receiptNo, dow
     var textValue = "#1d1d1f";
     var accentColor = "#012951";
     var highlightColor = "#f7c525";
+    var safeName = escapeHtml(name);
+    var safeMatric = escapeHtml(matric);
+    var safeDate = escapeHtml(date);
+    var safeReceiptNo = escapeHtml(receiptNo);
+    var safeInvoiceNo = escapeHtml(invoiceNo);
+    var safeDownloadUrl = sanitizeDriveUrl(downloadUrl);
+    var downloadButton = safeDownloadUrl
+        ? `<div style="text-align: center; margin-top: 30px;"><a href="${safeDownloadUrl}" class="btn-download" target="_blank" rel="noopener noreferrer">Open Receipt in Drive</a></div>`
+        : `<div style="text-align: center; margin-top: 30px; color: ${textLabel}; font-size: 13px;">Your signed PDF receipt is attached to this email.</div>`;
 
     return `
     <!DOCTYPE html>
@@ -375,32 +453,32 @@ function createEmailHtml(name, matric, memberId, date, invoiceNo, receiptNo, dow
                             </div>
 
                             <div style="text-align: center; color: ${textHeader}; margin-bottom: 30px;">
-                                Hi <b>${name}</b>,<br>
+                                Hi <b>${safeName}</b>,<br>
                                 <span style="font-size: 14px; color: ${textLabel};">Thank you regarding your membership payment.</span>
                             </div>
 
                             <div style="text-align: center; margin-bottom: 30px;">
                                 <div class="amount-large" style="font-size: 42px; font-weight: 700; color: ${textHeader};">${FEE_AMOUNT}</div>
-                                <div style="font-size: 13px; color: ${textLabel};">Paid on ${date}</div>
+                                <div style="font-size: 13px; color: ${textLabel};">Paid on ${safeDate}</div>
                             </div>
 
                             <!-- Key Details for Email -->
                             <table style="width: 100%; border-collapse: collapse;">
                                 <tr>
                                     <td class="detail-text" style="padding: 12px 0; border-bottom: 1px solid #eeeeee; color: ${textLabel}; font-size: 14px;">Date</td>
-                                    <td class="detail-text" style="padding: 12px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-weight: 600; color: ${textValue}; font-size: 14px;">${date}</td>
+                                    <td class="detail-text" style="padding: 12px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-weight: 600; color: ${textValue}; font-size: 14px;">${safeDate}</td>
                                 </tr>
                                 <tr>
                                     <td class="detail-text" style="padding: 12px 0; border-bottom: 1px solid #eeeeee; color: ${textLabel}; font-size: 14px;">Membership ID</td>
-                                    <td class="detail-text" style="padding: 12px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-weight: 600; color: ${textValue}; font-size: 14px;">${receiptNo}</td>
+                                    <td class="detail-text" style="padding: 12px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-weight: 600; color: ${textValue}; font-size: 14px;">${safeReceiptNo}</td>
                                 </tr>
                                 <tr>
                                     <td class="detail-text" style="padding: 12px 0; border-bottom: 1px solid #eeeeee; color: ${textLabel}; font-size: 14px;">Invoice ID</td>
-                                    <td class="detail-text" style="padding: 12px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-weight: 600; color: ${textValue}; font-size: 14px;">${invoiceNo}</td>
+                                    <td class="detail-text" style="padding: 12px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-weight: 600; color: ${textValue}; font-size: 14px;">${safeInvoiceNo}</td>
                                 </tr>
                                 <tr>
                                     <td class="detail-text" style="padding: 12px 0; border-bottom: 1px solid #eeeeee; color: ${textLabel}; font-size: 14px;">Matric No</td>
-                                    <td class="detail-text" style="padding: 12px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-weight: 600; color: ${textValue}; font-size: 14px;">${matric}</td>
+                                    <td class="detail-text" style="padding: 12px 0; border-bottom: 1px solid #eeeeee; text-align: right; font-weight: 600; color: ${textValue}; font-size: 14px;">${safeMatric}</td>
                                 </tr>
                                 <tr>
                                     <td class="detail-text" style="padding: 12px 0; border-bottom: 1px solid #eeeeee; color: ${textLabel}; font-size: 14px;">Item</td>
@@ -412,10 +490,7 @@ function createEmailHtml(name, matric, memberId, date, invoiceNo, receiptNo, dow
                                 </tr>
                             </table>
 
-                             <!-- Re-Added Working Download Button -->
-                             <div style="text-align: center; margin-top: 30px;">
-                                <a href="${downloadUrl}" class="btn-download" target="_blank">Download PDF Receipt</a>
-                            </div>
+                             ${downloadButton}
                         </div>
                          <div style="background-color: #fafafa; padding: 20px; text-align: center; font-size: 12px; color: ${textLabel};">
                             STEM USAS
@@ -440,6 +515,11 @@ function createPdfHtml(name, matric, memberId, date, invoiceNo, receiptNo, logoB
     var textValue = "#1d1d1f";
     var accentColor = "#012951";
     var highlightColor = "#1d1d1f";
+    var safeName = escapeHtml(name);
+    var safeMatric = escapeHtml(matric);
+    var safeDate = escapeHtml(date);
+    var safeReceiptNo = escapeHtml(receiptNo);
+    var safeInvoiceNo = escapeHtml(invoiceNo);
 
     // Logo Logic
     var logoHtml = logoBase64
@@ -492,8 +572,8 @@ function createPdfHtml(name, matric, memberId, date, invoiceNo, receiptNo, logoB
                 <td width="60%" style="vertical-align: top;">
                     <div class="bill-to">
                         <div class="bill-label">Billed To</div>
-                        <div class="bill-name">${name}</div>
-                        <div class="meta-value">${matric}</div>
+                        <div class="bill-name">${safeName}</div>
+                        <div class="meta-value">${safeMatric}</div>
                     </div>
                 </td>
                 <td width="40%" align="right" style="vertical-align: top;">
@@ -502,19 +582,19 @@ function createPdfHtml(name, matric, memberId, date, invoiceNo, receiptNo, logoB
                             <td class="meta-label" style="padding-bottom: 2px;">Date</td>
                         </tr>
                         <tr>
-                             <td class="meta-value" style="padding-bottom: 20px;">${date}</td>
+                             <td class="meta-value" style="padding-bottom: 20px;">${safeDate}</td>
                         </tr>
                         <tr>
                             <td class="meta-label" style="padding-bottom: 2px;">Membership ID</td>
                         </tr>
                         <tr>
-                             <td class="meta-value" style="padding-bottom: 20px;">${receiptNo}</td>
+                             <td class="meta-value" style="padding-bottom: 20px;">${safeReceiptNo}</td>
                         </tr>
                         <tr>
                             <td class="meta-label" style="padding-bottom: 2px;">Invoice</td>
                         </tr>
                          <tr>
-                             <td class="meta-value">${invoiceNo}</td>
+                             <td class="meta-value">${safeInvoiceNo}</td>
                         </tr>
                     </table>
                 </td>
@@ -675,43 +755,4 @@ function setupTrigger() {
         .create();
 
     Logger.log("Trigger set up successfully!");
-}
-
-/**
- * MONTHLY STATS GENERATOR
- */
-function generateMonthlyStats() {
-    var sheet = getTargetSheet();
-    if (!sheet) return;
-
-    var today = new Date();
-    var firstDayThisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    var lastMonthDate = new Date(firstDayThisMonth.getTime() - 3600000);
-
-    var monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    var prevMonthName = monthNames[lastMonthDate.getMonth()];
-    var prevYear = lastMonthDate.getFullYear();
-    var statLabel = "--- STATISTIC " + prevMonthName.toUpperCase() + " " + prevYear + " ---";
-
-    var lastRow = sheet.getLastRow();
-    var count = 0;
-
-    if (lastRow > 1) {
-        var timestamps = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-        for (var i = 0; i < timestamps.length; i++) {
-            var ts = new Date(timestamps[i][0]);
-            if (!isNaN(ts.getTime()) && ts.getMonth() === lastMonthDate.getMonth() && ts.getFullYear() === prevYear) {
-                count++;
-            }
-        }
-    }
-
-    var rowData = new Array(21).fill("");
-    rowData[2] = statLabel; // Col C
-    rowData[20] = "Total: " + count; // Col U (Statistic)
-
-    sheet.appendRow(rowData);
-    var newRowIdx = sheet.getLastRow();
-    sheet.getRange(newRowIdx, 1, 1, 21).setBackground("#eeeeee").setFontWeight("bold");
-    Logger.log("Generated Stats for " + prevMonthName + ": " + count);
 }

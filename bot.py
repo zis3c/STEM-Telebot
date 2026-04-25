@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import hmac
 import logging
 import os
 import re
@@ -28,6 +29,7 @@ import superadmin
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 PORT = int(os.getenv("PORT", 10000))
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "").rstrip("/")
+WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
 
 # Logging
 logging.basicConfig(
@@ -304,6 +306,12 @@ async def main():
             return web.Response(status=503, text="Starting")
 
         try:
+            if WEBHOOK_SECRET:
+                recv_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+                if not hmac.compare_digest(recv_secret, WEBHOOK_SECRET):
+                    logger.warning("Rejected webhook request with invalid secret token.")
+                    return web.Response(status=403, text="Forbidden")
+
             update_data = await request.json()
             await application.process_update(Update.de_json(update_data, application.bot))
             return web.Response(text="OK")
@@ -331,8 +339,13 @@ async def main():
         await application.start()
 
         if WEBHOOK_URL:
+            if not WEBHOOK_SECRET:
+                raise RuntimeError(
+                    "WEBHOOK_URL is set but TELEGRAM_WEBHOOK_SECRET is missing. "
+                    "Set TELEGRAM_WEBHOOK_SECRET to protect webhook authenticity."
+                )
             webhook_path = f"{WEBHOOK_URL}/telegram"
-            await application.bot.set_webhook(webhook_path)
+            await application.bot.set_webhook(webhook_path, secret_token=WEBHOOK_SECRET)
             logger.info("Webhook configured: %s", webhook_path)
         else:
             logger.info("No WEBHOOK_URL found. Starting polling...")
