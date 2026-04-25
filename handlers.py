@@ -29,6 +29,12 @@ _VERIF_MAX_USER_ATTEMPTS = 6
 _VERIF_MAX_MATRIC_ATTEMPTS = 12
 _verif_user_state = {}
 _verif_matric_state = {}
+_alert_last_sent = {}
+
+ALERT_COOLDOWN_SECONDS = int(os.getenv("ALERT_COOLDOWN_SECONDS", "900"))
+ALERT_QUEUE_COOLDOWN_SECONDS = int(os.getenv("ALERT_QUEUE_COOLDOWN_SECONDS", "1800"))
+ALERT_QUEUE_BACKLOG_THRESHOLD = int(os.getenv("ALERT_QUEUE_BACKLOG_THRESHOLD", "25"))
+ALERT_WEBHOOK_PENDING_THRESHOLD = int(os.getenv("ALERT_WEBHOOK_PENDING_THRESHOLD", "50"))
 
 
 def _touch_verif_state(store, key, now_ts):
@@ -140,6 +146,34 @@ def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
 async def run_db_call(func, *args, **kwargs):
     """Runs blocking DB/sheets work on a thread so the event loop stays responsive."""
     return await asyncio.to_thread(func, *args, **kwargs)
+
+
+async def send_superadmin_alert(
+    bot,
+    alert_key: str,
+    text: str,
+    cooldown_seconds: int = ALERT_COOLDOWN_SECONDS,
+):
+    """Send throttled operational alerts to superadmins."""
+    now_ts = time.time()
+    last_ts = _alert_last_sent.get(alert_key, 0)
+    if (now_ts - last_ts) < max(1, cooldown_seconds):
+        return False
+
+    _alert_last_sent[alert_key] = now_ts
+    sent_any = False
+    for uid in db.superadmin_ids:
+        try:
+            await bot.send_message(chat_id=uid, text=text, parse_mode="Markdown")
+            sent_any = True
+        except Exception as e:
+            logger.error(f"Markdown alert send failed '{alert_key}' to {uid}: {e}")
+            try:
+                await bot.send_message(chat_id=uid, text=text)
+                sent_any = True
+            except Exception as e2:
+                logger.error(f"Fallback alert send failed '{alert_key}' to {uid}: {e2}")
+    return sent_any
 
 async def check_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Global keyword checker for main menu navigation (Multi-lingual matches)"""
@@ -551,7 +585,20 @@ async def check_registrations(context: ContextTypes.DEFAULT_TYPE):
     """Job to check for new unprocessed registrations."""
     try:
         new_regs = await run_db_call(db.get_unprocessed_registrations)
-        if not new_regs: return
+        if new_regs and len(new_regs) >= ALERT_QUEUE_BACKLOG_THRESHOLD:
+            await send_superadmin_alert(
+                context.bot,
+                "queue_backlog",
+                (
+                    "⚠️ *Queue Backlog Alert*\n"
+                    f"Pending registrations detected: *{len(new_regs)}*.\n"
+                    "Processing may be delayed. Please review admin queue."
+                ),
+                cooldown_seconds=ALERT_QUEUE_COOLDOWN_SECONDS,
+            )
+
+        if not new_regs:
+            return
         
         # Notify ALL Admins (Super + Env + Sheet)
         admins = await run_db_call(db.get_all_admin_ids)
@@ -595,6 +642,16 @@ async def check_registrations(context: ContextTypes.DEFAULT_TYPE):
             
     except Exception as e:
         logger.error(f"Check Regs Error: {e}")
+        await send_superadmin_alert(
+            context.bot,
+            "sheets_check_registrations_error",
+            (
+                "🚨 *Sheets/API Error*\n"
+                "Failed while scanning pending registrations.\n"
+                f"Error: `{_escape_md(str(e)[:180])}`"
+            ),
+            cooldown_seconds=ALERT_COOLDOWN_SECONDS,
+        )
 
 def _build_review_summary(row_values):
     name = _escape_md(row_values[2] if len(row_values) > 2 else "-")

@@ -58,11 +58,72 @@ async def self_pinger():
 async def maintenance_loop(application):
     """Checks every 15 minutes and sends daily logs only after 8:00 AM KL."""
     from database import db
-    from handlers import send_daily_logs
+    from handlers import send_daily_logs, send_superadmin_alert, ALERT_WEBHOOK_PENDING_THRESHOLD
 
     while True:
         try:
             now_kl = datetime.datetime.now(KL_TZ)
+            expected_webhook_url = f"{WEBHOOK_URL}/telegram" if WEBHOOK_URL else ""
+
+            # Webhook and queue health checks should run all day, not only after 08:00.
+            if WEBHOOK_URL:
+                try:
+                    info = await application.bot.get_webhook_info()
+                    webhook_issues = []
+                    if info.url != expected_webhook_url:
+                        webhook_issues.append("Webhook URL mismatch.")
+                    if info.pending_update_count >= ALERT_WEBHOOK_PENDING_THRESHOLD:
+                        webhook_issues.append(
+                            f"Pending updates high: {info.pending_update_count}."
+                        )
+                    if getattr(info, "last_error_message", ""):
+                        webhook_issues.append(
+                            f"Last error: {str(info.last_error_message)[:120]}"
+                        )
+
+                    if webhook_issues:
+                        await send_superadmin_alert(
+                            application.bot,
+                            "webhook_health_issue",
+                            (
+                                "🚨 *Webhook Health Alert*\n"
+                                + "\n".join(f"- {_}" for _ in webhook_issues)
+                            ),
+                            cooldown_seconds=900,
+                        )
+                except Exception as e:
+                    logger.error("Webhook health check failed: %s", e)
+                    await send_superadmin_alert(
+                        application.bot,
+                        "webhook_health_check_error",
+                        (
+                            "🚨 *Webhook Health Check Failed*\n"
+                            f"Error: `{str(e)[:180]}`"
+                        ),
+                        cooldown_seconds=900,
+                    )
+
+            # Basic sheets connectivity check.
+            try:
+                sheet_ok = await asyncio.to_thread(db.get_sheet, "Registrations")
+                if not sheet_ok:
+                    await send_superadmin_alert(
+                        application.bot,
+                        "sheets_connectivity_issue",
+                        "🚨 *Sheets/API Error*\nCould not access `Registrations` sheet.",
+                        cooldown_seconds=900,
+                    )
+            except Exception as e:
+                logger.error("Sheets connectivity check failed: %s", e)
+                await send_superadmin_alert(
+                    application.bot,
+                    "sheets_connectivity_check_error",
+                    (
+                        "🚨 *Sheets/API Check Failed*\n"
+                        f"Error: `{str(e)[:180]}`"
+                    ),
+                    cooldown_seconds=900,
+                )
 
             # Only allow daily log dispatch from 08:00 onward (KL time).
             if now_kl.hour < 8:
