@@ -95,6 +95,14 @@ def _mask_sensitive_in_text(text: str) -> str:
     return val
 
 
+def _format_duration(seconds: int) -> str:
+    seconds = max(0, int(seconds))
+    mins, secs = divmod(seconds, 60)
+    if mins == 0:
+        return f"{secs}s"
+    return f"{mins}m {secs}s"
+
+
 def _escape_md(text):
     return (
         str(text or "")
@@ -333,11 +341,21 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_ic_last4 = text
     limited, retry_after = _check_verif_limit(update.effective_user.id, user_matric)
     if limited:
-        lock_msg = "Too many verification attempts. Please try again later."
+        wait_for = _format_duration(retry_after)
+        lock_msg = (
+            "⛔ *Verification Temporarily Locked*\n"
+            "Too many attempts were detected.\n"
+            f"Please try again in *{wait_for}*."
+        )
         if lang == "MS":
-            lock_msg = "Terlalu banyak cubaan pengesahan. Sila cuba lagi kemudian."
+            lock_msg = (
+                "⛔ *Pengesahan Dikunci Sementara*\n"
+                "Terlalu banyak cubaan dikesan.\n"
+                f"Sila cuba lagi dalam *{wait_for}*."
+            )
         await update.message.reply_text(
-            f"{lock_msg} ({retry_after}s)",
+            lock_msg,
+            parse_mode="Markdown",
             reply_markup=keyboards.get_main_menu(lang),
         )
         return ConversationHandler.END
