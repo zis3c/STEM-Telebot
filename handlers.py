@@ -344,12 +344,14 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         wait_for = _format_duration(retry_after)
         lock_msg = (
             "⛔ *Verification Temporarily Locked*\n"
+            "\n"
             "Too many attempts were detected.\n"
             f"Please try again in *{wait_for}*."
         )
         if lang == "MS":
             lock_msg = (
                 "⛔ *Pengesahan Dikunci Sementara*\n"
+                "\n"
                 "Terlalu banyak cubaan dikesan.\n"
                 f"Sila cuba lagi dalam *{wait_for}*."
             )
