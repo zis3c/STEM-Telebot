@@ -754,6 +754,16 @@ async def main():
         register_date = esc(payload.get("register_date", "-"))
         expired_date = esc(payload.get("expired_date", "-"))
         generated_at = esc(payload.get("generated_at", "-"))
+        status_raw = str(payload.get("status", "Verified")).strip().lower()
+        if "expired" in status_raw:
+            badge_class = "expired"
+            badge_text = "EXPIRED"
+        elif "pending" in status_raw:
+            badge_class = "pending"
+            badge_text = "PENDING"
+        else:
+            badge_class = "verified"
+            badge_text = "VERIFIED"
 
         favicon_tag = ""
         logo_src = ""
@@ -780,11 +790,11 @@ async def main():
   <style>
     :root {{
       --bg: #0b1325;
-      --panel: #f0c779;
-      --panel-2: #dfae56;
-      --line: rgba(255, 233, 188, 0.8);
-      --text: #111827;
-      --muted: #475569;
+      --panel: #223f84;
+      --panel-2: #162d61;
+      --line: rgba(255, 229, 176, 0.42);
+      --text: #eef4ff;
+      --muted: #bfd0f6;
       --blue: #213e80;
       --gold: #cc912b;
       --ok: #22c55e;
@@ -795,10 +805,7 @@ async def main():
       margin: 0;
       font-family: "Inter", "Segoe UI", Arial, sans-serif;
       color: var(--text);
-      background:
-        radial-gradient(900px 500px at 100% -12%, rgba(33, 62, 128, 0.18), transparent 65%),
-        radial-gradient(760px 440px at -8% 0%, rgba(204, 145, 43, 0.12), transparent 62%),
-        var(--bg);
+      background: #000000;
       min-height: 100vh;
       padding: 24px 14px;
     }}
@@ -810,13 +817,13 @@ async def main():
       place-items: center;
     }}
     .card {{
-      width: min(100%, 360px);
-      aspect-ratio: 63 / 100;
+      width: min(100%, 640px);
+      aspect-ratio: 1.586;
       border: 1px solid var(--line);
       background:
-        radial-gradient(420px 260px at 90% -12%, rgba(255, 251, 238, 0.35), transparent 62%),
-        radial-gradient(320px 240px at -8% 108%, rgba(33, 62, 128, 0.18), transparent 66%),
-        linear-gradient(165deg, var(--panel), var(--panel-2));
+        radial-gradient(420px 300px at var(--g1x, 15%) var(--g1y, 20%), rgba(33, 62, 128, 0.96), transparent 64%),
+        radial-gradient(440px 300px at var(--g2x, 85%) var(--g2y, 78%), rgba(204, 145, 43, 0.82), transparent 66%),
+        linear-gradient(145deg, #1a3268 0%, #27498f 38%, #cc912b 100%);
       border-radius: 22px;
       box-shadow: var(--shadow);
       overflow: hidden;
@@ -824,6 +831,26 @@ async def main():
       transition: transform 0.15s ease;
       display: flex;
       flex-direction: column;
+      position: relative;
+      isolation: isolate;
+    }}
+    .card::before {{
+      content: "";
+      position: absolute;
+      inset: -20%;
+      z-index: -1;
+      background:
+        radial-gradient(50% 46% at 20% 24%, rgba(33, 62, 128, 0.6), transparent 70%),
+        radial-gradient(50% 46% at 80% 74%, rgba(204, 145, 43, 0.55), transparent 72%);
+      filter: blur(18px);
+      opacity: 0.9;
+      animation: bankAura 9s ease-in-out infinite alternate;
+      pointer-events: none;
+    }}
+    @keyframes bankAura {{
+      0% {{ transform: translate3d(-2%, -1%, 0) scale(1); }}
+      50% {{ transform: translate3d(1%, 2%, 0) scale(1.03); }}
+      100% {{ transform: translate3d(2%, -1%, 0) scale(1.01); }}
     }}
     .top {{
       padding: 16px 16px 12px;
@@ -839,25 +866,37 @@ async def main():
       height: 46px;
       border-radius: 10px;
       object-fit: cover;
-      border: 1px solid rgba(33, 62, 128, 0.28);
-      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(255, 229, 176, 0.42);
+      background: rgba(255, 255, 255, 0.12);
     }}
     .title {{
       margin: 0;
       font-weight: 800;
       font-size: clamp(18px, 3.5vw, 24px);
       letter-spacing: -0.02em;
-      color: #12244a;
+      color: #f8fbff;
     }}
     .badge {{
-      border: 1px solid rgba(33, 62, 128, 0.3);
-      background: rgba(33, 62, 128, 0.14);
-      color: #102247;
       border-radius: 999px;
       padding: 7px 10px;
       font-size: 11px;
       font-weight: 700;
       white-space: nowrap;
+    }}
+    .badge.verified {{
+      border: 1px solid rgba(34, 197, 94, 0.55);
+      background: rgba(34, 197, 94, 0.2);
+      color: #bbf7d0;
+    }}
+    .badge.pending {{
+      border: 1px solid rgba(250, 204, 21, 0.55);
+      background: rgba(250, 204, 21, 0.22);
+      color: #fef08a;
+    }}
+    .badge.expired {{
+      border: 1px solid rgba(239, 68, 68, 0.55);
+      background: rgba(239, 68, 68, 0.22);
+      color: #fecaca;
     }}
     .body {{
       padding: 14px 16px 16px;
@@ -867,30 +906,30 @@ async def main():
     }}
     .id-row {{
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr auto;
       gap: 8px;
       margin-bottom: 14px;
     }}
     .id {{
       font-size: 14px;
-      border: 1px solid rgba(33, 62, 128, 0.24);
+      border: 1px solid rgba(255, 229, 176, 0.34);
       border-radius: 10px;
       padding: 10px 11px;
-      background: rgba(9, 20, 45, 0.84);
-      color: #e5efff;
+      background: rgba(255, 255, 255, 0.1);
+      color: #f4f8ff;
       overflow-wrap: anywhere;
     }}
     .btn {{
-      border: 1px solid rgba(9, 20, 45, 0.55);
-      background: rgba(9, 20, 45, 0.86);
-      color: #e2ebff;
+      border: 1px solid rgba(255, 229, 176, 0.44);
+      background: rgba(204, 145, 43, 0.2);
+      color: #fff2d5;
       border-radius: 10px;
       padding: 8px 10px;
       font-family: inherit;
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
-      justify-self: start;
+      justify-self: end;
     }}
     .btn:hover {{ filter: brightness(1.08); }}
     .grid {{
@@ -899,14 +938,14 @@ async def main():
       gap: 8px;
     }}
     .item {{
-      border: 1px solid rgba(33, 62, 128, 0.24);
+      border: 1px solid rgba(255, 229, 176, 0.3);
       border-radius: 10px;
       padding: 9px 10px;
-      background: rgba(9, 20, 45, 0.78);
+      background: rgba(255, 255, 255, 0.08);
     }}
     .item.full {{ grid-column: 1 / -1; }}
     .label {{
-      color: #93a6c7;
+      color: #bcd0f1;
       font-size: 10px;
       font-weight: 600;
       text-transform: uppercase;
@@ -923,13 +962,21 @@ async def main():
     .foot {{
       margin-top: auto;
       padding-top: 10px;
-      color: #3f4754;
+      color: #b8c8e9;
       font-size: 11px;
       display: flex;
       justify-content: space-between;
       gap: 10px;
       flex-wrap: wrap;
-      border-top: 1px dashed rgba(33, 62, 128, 0.28);
+      border-top: 1px dashed rgba(255, 229, 176, 0.32);
+    }}
+    #confettiCanvas {{
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 20;
     }}
     .toast {{
       position: fixed;
@@ -948,7 +995,13 @@ async def main():
     }}
     .toast.show {{ opacity: 1; transform: translateY(0); }}
     @media (max-width: 760px) {{
-      .card {{ width: min(100%, 350px); }}
+      .card {{
+        width: min(100%, 390px);
+        aspect-ratio: 0.9;
+      }}
+      .id-row {{ grid-template-columns: 1fr; }}
+      .btn {{ justify-self: start; }}
+      .grid {{ grid-template-columns: 1fr; }}
       .logo {{ width: 40px; height: 40px; }}
     }}
   </style>
@@ -961,7 +1014,7 @@ async def main():
           <img class="logo" src="{logo_src}" alt="STEM Logo" />
           <h1 class="title">Membership Profile Card</h1>
         </div>
-        <div class="badge">VERIFIED</div>
+        <div class="badge {badge_class}">{badge_text}</div>
       </section>
       <section class="body">
         <div class="id-row">
@@ -997,9 +1050,11 @@ async def main():
       </section>
     </article>
   </div>
+  <canvas id="confettiCanvas"></canvas>
   <div class="toast" id="toast">Copied</div>
   <script>
     const membershipId = {membership_id!r};
+    const confettiKey = {f"stem_profile_confetti_{token}"!r};
     const copyBtn = document.getElementById('copyIdBtn');
     const toast = document.getElementById('toast');
     const card = document.getElementById('profileCard');
@@ -1031,6 +1086,84 @@ async def main():
     card.addEventListener('mouseleave', () => {{
       card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg)';
     }});
+
+    const gradientMotion = (() => {{
+      let t = 0;
+      const seedA = Math.random() * Math.PI * 2;
+      const seedB = Math.random() * Math.PI * 2;
+      const tick = () => {{
+        t += 0.0052;
+        const g1x = 20 + Math.sin(t + seedA) * 12 + Math.sin(t * 0.45) * 4;
+        const g1y = 24 + Math.cos(t * 0.8 + seedB) * 11;
+        const g2x = 80 + Math.cos(t * 0.9 + seedA) * 10;
+        const g2y = 76 + Math.sin(t * 0.7 + seedB) * 9;
+        card.style.setProperty('--g1x', `${{g1x.toFixed(2)}}%`);
+        card.style.setProperty('--g1y', `${{g1y.toFixed(2)}}%`);
+        card.style.setProperty('--g2x', `${{g2x.toFixed(2)}}%`);
+        card.style.setProperty('--g2y', `${{g2y.toFixed(2)}}%`);
+        requestAnimationFrame(tick);
+      }};
+      requestAnimationFrame(tick);
+    }})();
+
+    const runConfetti = () => {{
+      const canvas = document.getElementById('confettiCanvas');
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const resize = () => {{
+        canvas.width = Math.floor(window.innerWidth * dpr);
+        canvas.height = Math.floor(window.innerHeight * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }};
+      resize();
+      window.addEventListener('resize', resize, {{ passive: true }});
+
+      const pieces = Array.from({{ length: 120 }}, (_, i) => ({{
+        x: Math.random() * window.innerWidth,
+        y: -20 - Math.random() * window.innerHeight * 0.3,
+        w: 6 + Math.random() * 8,
+        h: 8 + Math.random() * 10,
+        vy: 2 + Math.random() * 3.4,
+        vx: -1.2 + Math.random() * 2.4,
+        r: Math.random() * Math.PI,
+        vr: -0.2 + Math.random() * 0.4,
+        c: i % 2 ? '#cc912b' : '#213e80',
+      }}));
+
+      const start = performance.now();
+      const duration = 2600;
+      const tick = (t) => {{
+        const elapsed = t - start;
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        for (const p of pieces) {{
+          p.x += p.vx;
+          p.y += p.vy;
+          p.r += p.vr;
+          p.vy += 0.015;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.r);
+          ctx.fillStyle = p.c;
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          ctx.restore();
+        }}
+        if (elapsed < duration) {{
+          requestAnimationFrame(tick);
+        }} else {{
+          ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+          canvas.remove();
+        }}
+      }};
+      requestAnimationFrame(tick);
+    }};
+
+    if (!localStorage.getItem(confettiKey)) {{
+      runConfetti();
+      localStorage.setItem(confettiKey, '1');
+    }} else {{
+      const canvas = document.getElementById('confettiCanvas');
+      if (canvas) canvas.remove();
+    }}
   </script>
 </body>
 </html>"""

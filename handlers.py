@@ -567,6 +567,7 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                                         "program": db_prog_short,
                                         "register_date": register_date,
                                         "expired_date": expired_date,
+                                        "status": "Verified",
                                         "generated_at": datetime.now(KL_TZ).strftime("%Y-%m-%d %H:%M:%S"),
                                         "lang": lang,
                                     }
