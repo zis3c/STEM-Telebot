@@ -234,3 +234,14 @@ If successful, you will see `Bot is polling...` in the console.
     ```
 
 **Done! Your bot is live on DigitalOcean.**
+
+---
+
+## Web Report Templates (Quick Reference)
+
+The bot now uses separate Python template modules for web report UIs:
+
+- membership_card_template.py for membership profile card pages
+- demographic_stats_template.py for demographic dashboard pages
+
+Edit these files when changing web UI design instead of placing long HTML blocks directly in `bot.py`.

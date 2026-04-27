@@ -76,3 +76,12 @@ journalctl -u stem-telebot -n 100 --no-pager
 - Use a dedicated deploy key (do not reuse personal keys).
 - Rotate deploy key immediately if exposed.
 - Restrict sudoers scope to only required `systemctl` commands.
+
+## Template Files In Deployment
+
+Web report templates are deployed together with app code:
+
+- `membership_card_template.py`
+- `demographic_stats_template.py`
+
+Ensure these files are committed whenever web report UI changes are made.

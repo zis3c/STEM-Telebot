@@ -114,9 +114,17 @@ STEM-Telebot/
 |- keyboards.py          # Reply/Inline keyboard layouts
 |- strings.py            # User-facing text (EN/MS)
 |- states.py             # Conversation flow state constants
+|- demographic_stats_template.py # Web demographic dashboard HTML template
+|- membership_card_template.py   # Web membership card HTML template
 |- google_apps_script.js # Optional sheet automation helper
 `- requirements.txt      # Project dependencies
 ```
+
+## Web UI Templates
+
+- Membership web card UI is rendered from `membership_card_template.py`.
+- Demographic web dashboard UI is rendered from `demographic_stats_template.py`.
+- `bot.py` now calls these template modules to keep the main file cleaner and easier to maintain.
 
 ## Commands
 

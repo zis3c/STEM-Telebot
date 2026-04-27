@@ -58,6 +58,7 @@ def render_membership_card(
       border-radius:20px;
       overflow:hidden;
       transform-style:preserve-3d;
+      transform-origin:center center;
       touch-action:none;
       background:linear-gradient(145deg,#0f1b38 0%,#142042 40%,#17244a 100%);
       border:1px solid rgba(148,163,184,0.12);
@@ -359,47 +360,63 @@ def render_membership_card(
     document.getElementById('copyBtn').addEventListener('click', copy);
     document.getElementById('mobileCopyBtn').addEventListener('click', copy);
 
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!reduceMotion) {{
-      const maxTilt = 12;
-      const setTilt = (clientX, clientY) => {{
-        const rect = card.getBoundingClientRect();
-        if (!rect.width || !rect.height) return;
-        const x = (clientX - rect.left) / rect.width;
-        const y = (clientY - rect.top) / rect.height;
-        const cx = Math.max(0, Math.min(1, x));
-        const cy = Math.max(0, Math.min(1, y));
-        const rx = (0.5 - cy) * maxTilt;
-        const ry = (cx - 0.5) * maxTilt;
-        card.classList.add('tilt');
-        card.style.transform = `perspective(1200px) rotateX(${{rx.toFixed(2)}}deg) rotateY(${{ry.toFixed(2)}}deg) scale(1.01)`;
-      }};
-      const resetTilt = () => {{
-        card.classList.remove('tilt');
-        card.style.transform = 'perspective(1200px) rotateX(0deg) rotateY(0deg) scale(1)';
-      }};
+    const maxTilt = 8;
+    const setTilt = (clientX, clientY) => {{
+      const rect = card.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const x = (clientX - rect.left) / rect.width;
+      const y = (clientY - rect.top) / rect.height;
+      const cx = Math.max(0, Math.min(1, x));
+      const cy = Math.max(0, Math.min(1, y));
+      const rx = (0.5 - cy) * maxTilt;
+      const ry = (cx - 0.5) * maxTilt;
+      card.classList.add('tilt');
+      card.style.transform = `perspective(1200px) rotateX(${{rx.toFixed(2)}}deg) rotateY(${{ry.toFixed(2)}}deg) scale(1.008)`;
+    }};
+    const resetTilt = () => {{
+      card.classList.remove('tilt');
+      card.style.transform = 'perspective(1200px) rotateX(0deg) rotateY(0deg) scale(1)';
+    }};
 
-      if ('PointerEvent' in window) {{
-        card.addEventListener('pointermove', (e) => {{
-          setTilt(e.clientX, e.clientY);
-        }});
-        card.addEventListener('pointerleave', resetTilt);
-        card.addEventListener('pointercancel', resetTilt);
-      }} else {{
-        card.addEventListener('mousemove', (e) => setTilt(e.clientX, e.clientY));
-        card.addEventListener('mouseleave', resetTilt);
-      }}
-
-      // Extra fallbacks for webviews/browsers that behave inconsistently.
+    if ('PointerEvent' in window) {{
+      let dragging = false;
+      card.addEventListener('pointerdown', (e) => {{
+        dragging = true;
+        setTilt(e.clientX, e.clientY);
+      }});
+      card.addEventListener('pointermove', (e) => {{
+        if (dragging || e.pointerType === 'mouse') setTilt(e.clientX, e.clientY);
+      }});
+      card.addEventListener('pointerup', () => {{
+        dragging = false;
+        resetTilt();
+      }});
+      card.addEventListener('pointerleave', () => {{
+        dragging = false;
+        resetTilt();
+      }});
+      card.addEventListener('pointercancel', () => {{
+        dragging = false;
+        resetTilt();
+      }});
+    }} else {{
       card.addEventListener('mousemove', (e) => setTilt(e.clientX, e.clientY));
-      card.addEventListener('touchmove', (e) => {{
-        if (!e.touches || !e.touches.length) return;
-        const t = e.touches[0];
-        setTilt(t.clientX, t.clientY);
-      }}, {{ passive: true }});
-      card.addEventListener('touchend', resetTilt, {{ passive: true }});
-      card.addEventListener('touchcancel', resetTilt, {{ passive: true }});
+      card.addEventListener('mouseleave', resetTilt);
     }}
+
+    // Legacy fallback for stricter webviews.
+    card.addEventListener('touchstart', (e) => {{
+      if (!e.touches || !e.touches.length) return;
+      const t = e.touches[0];
+      setTilt(t.clientX, t.clientY);
+    }}, {{ passive: true }});
+    card.addEventListener('touchmove', (e) => {{
+      if (!e.touches || !e.touches.length) return;
+      const t = e.touches[0];
+      setTilt(t.clientX, t.clientY);
+    }}, {{ passive: true }});
+    card.addEventListener('touchend', resetTilt, {{ passive: true }});
+    card.addEventListener('touchcancel', resetTilt, {{ passive: true }});
   </script>
 </body>
 </html>"""

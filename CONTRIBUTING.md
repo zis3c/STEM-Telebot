@@ -33,3 +33,11 @@ When modifying `database.py` or `admin.py`, strictly adhere to the 18-column str
 
 ## License
 By contributing, you agree that your contributions will be licensed under the MIT License.
+
+## Web UI Contribution Notes
+
+When updating web output pages, edit template modules instead of putting large HTML blocks in `bot.py`:
+
+- membership_card_template.py (membership card page)
+- demographic_stats_template.py (demographic stats page)
+

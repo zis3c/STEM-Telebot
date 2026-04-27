@@ -26,3 +26,7 @@ We take security seriously. If you discover a vulnerability, please follow these
 3.  Include details about the vulnerability and steps to reproduce.
 
 We will acknowledge your report within 48 hours and work on a fix.
+
+## Web Template Safety
+
+Web report pages are rendered through template modules (membership_card_template.py and demographic_stats_template.py). Keep user-supplied values escaped/sanitized before rendering HTML.
