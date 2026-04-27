@@ -89,6 +89,7 @@ STRINGS = {
         
         # Admin - Keep English for Admins usually, but good to have structure
         'ADMIN_DASHBOARD': "*Admin Dashboard*\nSelect an action:",
+        'ADMIN_STATS_MENU_PROMPT': "*Statistics Menu*\nChoose a stats view:",
         'ADMIN_STATS': (
             "*Statistics ({stats_month_year})*\n\n"
             "New Applications: *{total_last_30}*\n"
@@ -98,16 +99,20 @@ STRINGS = {
             "Approval Rate: *{approval_rate}%*\n\n"
             "*Membership Expiry (1 Year Policy)*\n"
             "Expiring in Next 30 Days: *{expiring_next_30}*\n"
-            "Expired This Month: *{expired_this_month}*\n\n"
-            "*Registered This Month (Approved):* *{registered_current_month_count}*"
+            "Expired This Month: *{expired_this_month}*"
         ),
-        'ADMIN_STATS_DETAIL': (
-            "*Statistics Details ({stats_month_year})*\n\n"
-            "*Registered Members (Whole DB):* *{registered_current_month_count}*\n"
+        'ADMIN_STATS_REGISTRATION': (
+            "*Registration Stats ({stats_month_year})*\n\n"
+            "*Registered This Month (Approved):* *{registered_current_month_count}*\n"
             "{registered_current_month_list}\n\n"
-            "*Course Mix (% of Registered Members, n={demographic_total})*\n"
+            "New Applications (Last 30 Days): *{total_last_30}*"
+        ),
+        'ADMIN_STATS_DEMOGRAPHIC': (
+            "*Demographic Stats ({stats_month_year})*\n\n"
+            "*Registered Members (Whole DB):* *{demographic_total}*\n\n"
+            "*Course Mix (% of Registered Members)*\n"
             "{course_breakdown}\n\n"
-            "*Year of Birth Mix (% of Registered Members, n={demographic_total})*\n"
+            "*Year of Birth Mix (% of Registered Members)*\n"
             "{birth_year_breakdown}"
         ),
 
@@ -163,7 +168,8 @@ STRINGS = {
         'BTN_ADMIN_CHECK_PENDING': "Pending Reviews",
         'BTN_ADMIN_BROADCAST': "Broadcast",
         'BTN_ADMIN_STATS': "Stats",
-        'BTN_ADMIN_STATS_DETAIL': "Stats Details",
+        'BTN_ADMIN_STATS_REGISTRATION': "Current Month Registration",
+        'BTN_ADMIN_STATS_DEMOGRAPHIC': "Demographic Stats",
         'BTN_ADMIN_EXIT': "Exit Admin",
         
         'BTN_CONFIRM_YES': "Confirm Send",
@@ -265,6 +271,7 @@ STRINGS = {
         
         # Admin - Fallback to English often okay, but can translate
         'ADMIN_DASHBOARD': "*Admin Dashboard*\nPilih tindakan:",
+        'ADMIN_STATS_MENU_PROMPT': "*Menu Statistik*\nPilih paparan statistik:",
         'ADMIN_STATS': (
             "*Statistik ({stats_month_year})*\n\n"
             "Permohonan Baharu: *{total_last_30}*\n"
@@ -274,16 +281,20 @@ STRINGS = {
             "Kadar Kelulusan: *{approval_rate}%*\n\n"
             "*Tamat Keahlian (Polisi 1 Tahun)*\n"
             "Akan Tamat Dalam 30 Hari: *{expiring_next_30}*\n"
-            "Sudah Tamat Bulan Ini: *{expired_this_month}*\n\n"
-            "*Berdaftar Bulan Ini (Lulus):* *{registered_current_month_count}*"
+            "Sudah Tamat Bulan Ini: *{expired_this_month}*"
         ),
-        'ADMIN_STATS_DETAIL': (
-            "*Butiran Statistik ({stats_month_year})*\n\n"
-            "*Jumlah Ahli Berdaftar (Keseluruhan DB):* *{registered_current_month_count}*\n"
+        'ADMIN_STATS_REGISTRATION': (
+            "*Statistik Pendaftaran ({stats_month_year})*\n\n"
+            "*Berdaftar Bulan Ini (Lulus):* *{registered_current_month_count}*\n"
             "{registered_current_month_list}\n\n"
-            "*Peratus Kursus (Ahli Berdaftar, n={demographic_total})*\n"
+            "Permohonan Baharu (30 Hari): *{total_last_30}*"
+        ),
+        'ADMIN_STATS_DEMOGRAPHIC': (
+            "*Statistik Demografi ({stats_month_year})*\n\n"
+            "*Jumlah Ahli Berdaftar (Keseluruhan DB):* *{demographic_total}*\n\n"
+            "*Peratus Kursus (Ahli Berdaftar)*\n"
             "{course_breakdown}\n\n"
-            "*Peratus Tahun Lahir (Ahli Berdaftar, n={demographic_total})*\n"
+            "*Peratus Tahun Lahir (Ahli Berdaftar)*\n"
             "{birth_year_breakdown}"
         ),
 
@@ -318,7 +329,8 @@ STRINGS = {
         'BTN_ADMIN_CHECK_PENDING': "Semakan Tertunda",
         'BTN_ADMIN_BROADCAST': "Hebahan",
         'BTN_ADMIN_STATS': "Statistik",
-        'BTN_ADMIN_STATS_DETAIL': "Butiran Statistik",
+        'BTN_ADMIN_STATS_REGISTRATION': "Pendaftaran Bulan Semasa",
+        'BTN_ADMIN_STATS_DEMOGRAPHIC': "Statistik Demografi",
         'BTN_ADMIN_EXIT': "Keluar Admin",
         
         'BTN_SA_MAINTENANCE': "Mod Penyelenggaraan",

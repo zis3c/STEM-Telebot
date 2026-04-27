@@ -3,6 +3,7 @@
     ASK_MATRIC,
     ASK_IC,
     ADMIN_MENU,
+    ADMIN_STATS_MENU,
     ADMIN_MANAGE,
     DEL_MATRIC,
     SEARCH_MODE,
@@ -13,4 +14,4 @@
     SUPER_ADMIN_MANAGE,
     SUPER_ADD_ID,
     SUPER_DEL_ID
-) = range(13)
+) = range(14)

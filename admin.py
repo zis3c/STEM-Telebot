@@ -74,92 +74,98 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return states.ADMIN_MENU
 
+def _escape_md(text):
+    return str(text).replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
+
+
+def _format_distribution(items, max_items=8, normalize_program=False):
+    if not items:
+        return "-"
+    lines = []
+    for item in items[:max_items]:
+        label = item.get("label", "Unknown")
+        if normalize_program:
+            label = strings.format_program_short(label)
+        label = _escape_md(label)
+        lines.append(f"- {label}: *{item.get('pct', 0)}%* ({item.get('count', 0)})")
+    if len(items) > max_items:
+        lines.append(f"_...and {len(items) - max_items} more._")
+    return "\n".join(lines)
+
+
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
-    try:
-        data = await run_db_call(db.get_stats)
-        stats_month_year = datetime.now().strftime("%B %Y")
+    await update.message.reply_text(
+        strings.get('ADMIN_STATS_MENU_PROMPT', lang),
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_admin_stats_menu(lang),
+    )
+    return states.ADMIN_STATS_MENU
 
-        await update.message.reply_text(
-            strings.get('ADMIN_STATS', lang).format(
-                stats_month_year=stats_month_year,
-                total_last_30=data['total_last_30'],
-                approved_last_30=data['approved_last_30'],
-                rejected_last_30=data['rejected_last_30'],
-                pending_current=data['pending_current'],
-                approval_rate=data['approval_rate'],
-                expiring_next_30=data['expiring_next_30'],
-                expired_this_month=data['expired_this_month'],
-                registered_current_month_count=data['registered_current_month_count'],
-            ), 
-            parse_mode="Markdown",
-            reply_markup=keyboards.get_admin_menu(lang)
-        )
-    except Exception as e:
-        logger.error(e)
-        await update.message.reply_text(strings.get('ERR_DB_CONNECTION', lang))
-    return states.ADMIN_MENU
 
-async def stats_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def stats_registration(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     try:
         data = await run_db_call(db.get_stats)
         stats_month_year = datetime.now().strftime("%B %Y")
 
-        def escape_md(text):
-            return str(text).replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
-
-        def format_distribution(items, max_items=8, normalize_program=False):
-            if not items:
-                return "-"
-            lines = []
-            for item in items[:max_items]:
-                label = item.get("label", "Unknown")
-                if normalize_program:
-                    label = strings.format_program_short(label)
-                label = escape_md(label)
-                lines.append(f"- {label}: *{item.get('pct', 0)}%* ({item.get('count', 0)})")
-            if len(items) > max_items:
-                lines.append(f"_...and {len(items) - max_items} more._")
-            return "\n".join(lines)
-
-        month_names = data.get('registered_all_names', [])
+        month_names = data.get('registered_current_month_names', [])
         max_listed_names = 20
         if month_names:
-            listed = [f"- {escape_md(name)}" for name in month_names[:max_listed_names]]
+            listed = [f"- {_escape_md(name)}" for name in month_names[:max_listed_names]]
             if len(month_names) > max_listed_names:
                 listed.append(f"_...and {len(month_names) - max_listed_names} more._")
             registered_current_month_list = "\n".join(listed)
         else:
             registered_current_month_list = "-"
 
-        course_breakdown = format_distribution(
+        await update.message.reply_text(
+            strings.get('ADMIN_STATS_REGISTRATION', lang).format(
+                stats_month_year=stats_month_year,
+                registered_current_month_count=data.get('registered_current_month_count', 0),
+                registered_current_month_list=registered_current_month_list,
+                total_last_30=data.get('total_last_30', 0),
+            ),
+            parse_mode="Markdown",
+            reply_markup=keyboards.get_admin_stats_menu(lang),
+        )
+    except Exception as e:
+        logger.error(e)
+        await update.message.reply_text(strings.get('ERR_DB_CONNECTION', lang))
+    return states.ADMIN_STATS_MENU
+
+
+async def stats_demographic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    lang = get_user_lang(context)
+    try:
+        data = await run_db_call(db.get_stats)
+        stats_month_year = datetime.now().strftime("%B %Y")
+
+        course_breakdown = _format_distribution(
             data.get("course_distribution", []),
             max_items=8,
             normalize_program=True,
         )
-        birth_year_breakdown = format_distribution(
+        birth_year_breakdown = _format_distribution(
             data.get("birth_year_distribution", []),
             max_items=8,
             normalize_program=False,
         )
 
         await update.message.reply_text(
-            strings.get('ADMIN_STATS_DETAIL', lang).format(
+            strings.get('ADMIN_STATS_DEMOGRAPHIC', lang).format(
                 stats_month_year=stats_month_year,
-                registered_current_month_count=data.get('registered_all_count', 0),
-                registered_current_month_list=registered_current_month_list,
                 demographic_total=data.get('demographic_total', 0),
                 course_breakdown=course_breakdown,
                 birth_year_breakdown=birth_year_breakdown,
             ),
             parse_mode="Markdown",
-            reply_markup=keyboards.get_admin_menu(lang)
+            reply_markup=keyboards.get_admin_stats_menu(lang),
         )
     except Exception as e:
         logger.error(e)
         await update.message.reply_text(strings.get('ERR_DB_CONNECTION', lang))
-    return states.ADMIN_MENU
+    return states.ADMIN_STATS_MENU
 
 async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """List all pending members requiring admin review."""
