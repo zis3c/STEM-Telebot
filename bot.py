@@ -24,6 +24,7 @@ import handlers
 import states
 import strings
 import superadmin
+import stats_web
 
 # --- CONFIGURATION ---
 TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -401,10 +402,104 @@ async def main():
         status = "Alive" if app_ready.is_set() else "Starting"
         return web.Response(text=status)
 
+    async def demographic_report(request):
+        token = request.match_info.get("token", "").strip()
+        payload, err = stats_web.read_demographic_report(token)
+        if err or not payload:
+            return web.Response(status=404, text="Report link is invalid or expired.")
+
+        import json
+        course = payload.get("course_distribution", [])
+        birth = payload.get("birth_year_distribution", [])
+        stats_month_year = str(payload.get("stats_month_year", "-"))
+        generated_at = str(payload.get("generated_at", "-"))
+        total = int(payload.get("demographic_total", 0))
+
+        course_labels = [str(item.get("label", "Unknown")) for item in course]
+        course_vals = [float(item.get("pct", 0.0)) for item in course]
+        birth_labels = [str(item.get("label", "Unknown")) for item in birth]
+        birth_vals = [float(item.get("pct", 0.0)) for item in birth]
+
+        html = f"""<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demographic Report</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {{ font-family: Inter, Segoe UI, Arial, sans-serif; margin: 0; background: #f4f6fb; color: #111827; }}
+    .wrap {{ max-width: 980px; margin: 24px auto; padding: 0 16px; }}
+    .card {{ background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(17,24,39,.08); padding: 18px; margin-bottom: 16px; }}
+    h1 {{ margin: 0 0 6px; font-size: 26px; }}
+    .meta {{ color: #6b7280; font-size: 14px; }}
+    .grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }}
+    @media (max-width: 860px) {{ .grid {{ grid-template-columns: 1fr; }} }}
+    canvas {{ width: 100% !important; height: 420px !important; }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Demographic Statistics</h1>
+      <div class="meta">Period: {stats_month_year} • Total Members: {total} • Generated: {generated_at}</div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3>Course Distribution (%)</h3>
+        <canvas id="courseChart"></canvas>
+      </div>
+      <div class="card">
+        <h3>Year of Birth Distribution (%)</h3>
+        <canvas id="birthChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <script>
+    const courseLabels = {json.dumps(course_labels)};
+    const courseValues = {json.dumps(course_vals)};
+    const birthLabels = {json.dumps(birth_labels)};
+    const birthValues = {json.dumps(birth_vals)};
+
+    const sharedOpts = {{
+      responsive: true,
+      plugins: {{
+        legend: {{ position: 'bottom' }},
+        tooltip: {{
+          callbacks: {{
+            label: (ctx) => `${{ctx.label}}: ${{ctx.formattedValue}}%`
+          }}
+        }}
+      }}
+    }};
+
+    new Chart(document.getElementById('courseChart'), {{
+      type: 'pie',
+      data: {{
+        labels: courseLabels,
+        datasets: [{{ data: courseValues }}]
+      }},
+      options: sharedOpts
+    }});
+
+    new Chart(document.getElementById('birthChart'), {{
+      type: 'pie',
+      data: {{
+        labels: birthLabels,
+        datasets: [{{ data: birthValues }}]
+      }},
+      options: sharedOpts
+    }});
+  </script>
+</body>
+</html>"""
+        return web.Response(text=html, content_type="text/html")
+
     app = web.Application()
     app.router.add_post("/telegram", telegram_webhook)
     app.router.add_get("/", health)
     app.router.add_get("/health", health)
+    app.router.add_get("/stats/demographic/{token}", demographic_report)
 
     runner = web.AppRunner(app)
     await runner.setup()

@@ -105,7 +105,7 @@ STRINGS = {
             "*Current Month Registration ({stats_month_year})*\n\n"
             "*Approved This Month:* *{registered_current_month_count}*\n"
             "*New Applications (Last 30 Days):* *{total_last_30}*\n\n"
-            "*Recent Approved Members*\n"
+            "*Recent Approved Members*\n\n"
             "{registered_current_month_list}\n\n"
             "{more_note}"
         ),
@@ -290,7 +290,7 @@ STRINGS = {
             "*Statistik Pendaftaran ({stats_month_year})*\n\n"
             "*Lulus Bulan Ini:* *{registered_current_month_count}*\n"
             "*Permohonan Baharu (30 Hari):* *{total_last_30}*\n\n"
-            "*Senarai Ahli Lulus Terkini*\n"
+            "*Senarai Ahli Lulus Terkini*\n\n"
             "{registered_current_month_list}\n\n"
             "{more_note}"
         ),
