@@ -41,6 +41,9 @@ def create_demographic_report(payload: dict, ttl_seconds: int = 900) -> str:
     token = f"{signed}.{sig}"
     with _LOCK:
         _cleanup_expired(now)
+        # Security/UX policy: only the latest generated report link remains valid.
+        # This ensures older links expire immediately once a new report is generated.
+        _REPORTS.clear()
         _REPORTS[nonce] = {
             "exp": exp,
             "payload": payload,
