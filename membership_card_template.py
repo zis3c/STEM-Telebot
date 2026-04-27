@@ -45,12 +45,19 @@ def render_membership_card(
       pointer-events:none;z-index:0;
     }}
 
-    .scene{{position:relative;z-index:1;width:100%;max-width:480px}}
+    .scene{{
+      position:relative;
+      z-index:1;
+      width:100%;
+      max-width:480px;
+      perspective:1200px;
+    }}
 
     .card{{
       position:relative;
       border-radius:20px;
       overflow:hidden;
+      transform-style:preserve-3d;
       background:linear-gradient(145deg,#0f1b38 0%,#142042 40%,#17244a 100%);
       border:1px solid rgba(148,163,184,0.12);
       box-shadow:
@@ -58,6 +65,13 @@ def render_membership_card(
         0 12px 40px rgba(0,0,0,0.5),
         inset 0 1px 0 rgba(255,255,255,0.04);
       aspect-ratio:auto;
+      transition:transform .22s ease, box-shadow .22s ease;
+    }}
+    .card.tilt{{
+      box-shadow:
+        0 10px 22px rgba(0,0,0,0.34),
+        0 24px 60px rgba(0,0,0,0.55),
+        inset 0 1px 0 rgba(255,255,255,0.05);
     }}
 
     .card::before{{
@@ -71,24 +85,31 @@ def render_membership_card(
     }}
 
     .card::after{{
-      content:'';position:absolute;inset:0;z-index:5;pointer-events:none;
+      content:'';
+      position:absolute;
+      top:-30%;
+      bottom:-30%;
+      left:-180%;
+      width:240%;
+      z-index:5;
+      pointer-events:none;
       background:linear-gradient(
         105deg,
-        transparent 38%,
-        rgba(255,255,255,0.06) 42%,
-        rgba(255,255,255,0.10) 50%,
-        rgba(255,255,255,0.06) 58%,
-        transparent 62%
+        transparent 44%,
+        rgba(255,255,255,0.04) 47%,
+        rgba(255,255,255,0.12) 50%,
+        rgba(255,255,255,0.04) 53%,
+        transparent 56%
       );
-      background-size:250% 100%;
-      animation:shimmer 9s ease-in-out infinite;
+      animation:shimmer 10s linear infinite;
+      will-change:transform;
     }}
     @keyframes shimmer{{
-      0%{{background-position:200% 0}}
-      100%{{background-position:-200% 0}}
+      0%{{transform:translateX(0)}}
+      100%{{transform:translateX(180%)}}
     }}
 
-    .card-inner{{position:relative;z-index:2;padding:24px 22px 20px}}
+    .card-inner{{position:relative;z-index:2;padding:24px 22px 20px;transform:translateZ(22px)}}
 
     .top-bar{{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}}
     .brand{{display:flex;align-items:center;gap:10px}}
@@ -199,6 +220,7 @@ def render_membership_card(
       padding:12px 22px;
       background:rgba(0,0,0,0.2);
       border-top:1px solid rgba(148,163,184,0.06);
+      transform:translateZ(14px);
     }}
     .footer-label{{
       font-size:10px;color:rgba(148,163,184,0.4);
@@ -245,6 +267,8 @@ def render_membership_card(
     .toast.show{{opacity:1;transform:translateX(-50%) translateY(0)}}
 
     @media(max-width:520px){{
+      .scene{{perspective:none}}
+      .card{{transform:none !important}}
       .card-inner{{padding:20px 18px 16px}}
       .card-footer{{padding:10px 18px}}
       .copy-btn{{opacity:1;top:auto;bottom:58px;right:18px;
@@ -322,6 +346,7 @@ def render_membership_card(
 
   <script>
     const mid = {membership_id!r};
+    const card = document.getElementById('memberCard');
     const show = (t) => {{
       const el = document.getElementById('toast');
       el.textContent = t;
@@ -334,6 +359,26 @@ def render_membership_card(
     }};
     document.getElementById('copyBtn').addEventListener('click', copy);
     document.getElementById('mobileCopyBtn').addEventListener('click', copy);
+
+    const canTilt = window.matchMedia('(hover: hover) and (pointer: fine)').matches
+      && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (canTilt) {{
+      const maxTilt = 7;
+      card.addEventListener('mousemove', (e) => {{
+        const rect = card.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        const rx = (0.5 - y) * maxTilt;
+        const ry = (x - 0.5) * maxTilt;
+        card.classList.add('tilt');
+        card.style.transform = `rotateX(${{rx.toFixed(2)}}deg) rotateY(${{ry.toFixed(2)}}deg)`;
+      }});
+      card.addEventListener('mouseleave', () => {{
+        card.classList.remove('tilt');
+        card.style.transform = 'rotateX(0deg) rotateY(0deg)';
+      }});
+    }}
   </script>
 </body>
 </html>"""
