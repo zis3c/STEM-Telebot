@@ -360,24 +360,34 @@ def render_membership_card(
     document.getElementById('copyBtn').addEventListener('click', copy);
     document.getElementById('mobileCopyBtn').addEventListener('click', copy);
 
-    const canTilt = window.matchMedia('(hover: hover) and (pointer: fine)').matches
-      && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (canTilt) {{
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduceMotion) {{
       const maxTilt = 7;
-      card.addEventListener('mousemove', (e) => {{
+      const setTilt = (clientX, clientY) => {{
         const rect = card.getBoundingClientRect();
-        const x = (e.clientX - rect.left) / rect.width;
-        const y = (e.clientY - rect.top) / rect.height;
+        const x = (clientX - rect.left) / rect.width;
+        const y = (clientY - rect.top) / rect.height;
         const rx = (0.5 - y) * maxTilt;
         const ry = (x - 0.5) * maxTilt;
         card.classList.add('tilt');
         card.style.transform = `rotateX(${{rx.toFixed(2)}}deg) rotateY(${{ry.toFixed(2)}}deg)`;
-      }});
-      card.addEventListener('mouseleave', () => {{
+      }};
+      const resetTilt = () => {{
         card.classList.remove('tilt');
         card.style.transform = 'rotateX(0deg) rotateY(0deg)';
-      }});
+      }};
+
+      if ('PointerEvent' in window) {{
+        card.addEventListener('pointermove', (e) => {{
+          if (e.pointerType && e.pointerType !== 'mouse') return;
+          setTilt(e.clientX, e.clientY);
+        }});
+        card.addEventListener('pointerleave', resetTilt);
+        card.addEventListener('pointercancel', resetTilt);
+      }} else {{
+        card.addEventListener('mousemove', (e) => setTilt(e.clientX, e.clientY));
+        card.addEventListener('mouseleave', resetTilt);
+      }}
     }}
   </script>
 </body>
