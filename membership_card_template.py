@@ -267,8 +267,6 @@ def render_membership_card(
     .toast.show{{opacity:1;transform:translateX(-50%) translateY(0)}}
 
     @media(max-width:520px){{
-      .scene{{perspective:none}}
-      .card{{transform:none !important}}
       .card-inner{{padding:20px 18px 16px}}
       .card-footer{{padding:10px 18px}}
       .copy-btn{{opacity:1;top:auto;bottom:58px;right:18px;
