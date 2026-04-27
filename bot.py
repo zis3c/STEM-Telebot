@@ -736,11 +736,291 @@ async def main():
 </html>"""
         return web.Response(text=html, content_type="text/html")
 
+    async def membership_profile_report(request):
+        token = request.match_info.get("token", "").strip()
+        payload, err = stats_web.read_member_profile_report(token)
+        if err or not payload:
+            return web.Response(status=404, text="Profile link is invalid or expired.")
+
+        import html as html_lib
+
+        def esc(value):
+            return html_lib.escape(str(value if value is not None else "-"), quote=True)
+
+        membership_id = esc(payload.get("membership_id", "-"))
+        name = esc(payload.get("name", "-"))
+        matric = esc(payload.get("matric", "-"))
+        program = esc(payload.get("program", "-"))
+        register_date = esc(payload.get("register_date", "-"))
+        expired_date = esc(payload.get("expired_date", "-"))
+        generated_at = esc(payload.get("generated_at", "-"))
+
+        favicon_tag = ""
+        logo_src = ""
+        logo_path = os.path.join(os.path.dirname(__file__), "logostem.png")
+        with suppress(Exception):
+            with open(logo_path, "rb") as logo_file:
+                logo_b64 = base64.b64encode(logo_file.read()).decode("ascii")
+                logo_src = f"data:image/png;base64,{logo_b64}"
+                favicon_tag = (
+                    '<link rel="icon" type="image/png" '
+                    f'href="{logo_src}" />'
+                )
+
+        html = f"""<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>STEM Membership Profile</title>
+  {favicon_tag}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {{
+      --bg: #0b1325;
+      --panel: #111c34;
+      --line: #22314f;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --blue: #213e80;
+      --gold: #cc912b;
+      --ok: #22c55e;
+      --shadow: 0 14px 34px rgba(2, 6, 23, 0.45);
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      font-family: "Inter", "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(900px 500px at 100% -12%, rgba(33, 62, 128, 0.18), transparent 65%),
+        radial-gradient(760px 440px at -8% 0%, rgba(204, 145, 43, 0.12), transparent 62%),
+        var(--bg);
+      min-height: 100vh;
+      padding: 24px 14px;
+    }}
+    .wrap {{ max-width: 860px; margin: 0 auto; }}
+    .card {{
+      border: 1px solid var(--line);
+      background: linear-gradient(160deg, rgba(17, 28, 52, 0.96), rgba(17, 28, 52, 0.92));
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transform-style: preserve-3d;
+      transition: transform 0.15s ease;
+    }}
+    .top {{
+      padding: 18px 18px 12px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }}
+    .title-wrap {{ display: flex; align-items: center; gap: 12px; }}
+    .logo {{
+      width: 46px;
+      height: 46px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.04);
+    }}
+    .title {{
+      margin: 0;
+      font-weight: 800;
+      font-size: clamp(20px, 4vw, 30px);
+      letter-spacing: -0.02em;
+    }}
+    .badge {{
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      background: rgba(34, 197, 94, 0.18);
+      color: #bbf7d0;
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }}
+    .body {{ padding: 16px 18px 18px; }}
+    .id-row {{
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 14px;
+    }}
+    .id {{
+      font-size: 15px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: rgba(23, 38, 67, 0.85);
+      color: #dbeafe;
+      overflow-wrap: anywhere;
+    }}
+    .btn {{
+      border: 1px solid rgba(33, 62, 128, 0.35);
+      background: rgba(33, 62, 128, 0.2);
+      color: #dbeafe;
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }}
+    .btn:hover {{ filter: brightness(1.08); }}
+    .grid {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }}
+    .item {{
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: rgba(23, 38, 67, 0.75);
+    }}
+    .item.full {{ grid-column: 1 / -1; }}
+    .label {{
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 5px;
+    }}
+    .value {{
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }}
+    .foot {{
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }}
+    .toast {{
+      position: fixed;
+      right: 14px;
+      bottom: 14px;
+      border: 1px solid rgba(204, 145, 43, 0.35);
+      background: rgba(204, 145, 43, 0.22);
+      color: #fde7ba;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: 0.2s ease;
+    }}
+    .toast.show {{ opacity: 1; transform: translateY(0); }}
+    @media (max-width: 760px) {{
+      .grid {{ grid-template-columns: 1fr; }}
+      .id-row {{ grid-template-columns: 1fr; }}
+      .logo {{ width: 40px; height: 40px; }}
+    }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <article class="card" id="profileCard">
+      <section class="top">
+        <div class="title-wrap">
+          <img class="logo" src="{logo_src}" alt="STEM Logo" />
+          <h1 class="title">Membership Profile Card</h1>
+        </div>
+        <div class="badge">VERIFIED</div>
+      </section>
+      <section class="body">
+        <div class="id-row">
+          <div class="id"><strong>Membership ID:</strong> {membership_id}</div>
+          <button class="btn" id="copyIdBtn" type="button">Copy ID</button>
+        </div>
+        <div class="grid">
+          <div class="item full">
+            <div class="label">Name</div>
+            <div class="value">{name}</div>
+          </div>
+          <div class="item">
+            <div class="label">Matric</div>
+            <div class="value">{matric}</div>
+          </div>
+          <div class="item">
+            <div class="label">Program</div>
+            <div class="value">{program}</div>
+          </div>
+          <div class="item">
+            <div class="label">Register Date</div>
+            <div class="value">{register_date}</div>
+          </div>
+          <div class="item">
+            <div class="label">Expired Date</div>
+            <div class="value">{expired_date}</div>
+          </div>
+        </div>
+        <div class="foot">
+          <span>Generated: {generated_at} (Asia/Kuala Lumpur)</span>
+          <span>Secure temporary profile link</span>
+        </div>
+      </section>
+    </article>
+  </div>
+  <div class="toast" id="toast">Copied</div>
+  <script>
+    const membershipId = {membership_id!r};
+    const copyBtn = document.getElementById('copyIdBtn');
+    const toast = document.getElementById('toast');
+    const card = document.getElementById('profileCard');
+
+    const showToast = (text) => {{
+      toast.textContent = text;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 1400);
+    }};
+
+    copyBtn.addEventListener('click', async () => {{
+      try {{
+        await navigator.clipboard.writeText(membershipId);
+        showToast('Membership ID copied');
+      }} catch {{
+        showToast('Copy failed');
+      }}
+    }});
+
+    const maxTilt = 3;
+    card.addEventListener('mousemove', (e) => {{
+      const rect = card.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+      const rx = (0.5 - y) * maxTilt;
+      const ry = (x - 0.5) * maxTilt;
+      card.style.transform = `perspective(900px) rotateX(${{rx}}deg) rotateY(${{ry}}deg)`;
+    }});
+    card.addEventListener('mouseleave', () => {{
+      card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg)';
+    }});
+  </script>
+</body>
+</html>"""
+        return web.Response(text=html, content_type="text/html")
+
     app = web.Application()
     app.router.add_post("/telegram", telegram_webhook)
     app.router.add_get("/", health)
     app.router.add_get("/health", health)
     app.router.add_get("/stats/demographic/{token}", demographic_report)
+    app.router.add_get("/profile/membership/{token}", membership_profile_report)
 
     runner = web.AppRunner(app)
     await runner.setup()

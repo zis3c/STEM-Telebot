@@ -4,6 +4,7 @@ import strings
 import keyboards
 import states
 from database import db
+import stats_web
 import logging
 import re
 import asyncio
@@ -476,6 +477,7 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     msg = strings.get('ERR_DB_CONNECTION', lang)
     verification_ok = False
     show_renewal_prompt = False
+    profile_card_url = None
     generic_fail_msg = "*Verification Failed*\nYour details could not be verified."
     if lang == "MS":
         generic_fail_msg = "*Pengesahan Gagal*\nMaklumat anda tidak dapat disahkan."
@@ -556,6 +558,24 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                                     register_date=register_date,
                                     expired_date=expired_date
                                 )
+                                base_url = os.getenv("WEBHOOK_URL", "").rstrip("/")
+                                if base_url:
+                                    profile_payload = {
+                                        "membership_id": membership_id,
+                                        "name": db_name,
+                                        "matric": user_matric,
+                                        "program": db_prog_short,
+                                        "register_date": register_date,
+                                        "expired_date": expired_date,
+                                        "generated_at": datetime.now(KL_TZ).strftime("%Y-%m-%d %H:%M:%S"),
+                                        "lang": lang,
+                                    }
+                                    token = stats_web.create_member_profile_report(
+                                        profile_payload,
+                                        subject=user_matric,
+                                        ttl_seconds=1200,
+                                    )
+                                    profile_card_url = f"{base_url}/profile/membership/{token}"
 
                     elif final_status == "Pending":
                         msg = strings.get('STATUS_PENDING', lang)
@@ -591,6 +611,26 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     #     pass 
 
     await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=keyboards.get_main_menu(lang))
+    if profile_card_url:
+        profile_prompt = (
+            "*Interactive Profile Card*\n"
+            "_This secure link expires in 20 minutes._"
+        )
+        open_label = "Open Profile Card"
+        if lang == "MS":
+            profile_prompt = (
+                "*Kad Profil Interaktif*\n"
+                "_Pautan selamat ini tamat dalam 20 minit._"
+            )
+            open_label = "Buka Kad Profil"
+        await update.message.reply_text(
+            profile_prompt,
+            parse_mode="Markdown",
+            disable_web_page_preview=True,
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton(open_label, url=profile_card_url)]]
+            ),
+        )
     if show_renewal_prompt:
         await update.message.reply_text(
             strings.get('REGISTRATION_MSG', lang),
