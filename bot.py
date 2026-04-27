@@ -84,7 +84,15 @@ async def maintenance_loop(application):
                     last_error_message = str(
                         getattr(info, "last_error_message", "") or ""
                     ).strip()
-                    last_error_date = int(getattr(info, "last_error_date", 0) or 0)
+                    raw_last_error_date = getattr(info, "last_error_date", 0)
+                    if isinstance(raw_last_error_date, datetime.datetime):
+                        if raw_last_error_date.tzinfo is None:
+                            raw_last_error_date = raw_last_error_date.replace(
+                                tzinfo=datetime.timezone.utc
+                            )
+                        last_error_date = int(raw_last_error_date.timestamp())
+                    else:
+                        last_error_date = int(raw_last_error_date or 0)
                     if last_error_message:
                         now_utc_ts = int(
                             datetime.datetime.now(datetime.timezone.utc).timestamp()
