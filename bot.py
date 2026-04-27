@@ -478,6 +478,10 @@ async def main():
       --chip-accent-bg: rgba(204, 145, 43, 0.12);
       --chip-accent-border: rgba(204, 145, 43, 0.3);
       --chip-accent-text: #8b5e14;
+      --chip-bg: #ffffff;
+      --chip-text: #1e293b;
+      --hero-top: rgba(255, 255, 255, 0.98);
+      --hero-bottom: rgba(255, 255, 255, 0.95);
     }}
     * {{ box-sizing: border-box; }}
     body {{
@@ -503,6 +507,10 @@ async def main():
       --chip-accent-bg: rgba(204, 145, 43, 0.18);
       --chip-accent-border: rgba(204, 145, 43, 0.45);
       --chip-accent-text: #f1c77f;
+      --chip-bg: #172643;
+      --chip-text: #d4def2;
+      --hero-top: rgba(17, 28, 52, 0.95);
+      --hero-bottom: rgba(17, 28, 52, 0.9);
     }}
     body[data-theme="gold"] {{
       --bg: #fffaf0;
@@ -516,6 +524,10 @@ async def main():
       --chip-accent-bg: rgba(204, 145, 43, 0.2);
       --chip-accent-border: rgba(204, 145, 43, 0.38);
       --chip-accent-text: #774f11;
+      --chip-bg: #fffdf7;
+      --chip-text: #3b3126;
+      --hero-top: rgba(255, 255, 255, 0.98);
+      --hero-bottom: rgba(255, 253, 247, 0.95);
     }}
     .wrap {{
       max-width: 1120px;
@@ -525,7 +537,7 @@ async def main():
     .hero {{
       border: 1px solid var(--line);
       background:
-        linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95)),
+        linear-gradient(160deg, var(--hero-top), var(--hero-bottom)),
         linear-gradient(120deg, rgba(33, 62, 128, 0.06), rgba(204, 145, 43, 0.06));
       border-radius: 18px;
       box-shadow: var(--shadow-soft);
@@ -596,9 +608,9 @@ async def main():
       padding: 8px 11px;
       border-radius: 10px;
       border: 1px solid var(--line);
-      background: #fff;
+      background: var(--chip-bg);
       font-size: 13px;
-      color: #1e293b;
+      color: var(--chip-text);
       font-weight: 500;
     }}
     .chip.primary {{
@@ -686,6 +698,7 @@ async def main():
     const THEMES = {{
       stem: {{
         palette: ['#213e80', '#cc912b', '#2f57ad', '#d7a44f', '#3f6bc6', '#e1b56f', '#4a77cf', '#e8c488', '#6a90d7', '#f0d4a6', '#8aaadf', '#f8e2c4'],
+        sliceBorder: '#ffffff',
         legendColor: '#1e293b',
         tooltipBg: 'rgba(15, 23, 42, 0.95)',
         centerColor: '#0f172a',
@@ -693,6 +706,7 @@ async def main():
       }},
       gold: {{
         palette: ['#cc912b', '#213e80', '#db9f37', '#2f57ad', '#e8b260', '#3f6bc6', '#f0c98f', '#5b81cc', '#f5d8b0', '#7397d4', '#f8e6c9', '#9cb6df'],
+        sliceBorder: '#ffffff',
         legendColor: '#3a2a18',
         tooltipBg: 'rgba(62, 43, 16, 0.95)',
         centerColor: '#5b3b10',
@@ -700,6 +714,7 @@ async def main():
       }},
       dark: {{
         palette: ['#87a8f7', '#f2bf68', '#7198f0', '#e8ad46', '#5d86e8', '#df9d31', '#4b74de', '#cf8e1f', '#3961d1', '#bf7f10', '#2f57ad', '#ab7107'],
+        sliceBorder: '#111c34',
         legendColor: '#dbe7ff',
         tooltipBg: 'rgba(15, 23, 42, 0.95)',
         centerColor: '#e2e8f0',
@@ -742,7 +757,7 @@ async def main():
           datasets: [{{
             data: values,
             backgroundColor: labels.map((_, i) => themeConfig.palette[i % themeConfig.palette.length]),
-            borderColor: '#ffffff',
+            borderColor: themeConfig.sliceBorder,
             borderWidth: 3,
             hoverOffset: 14
           }}]
@@ -807,6 +822,7 @@ async def main():
         chart.options.plugins.centerText.subColor = cfg.centerSubColor;
         chart.options.plugins.legend.labels.color = cfg.legendColor;
         chart.options.plugins.tooltip.backgroundColor = cfg.tooltipBg;
+        chart.data.datasets[0].borderColor = cfg.sliceBorder;
         chart.update();
       }});
     }};
