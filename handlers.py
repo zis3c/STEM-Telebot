@@ -159,10 +159,16 @@ def _parse_membership_datetime(raw_value):
         "%Y/%m/%d",
         "%m/%d/%Y %H:%M:%S",
         "%m/%d/%Y",
+        "%m/%d/%y %H:%M:%S",
+        "%m/%d/%y",
         "%d/%m/%Y %H:%M:%S",
         "%d/%m/%Y",
+        "%d/%m/%y %H:%M:%S",
+        "%d/%m/%y",
         "%d-%m-%Y %H:%M:%S",
         "%d-%m-%Y",
+        "%d-%m-%y %H:%M:%S",
+        "%d-%m-%y",
     )
     for fmt in formats:
         try:
