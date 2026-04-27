@@ -337,6 +337,9 @@ async def main():
         CallbackQueryHandler(handlers.help_back_callback, pattern="^help_back$")
     )
     application.add_handler(
+        CallbackQueryHandler(admin.stats_registration_full_callback, pattern="^admin_stats_reg_full$")
+    )
+    application.add_handler(
         CallbackQueryHandler(handlers.review_accept_callback, pattern="^review_accept:")
     )
     application.add_handler(

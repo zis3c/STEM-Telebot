@@ -1,4 +1,4 @@
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ConversationHandler, ContextTypes
 import strings
 import keyboards
@@ -8,6 +8,8 @@ from database import db
 import logging
 import asyncio
 from datetime import datetime, timedelta
+from io import BytesIO
+import textwrap
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +95,110 @@ def _format_distribution(items, max_items=8, normalize_program=False):
     return "\n".join(lines)
 
 
+def _render_demographic_pdf(data, stats_month_year, lang):
+    """
+    Generate demographic PDF bytes with charts.
+    Uses lazy matplotlib import to keep bot startup light.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_pdf import PdfPages
+
+    course_items = data.get("course_distribution", [])[:10]
+    birth_items = data.get("birth_year_distribution", [])[:10]
+    total_members = data.get("demographic_total", 0)
+
+    # Normalize program labels for readability.
+    course_labels = []
+    course_values = []
+    for item in course_items:
+        label = strings.format_program_short(item.get("label", "Unknown"))
+        course_labels.append("\n".join(textwrap.wrap(str(label), width=16)) or "Unknown")
+        course_values.append(float(item.get("pct", 0.0)))
+
+    birth_labels = [str(item.get("label", "Unknown")) for item in birth_items]
+    birth_values = [float(item.get("pct", 0.0)) for item in birth_items]
+
+    title = "Demographic Statistics"
+    subtitle_course = "Course Distribution (%)"
+    subtitle_birth = "Year of Birth Distribution (%)"
+    if lang == "MS":
+        title = "Statistik Demografi"
+        subtitle_course = "Agihan Kursus (%)"
+        subtitle_birth = "Agihan Tahun Lahir (%)"
+
+    buffer = BytesIO()
+    with PdfPages(buffer) as pdf:
+        # Page 1: Cover + course chart
+        fig1, ax1 = plt.subplots(figsize=(8.27, 11.69))
+        fig1.subplots_adjust(top=0.78, left=0.23, right=0.95, bottom=0.08)
+        fig1.text(0.08, 0.95, title, fontsize=22, fontweight="bold")
+        fig1.text(0.08, 0.92, f"Period: {stats_month_year}", fontsize=11, color="#555555")
+        fig1.text(0.08, 0.90, f"Total Registered Members: {total_members}", fontsize=11, color="#555555")
+
+        if course_values:
+            ax1.set_title(subtitle_course, fontsize=14, fontweight="bold")
+            wedges, _, autotexts = ax1.pie(
+                course_values,
+                labels=course_labels,
+                autopct="%1.1f%%",
+                startangle=90,
+                counterclock=False,
+                wedgeprops={"linewidth": 1, "edgecolor": "white"},
+                textprops={"fontsize": 9},
+                pctdistance=0.75,
+            )
+            # Donut-style center for cleaner look.
+            center_circle = plt.Circle((0, 0), 0.55, color="white")
+            ax1.add_artist(center_circle)
+            for t in autotexts:
+                t.set_fontsize(9)
+                t.set_weight("bold")
+            ax1.axis("equal")
+        else:
+            ax1.text(0.5, 0.5, "No course data available", ha="center", va="center", fontsize=12)
+            ax1.axis("off")
+
+        pdf.savefig(fig1)
+        plt.close(fig1)
+
+        # Page 2: Birth year chart
+        fig2, ax2 = plt.subplots(figsize=(8.27, 11.69))
+        fig2.subplots_adjust(top=0.84, left=0.1, right=0.95, bottom=0.15)
+        fig2.text(0.08, 0.95, title, fontsize=22, fontweight="bold")
+        fig2.text(0.08, 0.92, f"Period: {stats_month_year}", fontsize=11, color="#555555")
+        fig2.text(0.08, 0.90, f"Total Registered Members: {total_members}", fontsize=11, color="#555555")
+
+        if birth_values:
+            ax2.set_title(subtitle_birth, fontsize=14, fontweight="bold")
+            wedges, _, autotexts = ax2.pie(
+                birth_values,
+                labels=birth_labels,
+                autopct="%1.1f%%",
+                startangle=90,
+                counterclock=False,
+                wedgeprops={"linewidth": 1, "edgecolor": "white"},
+                textprops={"fontsize": 9},
+                pctdistance=0.75,
+            )
+            center_circle = plt.Circle((0, 0), 0.55, color="white")
+            ax2.add_artist(center_circle)
+            for t in autotexts:
+                t.set_fontsize(9)
+                t.set_weight("bold")
+            ax2.axis("equal")
+        else:
+            ax2.text(0.5, 0.5, "No birth year data available", ha="center", va="center", fontsize=12)
+            ax2.axis("off")
+
+        pdf.savefig(fig2)
+        plt.close(fig2)
+
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     await update.message.reply_text(
@@ -110,14 +216,23 @@ async def stats_registration(update: Update, context: ContextTypes.DEFAULT_TYPE)
         stats_month_year = datetime.now().strftime("%B %Y")
 
         month_names = data.get('registered_current_month_names', [])
-        max_listed_names = 20
+        max_listed_names = 10
         if month_names:
-            listed = [f"- {_escape_md(name)}" for name in month_names[:max_listed_names]]
-            if len(month_names) > max_listed_names:
-                listed.append(f"_...and {len(month_names) - max_listed_names} more._")
+            listed = [
+                f"{idx}. {_escape_md(name)}"
+                for idx, name in enumerate(month_names[:max_listed_names], 1)
+            ]
             registered_current_month_list = "\n".join(listed)
         else:
             registered_current_month_list = "-"
+        hidden_count = max(0, len(month_names) - max_listed_names)
+        more_note = f"_...and {hidden_count} more_" if hidden_count else ""
+
+        inline_markup = None
+        if hidden_count:
+            inline_markup = InlineKeyboardMarkup(
+                [[InlineKeyboardButton(strings.get("BTN_ADMIN_VIEW_FULL_LIST", lang), callback_data="admin_stats_reg_full")]]
+            )
 
         await update.message.reply_text(
             strings.get('ADMIN_STATS_REGISTRATION', lang).format(
@@ -125,9 +240,10 @@ async def stats_registration(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 registered_current_month_count=data.get('registered_current_month_count', 0),
                 registered_current_month_list=registered_current_month_list,
                 total_last_30=data.get('total_last_30', 0),
+                more_note=more_note,
             ),
             parse_mode="Markdown",
-            reply_markup=keyboards.get_admin_stats_menu(lang),
+            reply_markup=inline_markup,
         )
     except Exception as e:
         logger.error(e)
@@ -135,36 +251,88 @@ async def stats_registration(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return states.ADMIN_STATS_MENU
 
 
+async def stats_registration_full_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+
+    if not db.is_admin(query.from_user.id):
+        await query.answer("Admins only.", show_alert=True)
+        return
+
+    lang = get_user_lang(context)
+    try:
+        data = await run_db_call(db.get_stats)
+        stats_month_year = datetime.now().strftime("%B %Y")
+        month_names = data.get('registered_current_month_names', [])
+        if month_names:
+            listed = [f"{idx}. {_escape_md(name)}" for idx, name in enumerate(month_names, 1)]
+            full_list = "\n".join(listed)
+        else:
+            full_list = "-"
+
+        text = strings.get('ADMIN_STATS_REGISTRATION', lang).format(
+            stats_month_year=stats_month_year,
+            registered_current_month_count=data.get('registered_current_month_count', 0),
+            registered_current_month_list=full_list,
+            total_last_30=data.get('total_last_30', 0),
+            more_note="",
+        )
+        await query.edit_message_text(text, parse_mode="Markdown")
+    except Exception as e:
+        logger.error(e)
+        await query.edit_message_text(strings.get('ERR_DB_CONNECTION', lang))
+
+
 async def stats_demographic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     try:
         data = await run_db_call(db.get_stats)
         stats_month_year = datetime.now().strftime("%B %Y")
+        pdf_bytes = await run_db_call(_render_demographic_pdf, data, stats_month_year, lang)
+        payload = BytesIO(pdf_bytes)
+        payload.name = f"demographic_stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
 
-        course_breakdown = _format_distribution(
-            data.get("course_distribution", []),
-            max_items=8,
-            normalize_program=True,
-        )
-        birth_year_breakdown = _format_distribution(
-            data.get("birth_year_distribution", []),
-            max_items=8,
-            normalize_program=False,
-        )
+        caption = f"Demographic Statistics ({stats_month_year})"
+        if lang == "MS":
+            caption = f"Statistik Demografi ({stats_month_year})"
 
+        await update.message.reply_document(
+            document=payload,
+            filename=payload.name,
+            caption=caption,
+        )
         await update.message.reply_text(
-            strings.get('ADMIN_STATS_DEMOGRAPHIC', lang).format(
-                stats_month_year=stats_month_year,
-                demographic_total=data.get('demographic_total', 0),
-                course_breakdown=course_breakdown,
-                birth_year_breakdown=birth_year_breakdown,
-            ),
+            strings.get('ADMIN_STATS_MENU_PROMPT', lang),
             parse_mode="Markdown",
             reply_markup=keyboards.get_admin_stats_menu(lang),
         )
     except Exception as e:
-        logger.error(e)
-        await update.message.reply_text(strings.get('ERR_DB_CONNECTION', lang))
+        logger.error("Demographic PDF generation failed: %s", e)
+        # Safe fallback to text summary if chart/PDF generation is unavailable.
+        try:
+            data = await run_db_call(db.get_stats)
+            course_breakdown = _format_distribution(
+                data.get("course_distribution", []),
+                max_items=8,
+                normalize_program=True,
+            )
+            birth_year_breakdown = _format_distribution(
+                data.get("birth_year_distribution", []),
+                max_items=8,
+                normalize_program=False,
+            )
+            await update.message.reply_text(
+                strings.get('ADMIN_STATS_DEMOGRAPHIC', lang).format(
+                    stats_month_year=datetime.now().strftime("%B %Y"),
+                    demographic_total=data.get('demographic_total', 0),
+                    course_breakdown=course_breakdown,
+                    birth_year_breakdown=birth_year_breakdown,
+                ),
+                parse_mode="Markdown",
+                reply_markup=keyboards.get_admin_stats_menu(lang),
+            )
+        except Exception:
+            await update.message.reply_text(strings.get('ERR_DB_CONNECTION', lang))
     return states.ADMIN_STATS_MENU
 
 async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

@@ -102,10 +102,12 @@ STRINGS = {
             "Expired This Month: *{expired_this_month}*"
         ),
         'ADMIN_STATS_REGISTRATION': (
-            "*Registration Stats ({stats_month_year})*\n\n"
-            "*Registered This Month (Approved):* *{registered_current_month_count}*\n"
+            "*Current Month Registration ({stats_month_year})*\n\n"
+            "*Approved This Month:* *{registered_current_month_count}*\n"
+            "*New Applications (Last 30 Days):* *{total_last_30}*\n\n"
+            "*Recent Approved Members*\n"
             "{registered_current_month_list}\n\n"
-            "New Applications (Last 30 Days): *{total_last_30}*"
+            "{more_note}"
         ),
         'ADMIN_STATS_DEMOGRAPHIC': (
             "*Demographic Stats ({stats_month_year})*\n\n"
@@ -170,6 +172,7 @@ STRINGS = {
         'BTN_ADMIN_STATS': "Stats",
         'BTN_ADMIN_STATS_REGISTRATION': "Current Month Registration",
         'BTN_ADMIN_STATS_DEMOGRAPHIC': "Demographic Stats",
+        'BTN_ADMIN_VIEW_FULL_LIST': "View Full List",
         'BTN_ADMIN_EXIT': "Exit Admin",
         
         'BTN_CONFIRM_YES': "Confirm Send",
@@ -285,9 +288,11 @@ STRINGS = {
         ),
         'ADMIN_STATS_REGISTRATION': (
             "*Statistik Pendaftaran ({stats_month_year})*\n\n"
-            "*Berdaftar Bulan Ini (Lulus):* *{registered_current_month_count}*\n"
+            "*Lulus Bulan Ini:* *{registered_current_month_count}*\n"
+            "*Permohonan Baharu (30 Hari):* *{total_last_30}*\n\n"
+            "*Senarai Ahli Lulus Terkini*\n"
             "{registered_current_month_list}\n\n"
-            "Permohonan Baharu (30 Hari): *{total_last_30}*"
+            "{more_note}"
         ),
         'ADMIN_STATS_DEMOGRAPHIC': (
             "*Statistik Demografi ({stats_month_year})*\n\n"
@@ -331,6 +336,7 @@ STRINGS = {
         'BTN_ADMIN_STATS': "Statistik",
         'BTN_ADMIN_STATS_REGISTRATION': "Pendaftaran Bulan Semasa",
         'BTN_ADMIN_STATS_DEMOGRAPHIC': "Statistik Demografi",
+        'BTN_ADMIN_VIEW_FULL_LIST': "Lihat Senarai Penuh",
         'BTN_ADMIN_EXIT': "Keluar Admin",
         
         'BTN_SA_MAINTENANCE': "Mod Penyelenggaraan",

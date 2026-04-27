@@ -3,3 +3,4 @@ aiohttp
 gspread
 google-auth==2.41.0
 psutil
+matplotlib
