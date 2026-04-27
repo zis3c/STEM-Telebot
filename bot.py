@@ -753,7 +753,6 @@ async def main():
         program = esc(payload.get("program", "-"))
         register_date = esc(payload.get("register_date", "-"))
         expired_date = esc(payload.get("expired_date", "-"))
-        generated_at = esc(payload.get("generated_at", "-"))
         status_raw = str(payload.get("status", "Verified")).strip().lower()
         if "expired" in status_raw:
             badge_class = "expired"
@@ -789,10 +788,10 @@ async def main():
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {{
-      --text: #eef4ff;
-      --muted: #c9d7f2;
-      --line: rgba(255, 235, 191, 0.45);
-      --shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+      --text: #f6fbff;
+      --muted: #d6e0ef;
+      --line: rgba(255, 235, 191, 0.42);
+      --shadow: 0 24px 52px rgba(0, 0, 0, 0.6);
     }}
     * {{ box-sizing: border-box; }}
     body {{
@@ -811,7 +810,7 @@ async def main():
       place-items: center;
     }}
     .card {{
-      width: min(100%, 700px);
+      width: min(100%, 560px);
       aspect-ratio: 1.586;
       border: 1px solid var(--line);
       border-radius: 22px;
@@ -823,19 +822,43 @@ async def main():
       transition: transform 0.16s ease;
       display: flex;
       flex-direction: column;
-      padding: 16px 18px;
+      padding: 12px 14px;
       background:
         radial-gradient(520px 320px at var(--gx1, 20%) var(--gy1, 20%), rgba(33, 62, 128, 0.95), transparent 66%),
         radial-gradient(520px 320px at var(--gx2, 80%) var(--gy2, 75%), rgba(204, 145, 43, 0.8), transparent 68%),
-        linear-gradient(140deg, #203f82 0%, #17336d 42%, #cc912b 100%);
+        linear-gradient(136deg, #203f82 0%, #1a3670 36%, #355a9f 56%, #cc912b 100%);
+    }}
+    .card.booting {{
+      transform: perspective(1000px) scale(1.2);
+    }}
+    .card.settle {{
+      transition: transform 0.95s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: perspective(1000px) scale(1);
+    }}
+    .card::before {{
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 48%;
+      z-index: -1;
+      background:
+        linear-gradient(118deg, rgba(255, 255, 255, 0.22) 4%, rgba(255, 255, 255, 0.03) 42%, transparent 72%);
+      pointer-events: none;
     }}
     .card::after {{
       content: "";
       position: absolute;
       inset: 0;
       z-index: -1;
-      background:
-        linear-gradient(118deg, rgba(255, 255, 255, 0.18) 8%, rgba(255, 255, 255, 0.03) 36%, transparent 62%);
+      background-image:
+        repeating-linear-gradient(
+          120deg,
+          rgba(255, 255, 255, 0.03) 0px,
+          rgba(255, 255, 255, 0.03) 1px,
+          transparent 1px,
+          transparent 9px
+        );
+      opacity: 0.5;
       pointer-events: none;
     }}
     .top {{
@@ -850,8 +873,8 @@ async def main():
       gap: 10px;
     }}
     .logo {{
-      width: 44px;
-      height: 44px;
+      width: 36px;
+      height: 36px;
       border-radius: 10px;
       object-fit: cover;
       border: 1px solid rgba(255, 235, 191, 0.5);
@@ -859,9 +882,9 @@ async def main():
     }}
     .brand-name {{
       margin: 0;
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: 0.04em;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       color: #fff7df;
     }}
@@ -888,15 +911,6 @@ async def main():
       background: rgba(239, 68, 68, 0.24);
       color: #fecaca;
     }}
-    .chip {{
-      margin-top: 16px;
-      width: 52px;
-      height: 38px;
-      border-radius: 10px;
-      border: 1px solid rgba(255, 241, 209, 0.5);
-      background:
-        linear-gradient(135deg, rgba(255, 214, 131, 0.78), rgba(177, 124, 25, 0.85));
-    }}
     .id-row {{
       margin-top: 14px;
       display: flex;
@@ -906,16 +920,16 @@ async def main():
     }}
     .id-label {{
       color: var(--muted);
-      font-size: 10px;
+      font-size: 9px;
       text-transform: uppercase;
       letter-spacing: 0.12em;
       margin-bottom: 6px;
       font-weight: 600;
     }}
     .id {{
-      font-size: clamp(15px, 2.4vw, 19px);
+      font-size: clamp(14px, 2vw, 17px);
       font-weight: 700;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.11em;
       color: #fef7e2;
       text-shadow: 0 1px 10px rgba(0, 0, 0, 0.3);
       overflow-wrap: anywhere;
@@ -927,7 +941,7 @@ async def main():
       border-radius: 10px;
       padding: 8px 10px;
       font-family: inherit;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       cursor: pointer;
       transition: filter 0.2s ease, background 0.2s ease;
@@ -937,7 +951,14 @@ async def main():
     .bottom {{
       margin-top: auto;
       border-top: 1px dashed rgba(255, 235, 191, 0.34);
-      padding-top: 12px;
+      padding-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: end;
+    }}
+    .line {{
+      width: 100%;
       display: grid;
       grid-template-columns: 1.35fr 1fr 1fr;
       gap: 10px 14px;
@@ -945,7 +966,7 @@ async def main():
     }}
     .field .label {{
       color: var(--muted);
-      font-size: 10px;
+      font-size: 9px;
       text-transform: uppercase;
       letter-spacing: 0.11em;
       margin-bottom: 4px;
@@ -953,27 +974,51 @@ async def main():
     }}
     .field .value {{
       color: #f8fbff;
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 700;
       line-height: 1.3;
       overflow-wrap: anywhere;
     }}
-    .meta {{
-      margin-top: 10px;
-      color: #cfdbf6;
-      font-size: 11px;
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
+    .card-content {{
+      opacity: 0;
+      transition: opacity 0.35s ease;
     }}
-    #confettiCanvas {{
-      position: fixed;
+    .card-content.show {{
+      opacity: 1;
+    }}
+    .intro-screen {{
+      position: absolute;
       inset: 0;
-      width: 100vw;
-      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      background: rgba(9, 18, 38, 0.08);
+      backdrop-filter: blur(2px);
+      z-index: 5;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }}
+    .intro-screen.hide {{
+      opacity: 0;
+      transform: scale(1.03);
       pointer-events: none;
-      z-index: 20;
+    }}
+    .intro-logo {{
+      width: 76px;
+      height: 76px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 235, 191, 0.56);
+      background: rgba(255, 255, 255, 0.15);
+      object-fit: cover;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+    }}
+    .intro-title {{
+      color: #fff6df;
+      letter-spacing: 0.2em;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
     }}
     .toast {{
       position: fixed;
@@ -993,76 +1038,86 @@ async def main():
     .toast.show {{ opacity: 1; transform: translateY(0); }}
     @media (max-width: 760px) {{
       .card {{
-        width: min(100%, 420px);
+        width: min(100%, 360px);
         aspect-ratio: 0.95;
-        padding: 14px;
+        padding: 10px;
       }}
-      .bottom {{
+      .line {{
         grid-template-columns: 1fr 1fr;
       }}
       .field.full-mobile {{ grid-column: 1 / -1; }}
       .id-row {{ flex-direction: column; align-items: flex-start; }}
+      .intro-logo {{ width: 66px; height: 66px; }}
     }}
   </style>
 </head>
 <body>
   <div class="wrap">
     <article class="card" id="profileCard">
-      <section class="top">
-        <div class="brand">
-          <img class="logo" src="{logo_src}" alt="STEM Logo" />
-          <h1 class="brand-name">STEM Membership</h1>
-        </div>
-        <div class="badge {badge_class}">{badge_text}</div>
-      </section>
+      <div class="intro-screen" id="introScreen">
+        <img class="intro-logo" src="{logo_src}" alt="STEM Logo" />
+        <div class="intro-title">STEM Membership</div>
+      </div>
+      <div class="card-content" id="cardContent">
+        <section class="top">
+          <div class="brand">
+            <img class="logo" src="{logo_src}" alt="STEM Logo" />
+            <h1 class="brand-name">STEM Membership</h1>
+          </div>
+          <div class="badge {badge_class}">{badge_text}</div>
+        </section>
 
-      <div class="chip" aria-hidden="true"></div>
+        <section class="id-row">
+          <div>
+            <div class="id-label">Membership ID</div>
+            <div class="id"><span class="reveal" data-final="{membership_id}"></span></div>
+          </div>
+          <button class="btn" id="copyIdBtn" type="button">Copy ID</button>
+        </section>
 
-      <section class="id-row">
-        <div>
-          <div class="id-label">Membership ID</div>
-          <div class="id">{membership_id}</div>
-        </div>
-        <button class="btn" id="copyIdBtn" type="button">Copy ID</button>
-      </section>
-
-      <section class="bottom">
-        <div class="field full-mobile">
-          <div class="label">Cardholder Name</div>
-          <div class="value">{name}</div>
-        </div>
-        <div class="field">
-          <div class="label">Matric</div>
-          <div class="value">{matric}</div>
-        </div>
-        <div class="field">
-          <div class="label">Program</div>
-          <div class="value">{program}</div>
-        </div>
-        <div class="field">
-          <div class="label">Register Date</div>
-          <div class="value">{register_date}</div>
-        </div>
-        <div class="field">
-          <div class="label">Expired Date</div>
-          <div class="value">{expired_date}</div>
-        </div>
-      </section>
-
-      <div class="meta">
-        <span>Generated: {generated_at} (Asia/Kuala Lumpur)</span>
-        <span>Secure temporary profile link</span>
+        <section class="bottom">
+          <div class="line">
+            <div class="field full-mobile">
+              <div class="label">Cardholder Name</div>
+              <div class="value"><span class="reveal" data-final="{name}"></span></div>
+            </div>
+            <div class="field">
+              <div class="label">Matric</div>
+              <div class="value"><span class="reveal" data-final="{matric}"></span></div>
+            </div>
+            <div class="field">
+              <div class="label">Status</div>
+              <div class="value"><span class="reveal" data-final="{badge_text}"></span></div>
+            </div>
+          </div>
+          <div class="line">
+            <div class="field">
+              <div class="label">Expired Date</div>
+              <div class="value"><span class="reveal" data-final="{expired_date}"></span></div>
+            </div>
+            <div class="field">
+              <div class="label">Register Date</div>
+              <div class="value"><span class="reveal" data-final="{register_date}"></span></div>
+            </div>
+            <div class="field">
+              <div class="label">Program</div>
+              <div class="value"><span class="reveal" data-final="{program}"></span></div>
+            </div>
+          </div>
+        </section>
       </div>
     </article>
   </div>
-  <canvas id="confettiCanvas"></canvas>
   <div class="toast" id="toast">Copied</div>
   <script>
     const membershipId = {membership_id!r};
-    const confettiKey = {f"stem_profile_confetti_{token}"!r};
     const copyBtn = document.getElementById('copyIdBtn');
     const toast = document.getElementById('toast');
     const card = document.getElementById('profileCard');
+    const introScreen = document.getElementById('introScreen');
+    const cardContent = document.getElementById('cardContent');
+    const revealNodes = Array.from(document.querySelectorAll('.reveal'));
+    let canTilt = false;
 
     const showToast = (text) => {{
       toast.textContent = text;
@@ -1081,6 +1136,7 @@ async def main():
 
     const maxTilt = 3;
     card.addEventListener('mousemove', (e) => {{
+      if (!canTilt) return;
       const rect = card.getBoundingClientRect();
       const x = (e.clientX - rect.left) / rect.width;
       const y = (e.clientY - rect.top) / rect.height;
@@ -1120,64 +1176,48 @@ async def main():
     }};
     requestAnimationFrame(gradientTick);
 
-    const runConfetti = () => {{
-      const canvas = document.getElementById('confettiCanvas');
-      const ctx = canvas.getContext('2d');
-      const dpr = window.devicePixelRatio || 1;
-      const resize = () => {{
-        canvas.width = Math.floor(window.innerWidth * dpr);
-        canvas.height = Math.floor(window.innerHeight * dpr);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      }};
-      resize();
-      window.addEventListener('resize', resize, {{ passive: true }});
-
-      const pieces = Array.from({{ length: 120 }}, (_, i) => ({{
-        x: Math.random() * window.innerWidth,
-        y: -20 - Math.random() * window.innerHeight * 0.3,
-        w: 6 + Math.random() * 8,
-        h: 8 + Math.random() * 10,
-        vy: 2 + Math.random() * 3.4,
-        vx: -1.2 + Math.random() * 2.4,
-        r: Math.random() * Math.PI,
-        vr: -0.2 + Math.random() * 0.4,
-        c: i % 2 ? '#cc912b' : '#213e80',
-      }}));
-
-      const start = performance.now();
-      const duration = 2600;
-      const tick = (t) => {{
-        const elapsed = t - start;
-        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-        for (const p of pieces) {{
-          p.x += p.vx;
-          p.y += p.vy;
-          p.r += p.vr;
-          p.vy += 0.015;
-          ctx.save();
-          ctx.translate(p.x, p.y);
-          ctx.rotate(p.r);
-          ctx.fillStyle = p.c;
-          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-          ctx.restore();
-        }}
-        if (elapsed < duration) {{
-          requestAnimationFrame(tick);
-        }} else {{
-          ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-          canvas.remove();
-        }}
-      }};
-      requestAnimationFrame(tick);
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const scrambleTo = (node, finalText, delayMs) => {{
+      setTimeout(() => {{
+        const text = String(finalText || '');
+        const duration = 680 + Math.random() * 320;
+        const start = performance.now();
+        const step = (now) => {{
+          const progress = Math.min(1, (now - start) / duration);
+          const reveal = Math.floor(progress * text.length);
+          const next = text
+            .split('')
+            .map((ch, idx) => {{
+              if (idx < reveal) return ch;
+              if (ch === ' ') return ' ';
+              return chars[Math.floor(Math.random() * chars.length)];
+            }})
+            .join('');
+          node.textContent = next;
+          if (progress < 1) requestAnimationFrame(step);
+          else node.textContent = text;
+        }};
+        requestAnimationFrame(step);
+      }}, delayMs);
     }};
 
-    if (!localStorage.getItem(confettiKey)) {{
-      runConfetti();
-      localStorage.setItem(confettiKey, '1');
-    }} else {{
-      const canvas = document.getElementById('confettiCanvas');
-      if (canvas) canvas.remove();
-    }}
+    const startReveal = () => {{
+      revealNodes.forEach((node, idx) => {{
+        scrambleTo(node, node.dataset.final || '', idx * 140);
+      }});
+    }};
+
+    card.classList.add('booting');
+    requestAnimationFrame(() => {{
+      card.classList.add('settle');
+      card.classList.remove('booting');
+    }});
+    setTimeout(() => {{
+      introScreen.classList.add('hide');
+      cardContent.classList.add('show');
+      startReveal();
+      canTilt = true;
+    }}, 980);
   </script>
 </body>
 </html>"""
