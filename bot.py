@@ -428,32 +428,123 @@ async def main():
   <title>Demographic Report</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body {{ font-family: Inter, Segoe UI, Arial, sans-serif; margin: 0; background: #f4f6fb; color: #111827; }}
-    .wrap {{ max-width: 980px; margin: 24px auto; padding: 0 16px; }}
-    .card {{ background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(17,24,39,.08); padding: 18px; margin-bottom: 16px; }}
-    h1 {{ margin: 0 0 6px; font-size: 26px; }}
-    .meta {{ color: #6b7280; font-size: 14px; }}
-    .grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }}
-    @media (max-width: 860px) {{ .grid {{ grid-template-columns: 1fr; }} }}
-    canvas {{ width: 100% !important; height: 420px !important; }}
+    :root {{
+      --bg-0: #f2f6ff;
+      --bg-1: #e8f4ff;
+      --text-main: #0f172a;
+      --text-soft: #475569;
+      --card: rgba(255, 255, 255, 0.9);
+      --border: rgba(148, 163, 184, 0.25);
+      --shadow: 0 18px 38px rgba(15, 23, 42, 0.12);
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      color: var(--text-main);
+      font-family: "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(1200px 580px at 92% -10%, rgba(29, 78, 216, 0.12), transparent 65%),
+        radial-gradient(920px 520px at -5% 0%, rgba(8, 145, 178, 0.14), transparent 60%),
+        linear-gradient(160deg, var(--bg-0), var(--bg-1));
+      min-height: 100vh;
+    }}
+    .wrap {{
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 28px 16px 36px;
+    }}
+    .hero {{
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      background: linear-gradient(135deg, rgba(8, 145, 178, 0.12), rgba(29, 78, 216, 0.12));
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+      backdrop-filter: blur(6px);
+      margin-bottom: 16px;
+    }}
+    .hero h1 {{
+      margin: 0 0 6px;
+      font-size: clamp(24px, 4vw, 36px);
+      line-height: 1.1;
+      letter-spacing: 0.2px;
+    }}
+    .hero .sub {{
+      color: var(--text-soft);
+      font-size: 14px;
+      line-height: 1.45;
+    }}
+    .chips {{
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }}
+    .chip {{
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.85);
+      font-size: 13px;
+      color: #0b2447;
+    }}
+    .grid {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }}
+    .card {{
+      border-radius: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1);
+      padding: 18px;
+      backdrop-filter: blur(8px);
+    }}
+    .card h3 {{
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0.2px;
+    }}
+    .muted {{
+      margin-top: 6px;
+      color: var(--text-soft);
+      font-size: 13px;
+    }}
+    .chart-box {{
+      margin-top: 10px;
+      height: 360px;
+      position: relative;
+    }}
+    canvas {{ width: 100% !important; height: 100% !important; }}
+    @media (max-width: 920px) {{
+      .grid {{ grid-template-columns: 1fr; }}
+      .chart-box {{ height: 330px; }}
+    }}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="card">
-      <h1>Demographic Statistics</h1>
-      <div class="meta">Period: {stats_month_year} • Total Members: {total} • Generated: {generated_at}</div>
-    </div>
-    <div class="grid">
-      <div class="card">
-        <h3>Course Distribution (%)</h3>
-        <canvas id="courseChart"></canvas>
+    <section class="hero">
+      <h1>Demographic Dashboard</h1>
+      <div class="sub">Interactive membership demographic overview with breakdown by course and year of birth.</div>
+      <div class="chips">
+        <div class="chip">Period: {stats_month_year}</div>
+        <div class="chip">Total Members: {total}</div>
+        <div class="chip">Generated: {generated_at}</div>
       </div>
-      <div class="card">
-        <h3>Year of Birth Distribution (%)</h3>
-        <canvas id="birthChart"></canvas>
-      </div>
-    </div>
+    </section>
+    <section class="grid">
+      <article class="card">
+        <h3>Course Distribution</h3>
+        <div class="muted">Percentage share by program.</div>
+        <div class="chart-box"><canvas id="courseChart"></canvas></div>
+      </article>
+      <article class="card">
+        <h3>Year of Birth Distribution</h3>
+        <div class="muted">Percentage share by birth year.</div>
+        <div class="chart-box"><canvas id="birthChart"></canvas></div>
+      </article>
+    </section>
   </div>
   <script>
     const courseLabels = {json.dumps(course_labels)};
@@ -461,35 +552,86 @@ async def main():
     const birthLabels = {json.dumps(birth_labels)};
     const birthValues = {json.dumps(birth_vals)};
 
-    const sharedOpts = {{
-      responsive: true,
-      plugins: {{
-        legend: {{ position: 'bottom' }},
-        tooltip: {{
-          callbacks: {{
-            label: (ctx) => `${{ctx.label}}: ${{ctx.formattedValue}}%`
-          }}
-        }}
+    const palette = [
+      '#0ea5e9', '#2563eb', '#06b6d4', '#14b8a6', '#22c55e',
+      '#84cc16', '#f59e0b', '#f97316', '#ef4444', '#ec4899',
+      '#8b5cf6', '#6366f1'
+    ];
+
+    const centerTextPlugin = {{
+      id: 'centerTextPlugin',
+      beforeDraw(chart) {{
+        const cfg = chart.options.plugins.centerText || {{}};
+        if (!cfg.text) return;
+        const meta = chart.getDatasetMeta(0);
+        if (!meta || !meta.data || !meta.data.length) return;
+        const arc = meta.data[0];
+        const x = arc.x;
+        const y = arc.y;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '700 26px Segoe UI';
+        ctx.fillText(String(cfg.text), x, y - 6);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '500 12px Segoe UI';
+        ctx.fillText('segments', x, y + 16);
+        ctx.restore();
       }}
     }};
 
-    new Chart(document.getElementById('courseChart'), {{
-      type: 'pie',
-      data: {{
-        labels: courseLabels,
-        datasets: [{{ data: courseValues }}]
-      }},
-      options: sharedOpts
-    }});
+    const makeChart = (el, labels, values) => {{
+      return new Chart(el, {{
+        type: 'doughnut',
+        data: {{
+          labels,
+          datasets: [{{
+            data: values,
+            backgroundColor: labels.map((_, i) => palette[i % palette.length]),
+            borderColor: '#ffffff',
+            borderWidth: 3,
+            hoverOffset: 14
+          }}]
+        }},
+        options: {{
+          maintainAspectRatio: false,
+          cutout: '63%',
+          animation: {{
+            animateRotate: true,
+            duration: 1000,
+            easing: 'easeOutQuart'
+          }},
+          plugins: {{
+            centerText: {{ text: labels.length }},
+            legend: {{
+              position: 'bottom',
+              labels: {{
+                usePointStyle: true,
+                pointStyle: 'circle',
+                boxWidth: 10,
+                boxHeight: 10,
+                padding: 14,
+                color: '#1e293b',
+                font: {{ size: 12 }}
+              }}
+            }},
+            tooltip: {{
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              padding: 10,
+              callbacks: {{
+                label: (ctx) => ctx.label + ': ' + ctx.formattedValue + '%'
+              }}
+            }}
+          }}
+        }},
+        plugins: [centerTextPlugin]
+      }});
+    }};
 
-    new Chart(document.getElementById('birthChart'), {{
-      type: 'pie',
-      data: {{
-        labels: birthLabels,
-        datasets: [{{ data: birthValues }}]
-      }},
-      options: sharedOpts
-    }});
+    makeChart(document.getElementById('courseChart'), courseLabels, courseValues);
+    makeChart(document.getElementById('birthChart'), birthLabels, birthValues);
   </script>
 </body>
 </html>"""
@@ -567,3 +709,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         pass
+
