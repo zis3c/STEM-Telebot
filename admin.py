@@ -9,9 +9,11 @@ import stats_web
 import logging
 import asyncio
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import os
 
 logger = logging.getLogger(__name__)
+KL_TZ = ZoneInfo("Asia/Kuala_Lumpur")
 
 # Helper to get lang (Admins might use local too)
 def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
@@ -109,7 +111,7 @@ async def stats_registration(update: Update, context: ContextTypes.DEFAULT_TYPE)
     lang = get_user_lang(context)
     try:
         data = await run_db_call(db.get_stats)
-        stats_month_year = datetime.now().strftime("%B %Y")
+        stats_month_year = datetime.now(KL_TZ).strftime("%B %Y")
 
         month_names = data.get('registered_current_month_names', [])
         max_listed_names = 10
@@ -158,7 +160,7 @@ async def stats_registration_full_callback(update: Update, context: ContextTypes
     lang = get_user_lang(context)
     try:
         data = await run_db_call(db.get_stats)
-        stats_month_year = datetime.now().strftime("%B %Y")
+        stats_month_year = datetime.now(KL_TZ).strftime("%B %Y")
         month_names = data.get('registered_current_month_names', [])
         if month_names:
             listed = [f"{idx}. {_escape_md(name)}" for idx, name in enumerate(month_names, 1)]
@@ -183,7 +185,8 @@ async def stats_demographic(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     lang = get_user_lang(context)
     try:
         data = await run_db_call(db.get_stats)
-        stats_month_year = datetime.now().strftime("%B %Y")
+        now_kl = datetime.now(KL_TZ)
+        stats_month_year = now_kl.strftime("%B %Y")
         base_url = os.getenv("WEBHOOK_URL", "").rstrip("/")
         if not base_url:
             await update.message.reply_text(
@@ -197,7 +200,7 @@ async def stats_demographic(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             "demographic_total": data.get("demographic_total", 0),
             "course_distribution": data.get("course_distribution", [])[:12],
             "birth_year_distribution": data.get("birth_year_distribution", [])[:12],
-            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "generated_at": now_kl.strftime("%Y-%m-%d %H:%M:%S"),
             "lang": lang,
         }
         token = stats_web.create_demographic_report(report_payload, ttl_seconds=1200)

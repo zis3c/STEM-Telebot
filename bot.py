@@ -467,21 +467,22 @@ async def main():
     :root {{
       --stem-blue: #213e80;
       --stem-gold: #cc912b;
-      --bg: #f8fafc;
-      --panel: #ffffff;
-      --line: #e2e8f0;
-      --text: #0f172a;
-      --muted: #475569;
-      --shadow-soft: 0 8px 24px rgba(2, 6, 23, 0.06);
-      --chip-primary-bg: rgba(33, 62, 128, 0.06);
-      --chip-primary-border: rgba(33, 62, 128, 0.25);
-      --chip-accent-bg: rgba(204, 145, 43, 0.12);
-      --chip-accent-border: rgba(204, 145, 43, 0.3);
-      --chip-accent-text: #8b5e14;
-      --chip-bg: #ffffff;
-      --chip-text: #1e293b;
-      --hero-top: rgba(255, 255, 255, 0.98);
-      --hero-bottom: rgba(255, 255, 255, 0.95);
+      --bg: #0b1325;
+      --panel: #111c34;
+      --line: #22314f;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --shadow-soft: 0 10px 28px rgba(2, 6, 23, 0.4);
+      --chip-primary-bg: rgba(90, 137, 250, 0.16);
+      --chip-primary-border: rgba(90, 137, 250, 0.32);
+      --chip-primary-text: #dbeafe;
+      --chip-accent-bg: rgba(204, 145, 43, 0.18);
+      --chip-accent-border: rgba(204, 145, 43, 0.45);
+      --chip-accent-text: #f1c77f;
+      --chip-bg: #172643;
+      --chip-text: #d4def2;
+      --hero-top: rgba(17, 28, 52, 0.95);
+      --hero-bottom: rgba(17, 28, 52, 0.9);
     }}
     * {{ box-sizing: border-box; }}
     body {{
@@ -494,40 +495,6 @@ async def main():
         var(--bg);
       min-height: 100vh;
       transition: background 0.25s ease, color 0.25s ease;
-    }}
-    body[data-theme="dark"] {{
-      --bg: #0b1325;
-      --panel: #111c34;
-      --line: #22314f;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-      --shadow-soft: 0 10px 28px rgba(2, 6, 23, 0.4);
-      --chip-primary-bg: rgba(90, 137, 250, 0.16);
-      --chip-primary-border: rgba(90, 137, 250, 0.32);
-      --chip-accent-bg: rgba(204, 145, 43, 0.18);
-      --chip-accent-border: rgba(204, 145, 43, 0.45);
-      --chip-accent-text: #f1c77f;
-      --chip-bg: #172643;
-      --chip-text: #d4def2;
-      --hero-top: rgba(17, 28, 52, 0.95);
-      --hero-bottom: rgba(17, 28, 52, 0.9);
-    }}
-    body[data-theme="gold"] {{
-      --bg: #fffaf0;
-      --panel: #ffffff;
-      --line: #f0dfbf;
-      --text: #211910;
-      --muted: #6f5b45;
-      --shadow-soft: 0 8px 24px rgba(71, 52, 20, 0.12);
-      --chip-primary-bg: rgba(33, 62, 128, 0.08);
-      --chip-primary-border: rgba(33, 62, 128, 0.24);
-      --chip-accent-bg: rgba(204, 145, 43, 0.2);
-      --chip-accent-border: rgba(204, 145, 43, 0.38);
-      --chip-accent-text: #774f11;
-      --chip-bg: #fffdf7;
-      --chip-text: #3b3126;
-      --hero-top: rgba(255, 255, 255, 0.98);
-      --hero-bottom: rgba(255, 253, 247, 0.95);
     }}
     .wrap {{
       max-width: 1120px;
@@ -543,47 +510,6 @@ async def main():
       box-shadow: var(--shadow-soft);
       padding: 22px;
       margin-bottom: 14px;
-    }}
-    .hero-top {{
-      display: flex;
-      justify-content: flex-end;
-      margin-bottom: 10px;
-    }}
-    .theme-toggle {{
-      display: inline-flex;
-      gap: 6px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 5px;
-    }}
-    .theme-btn {{
-      border: 1px solid transparent;
-      background: transparent;
-      color: var(--muted);
-      font-family: inherit;
-      font-size: 12px;
-      font-weight: 600;
-      line-height: 1;
-      padding: 7px 9px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }}
-    .theme-btn.active {{
-      color: var(--stem-blue);
-      background: rgba(33, 62, 128, 0.1);
-      border-color: rgba(33, 62, 128, 0.18);
-    }}
-    body[data-theme="gold"] .theme-btn.active {{
-      color: #7a5111;
-      background: rgba(204, 145, 43, 0.24);
-      border-color: rgba(204, 145, 43, 0.4);
-    }}
-    body[data-theme="dark"] .theme-btn.active {{
-      color: #dbeafe;
-      background: rgba(88, 134, 245, 0.28);
-      border-color: rgba(88, 134, 245, 0.38);
     }}
     .hero h1 {{
       margin: 0 0 8px;
@@ -615,7 +541,7 @@ async def main():
     }}
     .chip.primary {{
       border-color: var(--chip-primary-border);
-      color: var(--stem-blue);
+      color: var(--chip-primary-text);
       background: var(--chip-primary-bg);
     }}
     .chip.accent {{
@@ -661,13 +587,6 @@ async def main():
 <body>
   <div class="wrap">
     <section class="hero">
-      <div class="hero-top">
-        <div class="theme-toggle" role="group" aria-label="Theme toggle">
-          <button class="theme-btn" data-theme-choice="stem" type="button">STEM</button>
-          <button class="theme-btn" data-theme-choice="gold" type="button">Gold</button>
-          <button class="theme-btn" data-theme-choice="dark" type="button">Dark</button>
-        </div>
-      </div>
       <h1>Demographic Dashboard</h1>
       <div class="sub">Interactive membership demographic overview with breakdown by course and year of birth.</div>
       <div class="chips">
@@ -700,33 +619,14 @@ async def main():
       '#84cc16', '#f97316', '#ec4899', '#6366f1', '#14b8a6', '#eab308'
     ];
 
-    const THEMES = {{
-      stem: {{
-        palette: RAINBOW_PALETTE,
-        sliceBorder: '#ffffff',
-        legendColor: '#1e293b',
-        tooltipBg: 'rgba(15, 23, 42, 0.95)',
-        centerColor: '#0f172a',
-        centerSubColor: '#64748b',
-      }},
-      gold: {{
-        palette: RAINBOW_PALETTE,
-        sliceBorder: '#ffffff',
-        legendColor: '#3a2a18',
-        tooltipBg: 'rgba(62, 43, 16, 0.95)',
-        centerColor: '#5b3b10',
-        centerSubColor: '#8b6b42',
-      }},
-      dark: {{
-        palette: RAINBOW_PALETTE,
-        sliceBorder: '#111c34',
-        legendColor: '#dbe7ff',
-        tooltipBg: 'rgba(15, 23, 42, 0.95)',
-        centerColor: '#e2e8f0',
-        centerSubColor: '#94a3b8',
-      }},
+    const CHART_THEME = {{
+      palette: RAINBOW_PALETTE,
+      sliceBorder: '#111c34',
+      legendColor: '#dbe7ff',
+      tooltipBg: 'rgba(15, 23, 42, 0.95)',
+      centerColor: '#e2e8f0',
+      centerSubColor: '#94a3b8',
     }};
-    const THEME_KEY = 'stem_report_theme';
 
     const centerTextPlugin = {{
       id: 'centerTextPlugin',
@@ -808,52 +708,18 @@ async def main():
       }});
     }};
 
-    const buttons = Array.from(document.querySelectorAll('[data-theme-choice]'));
-    const setActiveButton = (theme) => {{
-      buttons.forEach((btn) => btn.classList.toggle('active', btn.dataset.themeChoice === theme));
-    }};
-
-    const applyTheme = (theme) => {{
-      const selected = THEMES[theme] ? theme : 'stem';
-      const cfg = THEMES[selected];
-      document.body.setAttribute('data-theme', selected);
-      localStorage.setItem(THEME_KEY, selected);
-      setActiveButton(selected);
-      [courseChart, birthChart].forEach((chart) => {{
-        chart.data.datasets[0].backgroundColor = chart.data.labels.map(
-          (_, i) => cfg.palette[i % cfg.palette.length]
-        );
-        chart.options.plugins.centerText.color = cfg.centerColor;
-        chart.options.plugins.centerText.subColor = cfg.centerSubColor;
-        chart.options.plugins.legend.labels.color = cfg.legendColor;
-        chart.options.plugins.tooltip.backgroundColor = cfg.tooltipBg;
-        chart.data.datasets[0].borderColor = cfg.sliceBorder;
-        chart.update();
-      }});
-    }};
-
-    const savedTheme = localStorage.getItem(THEME_KEY) || 'stem';
-    const initialTheme = THEMES[savedTheme] ? savedTheme : 'stem';
-    const initialCfg = THEMES[initialTheme];
-    document.body.setAttribute('data-theme', initialTheme);
-
     const courseChart = makeChart(
       document.getElementById('courseChart'),
       courseLabels,
       courseValues,
-      initialCfg
+      CHART_THEME
     );
     const birthChart = makeChart(
       document.getElementById('birthChart'),
       birthLabels,
       birthValues,
-      initialCfg
+      CHART_THEME
     );
-
-    setActiveButton(initialTheme);
-    buttons.forEach((btn) => {{
-      btn.addEventListener('click', () => applyTheme(btn.dataset.themeChoice));
-    }});
   </script>
 </body>
 </html>"""
