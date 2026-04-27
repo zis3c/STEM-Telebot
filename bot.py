@@ -780,10 +780,11 @@ async def main():
   <style>
     :root {{
       --bg: #0b1325;
-      --panel: #111c34;
-      --line: #22314f;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
+      --panel: #f0c779;
+      --panel-2: #dfae56;
+      --line: rgba(255, 233, 188, 0.8);
+      --text: #111827;
+      --muted: #475569;
       --blue: #213e80;
       --gold: #cc912b;
       --ok: #22c55e;
@@ -801,19 +802,32 @@ async def main():
       min-height: 100vh;
       padding: 24px 14px;
     }}
-    .wrap {{ max-width: 860px; margin: 0 auto; }}
+    .wrap {{
+      max-width: 860px;
+      margin: 0 auto;
+      min-height: calc(100vh - 48px);
+      display: grid;
+      place-items: center;
+    }}
     .card {{
+      width: min(100%, 360px);
+      aspect-ratio: 63 / 100;
       border: 1px solid var(--line);
-      background: linear-gradient(160deg, rgba(17, 28, 52, 0.96), rgba(17, 28, 52, 0.92));
-      border-radius: 18px;
+      background:
+        radial-gradient(420px 260px at 90% -12%, rgba(255, 251, 238, 0.35), transparent 62%),
+        radial-gradient(320px 240px at -8% 108%, rgba(33, 62, 128, 0.18), transparent 66%),
+        linear-gradient(165deg, var(--panel), var(--panel-2));
+      border-radius: 22px;
       box-shadow: var(--shadow);
       overflow: hidden;
       transform-style: preserve-3d;
       transition: transform 0.15s ease;
+      display: flex;
+      flex-direction: column;
     }}
     .top {{
-      padding: 18px 18px 12px;
-      border-bottom: 1px solid var(--line);
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid rgba(33, 62, 128, 0.18);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -825,89 +839,97 @@ async def main():
       height: 46px;
       border-radius: 10px;
       object-fit: cover;
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(33, 62, 128, 0.28);
+      background: rgba(255, 255, 255, 0.5);
     }}
     .title {{
       margin: 0;
       font-weight: 800;
-      font-size: clamp(20px, 4vw, 30px);
+      font-size: clamp(18px, 3.5vw, 24px);
       letter-spacing: -0.02em;
+      color: #12244a;
     }}
     .badge {{
-      border: 1px solid rgba(34, 197, 94, 0.35);
-      background: rgba(34, 197, 94, 0.18);
-      color: #bbf7d0;
+      border: 1px solid rgba(33, 62, 128, 0.3);
+      background: rgba(33, 62, 128, 0.14);
+      color: #102247;
       border-radius: 999px;
       padding: 7px 10px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       white-space: nowrap;
     }}
-    .body {{ padding: 16px 18px 18px; }}
+    .body {{
+      padding: 14px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }}
     .id-row {{
       display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      align-items: center;
+      grid-template-columns: 1fr;
+      gap: 8px;
       margin-bottom: 14px;
     }}
     .id {{
-      font-size: 15px;
-      border: 1px solid var(--line);
+      font-size: 14px;
+      border: 1px solid rgba(33, 62, 128, 0.24);
       border-radius: 10px;
-      padding: 10px 12px;
-      background: rgba(23, 38, 67, 0.85);
-      color: #dbeafe;
+      padding: 10px 11px;
+      background: rgba(9, 20, 45, 0.84);
+      color: #e5efff;
       overflow-wrap: anywhere;
     }}
     .btn {{
-      border: 1px solid rgba(33, 62, 128, 0.35);
-      background: rgba(33, 62, 128, 0.2);
-      color: #dbeafe;
+      border: 1px solid rgba(9, 20, 45, 0.55);
+      background: rgba(9, 20, 45, 0.86);
+      color: #e2ebff;
       border-radius: 10px;
-      padding: 9px 12px;
+      padding: 8px 10px;
       font-family: inherit;
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
+      justify-self: start;
     }}
     .btn:hover {{ filter: brightness(1.08); }}
     .grid {{
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      grid-template-columns: 1fr;
+      gap: 8px;
     }}
     .item {{
-      border: 1px solid var(--line);
+      border: 1px solid rgba(33, 62, 128, 0.24);
       border-radius: 10px;
-      padding: 10px 12px;
-      background: rgba(23, 38, 67, 0.75);
+      padding: 9px 10px;
+      background: rgba(9, 20, 45, 0.78);
     }}
     .item.full {{ grid-column: 1 / -1; }}
     .label {{
-      color: var(--muted);
-      font-size: 11px;
+      color: #93a6c7;
+      font-size: 10px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
     }}
     .value {{
-      color: var(--text);
-      font-size: 15px;
+      color: #f8fbff;
+      font-size: 14px;
       font-weight: 700;
       line-height: 1.35;
       overflow-wrap: anywhere;
     }}
     .foot {{
-      margin-top: 12px;
-      color: var(--muted);
-      font-size: 12px;
+      margin-top: auto;
+      padding-top: 10px;
+      color: #3f4754;
+      font-size: 11px;
       display: flex;
       justify-content: space-between;
       gap: 10px;
       flex-wrap: wrap;
+      border-top: 1px dashed rgba(33, 62, 128, 0.28);
     }}
     .toast {{
       position: fixed;
@@ -926,8 +948,7 @@ async def main():
     }}
     .toast.show {{ opacity: 1; transform: translateY(0); }}
     @media (max-width: 760px) {{
-      .grid {{ grid-template-columns: 1fr; }}
-      .id-row {{ grid-template-columns: 1fr; }}
+      .card {{ width: min(100%, 350px); }}
       .logo {{ width: 40px; height: 40px; }}
     }}
   </style>
