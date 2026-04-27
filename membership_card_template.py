@@ -379,7 +379,6 @@ def render_membership_card(
 
       if ('PointerEvent' in window) {{
         card.addEventListener('pointermove', (e) => {{
-          if (e.pointerType && e.pointerType !== 'mouse') return;
           setTilt(e.clientX, e.clientY);
         }});
         card.addEventListener('pointerleave', resetTilt);
@@ -388,6 +387,16 @@ def render_membership_card(
         card.addEventListener('mousemove', (e) => setTilt(e.clientX, e.clientY));
         card.addEventListener('mouseleave', resetTilt);
       }}
+
+      // Extra fallbacks for webviews/browsers that behave inconsistently.
+      card.addEventListener('mousemove', (e) => setTilt(e.clientX, e.clientY));
+      card.addEventListener('touchmove', (e) => {{
+        if (!e.touches || !e.touches.length) return;
+        const t = e.touches[0];
+        setTilt(t.clientX, t.clientY);
+      }}, {{ passive: true }});
+      card.addEventListener('touchend', resetTilt, {{ passive: true }});
+      card.addEventListener('touchcancel', resetTilt, {{ passive: true }});
     }}
   </script>
 </body>
