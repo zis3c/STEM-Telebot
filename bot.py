@@ -695,9 +695,14 @@ async def main():
     const birthLabels = {json.dumps(birth_labels)};
     const birthValues = {json.dumps(birth_vals)};
 
+    const RAINBOW_PALETTE = [
+      '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4',
+      '#84cc16', '#f97316', '#ec4899', '#6366f1', '#14b8a6', '#eab308'
+    ];
+
     const THEMES = {{
       stem: {{
-        palette: ['#213e80', '#cc912b', '#2f57ad', '#d7a44f', '#3f6bc6', '#e1b56f', '#4a77cf', '#e8c488', '#6a90d7', '#f0d4a6', '#8aaadf', '#f8e2c4'],
+        palette: RAINBOW_PALETTE,
         sliceBorder: '#ffffff',
         legendColor: '#1e293b',
         tooltipBg: 'rgba(15, 23, 42, 0.95)',
@@ -705,7 +710,7 @@ async def main():
         centerSubColor: '#64748b',
       }},
       gold: {{
-        palette: ['#cc912b', '#213e80', '#db9f37', '#2f57ad', '#e8b260', '#3f6bc6', '#f0c98f', '#5b81cc', '#f5d8b0', '#7397d4', '#f8e6c9', '#9cb6df'],
+        palette: RAINBOW_PALETTE,
         sliceBorder: '#ffffff',
         legendColor: '#3a2a18',
         tooltipBg: 'rgba(62, 43, 16, 0.95)',
@@ -713,7 +718,7 @@ async def main():
         centerSubColor: '#8b6b42',
       }},
       dark: {{
-        palette: ['#87a8f7', '#f2bf68', '#7198f0', '#e8ad46', '#5d86e8', '#df9d31', '#4b74de', '#cf8e1f', '#3961d1', '#bf7f10', '#2f57ad', '#ab7107'],
+        palette: RAINBOW_PALETTE,
         sliceBorder: '#111c34',
         legendColor: '#dbe7ff',
         tooltipBg: 'rgba(15, 23, 42, 0.95)',
