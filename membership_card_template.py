@@ -58,6 +58,7 @@ def render_membership_card(
       border-radius:20px;
       overflow:hidden;
       transform-style:preserve-3d;
+      touch-action:none;
       background:linear-gradient(145deg,#0f1b38 0%,#142042 40%,#17244a 100%);
       border:1px solid rgba(148,163,184,0.12);
       box-shadow:
@@ -360,19 +361,22 @@ def render_membership_card(
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!reduceMotion) {{
-      const maxTilt = 7;
+      const maxTilt = 12;
       const setTilt = (clientX, clientY) => {{
         const rect = card.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
         const x = (clientX - rect.left) / rect.width;
         const y = (clientY - rect.top) / rect.height;
-        const rx = (0.5 - y) * maxTilt;
-        const ry = (x - 0.5) * maxTilt;
+        const cx = Math.max(0, Math.min(1, x));
+        const cy = Math.max(0, Math.min(1, y));
+        const rx = (0.5 - cy) * maxTilt;
+        const ry = (cx - 0.5) * maxTilt;
         card.classList.add('tilt');
-        card.style.transform = `rotateX(${{rx.toFixed(2)}}deg) rotateY(${{ry.toFixed(2)}}deg)`;
+        card.style.transform = `perspective(1200px) rotateX(${{rx.toFixed(2)}}deg) rotateY(${{ry.toFixed(2)}}deg) scale(1.01)`;
       }};
       const resetTilt = () => {{
         card.classList.remove('tilt');
-        card.style.transform = 'rotateX(0deg) rotateY(0deg)';
+        card.style.transform = 'perspective(1200px) rotateX(0deg) rotateY(0deg) scale(1)';
       }};
 
       if ('PointerEvent' in window) {{
