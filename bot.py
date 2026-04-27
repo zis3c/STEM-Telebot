@@ -335,10 +335,16 @@ async def main():
         CallbackQueryHandler(handlers.review_reject_callback, pattern="^review_reject:")
     )
     application.add_handler(
+        CallbackQueryHandler(handlers.review_renew_callback, pattern="^review_renew:")
+    )
+    application.add_handler(
         CallbackQueryHandler(handlers.review_do_accept_callback, pattern="^review_do_accept:")
     )
     application.add_handler(
         CallbackQueryHandler(handlers.review_do_reject_callback, pattern="^review_do_reject:")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handlers.review_do_renew_callback, pattern="^review_do_renew:")
     )
     application.add_handler(
         CallbackQueryHandler(handlers.review_cancel_callback, pattern="^review_cancel:")

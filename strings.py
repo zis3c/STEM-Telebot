@@ -40,7 +40,9 @@ STRINGS = {
             "Name: *{name}*\n"
             "Matric: *{matric}*\n"
             "Program: *{program}*\n"
-            "Register time: *{date}*"
+            "\n"
+            "Register date: *{register_date}*\n"
+            "Expired date: *{expired_date}*"
         ),
         
         'ERR_INVALID_MATRIC': "*Invalid Matric Format!*\nPlease try again (e.g. `I24067510`)",
@@ -53,10 +55,17 @@ STRINGS = {
         
         'STATUS_PENDING': "*MEMBERSHIP PENDING* ⏳\nYour registration is under admin review.",
         'STATUS_REJECT': "*MEMBERSHIP REJECTED* 🚫",
+        'STATUS_EXPIRED': (
+            "*MEMBERSHIP EXPIRED* ⌛\n"
+            "Membership ID: `{membership_id}`\n"
+            "Expired date: *{expired_date}*\n\n"
+            "Please contact *@STEMUSAS* to renew your membership."
+        ),
         'NOTIFY_NEW_REG': "🚨 *New Registration*\n\nName: {name}\nMatric: {matric}\nResit: {resit}",
         'BTN_APPROVE': "Accept",
         'BTN_REJECT': "Reject",
         'BTN_VIEW_DETAILS': "View Details",
+        'BTN_RENEW': "Renew +1 Year",
         'BTN_CONFIRM_ACTION': "Confirm",
         'BTN_CANCEL_ACTION': "Cancel",
         'MSG_APPROVED': "✅ Accepted {name}.",
@@ -89,7 +98,9 @@ STRINGS = {
             "Approval Rate: *{approval_rate}%*\n\n"
             "*Membership Expiry (1 Year Policy)*\n"
             "Expiring in Next 30 Days: *{expiring_next_30}*\n"
-            "Expired This Month: *{expired_this_month}*"
+            "Expired This Month: *{expired_this_month}*\n\n"
+            "*Registered This Month (Approved):* *{registered_current_month_count}*\n"
+            "{registered_current_month_list}"
         ),
 
         'ADMIN_DEL_START': "*Delete Member*\nEnter Matric Number to delete:",
@@ -115,6 +126,7 @@ STRINGS = {
         'BTN_STATUS_VERIFIED': "Verified",
         'BTN_STATUS_PENDING': "Pending",
         'BTN_STATUS_REJECTED': "Rejected",
+        'BTN_STATUS_EXPIRED': "Expired",
         'BTN_ADMIN_DEL': "Delete Member",
         
         'BTN_SA_MAINTENANCE': "Maintenance Mode",
@@ -195,7 +207,9 @@ STRINGS = {
             "Nama: {name}\n"
             "Matrik: {matric}\n"
             "Program: {program}\n"
-            "Masa Daftar: *{date}*"
+            "\n"
+            "Tarikh Daftar: *{register_date}*\n"
+            "Tarikh Tamat: *{expired_date}*"
         ),
         
         'ERR_INVALID_MATRIC': "*Format Matrik Tidak Sah!*\nSila cuba lagi (cth. `I24067510`)",
@@ -208,10 +222,17 @@ STRINGS = {
         
         'STATUS_PENDING': "*KEAHLIAN SEDANG DIPROSES* ⏳\nPermohonan anda sedang disemak oleh admin.",
         'STATUS_REJECT': "*KEAHLIAN DITOLAK* 🚫",
+        'STATUS_EXPIRED': (
+            "*KEAHLIAN SUDAH TAMAT* ⌛\n"
+            "ID Keahlian: `{membership_id}`\n"
+            "Tarikh Tamat: *{expired_date}*\n\n"
+            "Untuk perbaharui, sila hubungi *@STEMUSAS*."
+        ),
         'NOTIFY_NEW_REG': "🚨 *Pendaftaran Baru*\n\nNama: {name}\nMatrik: {matric}\nResit: {resit}",
         'BTN_APPROVE': "Terima",
         'BTN_REJECT': "Tolak",
         'BTN_VIEW_DETAILS': "Lihat Butiran",
+        'BTN_RENEW': "Perbaharui +1 Tahun",
         'BTN_CONFIRM_ACTION': "Sahkan",
         'BTN_CANCEL_ACTION': "Batal",
         'MSG_APPROVED': "✅ Diterima {name}.",
@@ -244,7 +265,9 @@ STRINGS = {
             "Kadar Kelulusan: *{approval_rate}%*\n\n"
             "*Tamat Keahlian (Polisi 1 Tahun)*\n"
             "Akan Tamat Dalam 30 Hari: *{expiring_next_30}*\n"
-            "Sudah Tamat Bulan Ini: *{expired_this_month}*"
+            "Sudah Tamat Bulan Ini: *{expired_this_month}*\n\n"
+            "*Berdaftar Bulan Ini (Lulus):* *{registered_current_month_count}*\n"
+            "{registered_current_month_list}"
         ),
 
         'ADMIN_DEL_START': "*Padam Ahli*\nMasukkan Nombor Matrik untuk dibuang:",
@@ -270,6 +293,7 @@ STRINGS = {
         'BTN_STATUS_VERIFIED': "Disahkan",
         'BTN_STATUS_PENDING': "Sedang Diproses",
         'BTN_STATUS_REJECTED': "Ditolak",
+        'BTN_STATUS_EXPIRED': "Tamat",
         'BTN_ADMIN_ADD': "Tambah Ahli",
         'BTN_ADMIN_DEL': "Padam Ahli",
         'BTN_ADMIN_LIST': "Senarai Ahli",

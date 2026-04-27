@@ -7,7 +7,7 @@ import handlers
 from database import db
 import logging
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,48 @@ def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
 
 async def run_db_call(func, *args, **kwargs):
     return await asyncio.to_thread(func, *args, **kwargs)
+
+
+def _parse_membership_datetime(raw_value):
+    if raw_value is None:
+        return None
+    text = str(raw_value).strip()
+    if not text or text == "-":
+        return None
+    formats = (
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d",
+        "%Y/%m/%d %H:%M:%S",
+        "%Y/%m/%d",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y",
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y",
+        "%d-%m-%Y %H:%M:%S",
+        "%d-%m-%Y",
+        "%d/%m/%y",
+    )
+    for fmt in formats:
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).replace(tzinfo=None)
+    except Exception:
+        return None
+
+
+def _is_row_expired(row):
+    status_raw = str(row[17]).strip().lower() if len(row) > 17 else ""
+    if any(tok in status_raw for tok in ("expired", "expire", "tamat", "luput")):
+        return True
+
+    entry_raw = row[13] if len(row) > 13 and str(row[13]).strip() else (row[0] if len(row) > 0 else "")
+    entry_dt = _parse_membership_datetime(entry_raw)
+    if not entry_dt:
+        return False
+    return datetime.now() >= (entry_dt + timedelta(days=365))
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
@@ -37,6 +79,20 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
         data = await run_db_call(db.get_stats)
         stats_month_year = datetime.now().strftime("%B %Y")
+
+        def escape_md(text):
+            return str(text).replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
+
+        month_names = data.get('registered_current_month_names', [])
+        max_listed_names = 20
+        if month_names:
+            listed = [f"- {escape_md(name)}" for name in month_names[:max_listed_names]]
+            if len(month_names) > max_listed_names:
+                listed.append(f"_...and {len(month_names) - max_listed_names} more._")
+            registered_current_month_list = "\n".join(listed)
+        else:
+            registered_current_month_list = "-"
+
         await update.message.reply_text(
             strings.get('ADMIN_STATS', lang).format(
                 stats_month_year=stats_month_year,
@@ -47,6 +103,8 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 approval_rate=data['approval_rate'],
                 expiring_next_30=data['expiring_next_30'],
                 expired_this_month=data['expired_this_month'],
+                registered_current_month_count=data['registered_current_month_count'],
+                registered_current_month_list=registered_current_month_list,
             ), 
             parse_mode="Markdown",
             reply_markup=keyboards.get_admin_menu(lang)
@@ -258,6 +316,7 @@ async def search_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await loading.edit_text(strings.get('ADMIN_SEARCH_EMPTY', lang).format(query=query), parse_mode="Markdown")
         else:
             items = []
+            detail_cards = []
             limit = 20 if mode == 'simple' else 5
             
             for i, row in enumerate(results[:limit], 1):
@@ -324,8 +383,33 @@ async def search_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     )
                     items.append(detail_card)
 
-            msg_text = strings.get('ADMIN_SEARCH_RESULT', lang).format(mode=mode.upper(), query=query, items="\n\n".join(items))
-            await loading.edit_text(msg_text, parse_mode="Markdown")
+                    _, row_idx = await run_db_call(db.find_member, str(matric).strip().upper())
+                    detail_cards.append({
+                        "text": detail_card,
+                        "row_idx": row_idx,
+                        "matric": str(matric).strip().upper(),
+                        "show_renew": _is_row_expired(row),
+                    })
+
+            if mode == 'simple':
+                msg_text = strings.get('ADMIN_SEARCH_RESULT', lang).format(mode=mode.upper(), query=query, items="\n\n".join(items))
+                await loading.edit_text(msg_text, parse_mode="Markdown")
+            else:
+                msg_text = strings.get('ADMIN_SEARCH_RESULT', lang).format(
+                    mode=mode.upper(),
+                    query=query,
+                    items=f"{len(detail_cards)} detailed card(s) below.",
+                )
+                await loading.edit_text(msg_text, parse_mode="Markdown")
+                for card in detail_cards:
+                    reply_markup = None
+                    if card["show_renew"] and card["row_idx"]:
+                        reply_markup = keyboards.get_admin_renew_keyboard(card["row_idx"], card["matric"], lang)
+                    await update.message.reply_text(
+                        card["text"],
+                        parse_mode="Markdown",
+                        reply_markup=reply_markup
+                    )
 
     except Exception as e:
         logger.error(e)

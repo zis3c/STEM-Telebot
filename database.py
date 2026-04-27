@@ -296,9 +296,11 @@ class Database:
         return None
 
     def _normalize_status(self, status_raw):
-        """Normalize raw sheet status into approved/rejected/pending."""
+        """Normalize raw sheet status into approved/rejected/expired/pending."""
         status = str(status_raw or "").strip().lower()
-        if status in ("✓", "approved", "verified"):
+        if status in ("expired", "expire", "tamat", "luput"):
+            return "expired"
+        if status in ("approved", "verified", "accept", "accepted"):
             return "approved"
         if status in ("rejected", "reject"):
             return "rejected"
@@ -322,6 +324,7 @@ class Database:
         pending_current = 0
         expiring_next_30 = 0
         expired_this_month = 0
+        registered_current_month_names = []
 
         for row, _ in self.student_cache.values():
             status = self._normalize_status(row[17] if len(row) > 17 else "")
@@ -336,6 +339,15 @@ class Database:
                     approved_last_30 += 1
                 elif status == "rejected":
                     rejected_last_30 += 1
+
+            if (
+                status == "approved"
+                and applied_at
+                and month_start <= applied_at < next_month_start
+            ):
+                name = str(row[2]).strip() if len(row) > 2 else ""
+                if name:
+                    registered_current_month_names.append(name)
 
             if status == "approved":
                 entry_date = self._parse_sheet_date(row[13] if len(row) > 13 else "")
@@ -358,7 +370,9 @@ class Database:
             "pending_current": pending_current,
             "approval_rate": round(approval_rate, 1),
             "expiring_next_30": expiring_next_30,
-            "expired_this_month": expired_this_month
+            "expired_this_month": expired_this_month,
+            "registered_current_month_count": len(registered_current_month_names),
+            "registered_current_month_names": registered_current_month_names,
         }
     def add_member(self, name, matric, ic, prog):
         sheet = self.get_sheet("Registrations")
@@ -555,7 +569,9 @@ class Database:
 
                 raw_status = row[17].strip().lower() if len(row) > 17 else ""
 
-                if raw_status in ("approved", "verified", "✓", "âœ“"):
+                if raw_status in ("expired", "expire", "tamat", "luput"):
+                    status = "Expired"
+                elif raw_status in ("approved", "verified", "✓", "âœ“"):
                     status = "Approved"
                 elif raw_status in ("rejected", "reject"):
                     status = "Rejected"
@@ -608,6 +624,49 @@ class Database:
         except Exception as e:
             logger.error(f"Update Status Safe Error: {e}")
             return False
+
+    def renew_membership_by_row_or_matric(self, row_index, matric):
+        """Renew membership by extending expiry from max(current expiry, today) by 1 year."""
+        sheet = self.get_sheet("Registrations")
+        if not sheet:
+            return {"ok": False, "error": "sheet_unavailable"}
+
+        target_row = row_index
+        safe_matric = str(matric).strip().upper()
+        try:
+            row_values = sheet.row_values(target_row)
+            row_matric = row_values[3].strip().upper() if len(row_values) > 3 else ""
+            if row_matric != safe_matric:
+                cell = sheet.find(safe_matric, in_column=4)
+                if not cell:
+                    return {"ok": False, "error": "matric_not_found"}
+                target_row = cell.row
+                row_values = sheet.row_values(target_row)
+
+            entry_raw = row_values[13] if len(row_values) > 13 else ""
+            timestamp_raw = row_values[0] if len(row_values) > 0 else ""
+
+            entry_dt = self._parse_sheet_date(entry_raw) or self._parse_sheet_date(timestamp_raw) or datetime.now()
+            old_expiry_dt = entry_dt + timedelta(days=365)
+            now_dt = datetime.now()
+            renewal_anchor = old_expiry_dt if old_expiry_dt > now_dt else now_dt
+            new_expiry_dt = renewal_anchor + timedelta(days=365)
+
+            # Keep one active record: advance entry/start date and ensure approved status.
+            sheet.update_cell(target_row, 14, renewal_anchor.strftime("%d/%m/%y"))  # N
+            sheet.update_cell(target_row, 18, "Approved")  # R
+
+            self.last_student_refresh = 0
+            return {
+                "ok": True,
+                "row": target_row,
+                "old_expiry": old_expiry_dt.strftime("%d/%m/%y"),
+                "new_expiry": new_expiry_dt.strftime("%d/%m/%y"),
+                "renewed_entry": renewal_anchor.strftime("%d/%m/%y"),
+            }
+        except Exception as e:
+            logger.error(f"Renew Membership Safe Error: {e}")
+            return {"ok": False, "error": str(e)}
 
     def get_member_by_row_or_matric(self, row_index, matric):
         """Fetch a member row safely by row, fallback to matric search if row shifted."""

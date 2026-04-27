@@ -137,6 +137,69 @@ def _safe_md_link(value, label):
         return f"[{label}]({safe_url})"
     return _escape_md(raw)
 
+def _parse_membership_datetime(raw_value):
+    if raw_value is None:
+        return None
+
+    text = str(raw_value).strip()
+    if not text or text == "-":
+        return None
+
+    try:
+        iso_value = text.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(iso_value)
+        return dt.replace(tzinfo=None)
+    except Exception:
+        pass
+
+    formats = (
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d",
+        "%Y/%m/%d %H:%M:%S",
+        "%Y/%m/%d",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y",
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y",
+        "%d-%m-%Y %H:%M:%S",
+        "%d-%m-%Y",
+    )
+    for fmt in formats:
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _format_membership_dates(raw_timestamp):
+    registered_at = _parse_membership_datetime(raw_timestamp)
+    if not registered_at:
+        return "-", "-", False
+
+    expires_at = registered_at + timedelta(days=365)
+    today = datetime.now()
+    is_expired = today >= expires_at
+    return (
+        registered_at.strftime("%d/%m/%y"),
+        expires_at.strftime("%d/%m/%y"),
+        is_expired,
+    )
+
+
+def _row_is_expired(row_values):
+    status_raw = str(row_values[17]).strip().lower() if len(row_values) > 17 else ""
+    if any(tok in status_raw for tok in ("expired", "expire", "tamat", "luput")):
+        return True
+
+    entry_raw = ""
+    if len(row_values) > 13 and str(row_values[13]).strip():
+        entry_raw = row_values[13]
+    elif len(row_values) > 0:
+        entry_raw = row_values[0]
+    _, _, is_expired = _format_membership_dates(entry_raw)
+    return is_expired
+
 
 # --- HELPERS ---
 def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
@@ -406,6 +469,7 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     msg = strings.get('ERR_DB_CONNECTION', lang)
     verification_ok = False
+    show_renewal_prompt = False
     generic_fail_msg = "*Verification Failed*\nYour details could not be verified."
     if lang == "MS":
         generic_fail_msg = "*Pengesahan Gagal*\nMaklumat anda tidak dapat disahkan."
@@ -418,6 +482,7 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 # Gspread List 0-index values: A=0(Timestamp), C=2(Name), D=3(Matric), E=4(Courses/Prog)
                 # J=9(IC), Q=16(Receipt), R=17(Status)
                 db_timestamp = row_values[0]
+                membership_start_raw = row_values[13] if len(row_values) > 13 and str(row_values[13]).strip() else db_timestamp
                 db_name = row_values[2] 
                 db_ic = str(row_values[9]).strip().replace(" ", "") # J is 9
                 db_prog = row_values[4] # E is 4
@@ -435,6 +500,9 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                     "approved", "verified", "verify", "accept", "accepted",
                     "disahkan", "lulus", "aktif", "valid"
                 )
+                expired_tokens = (
+                    "expired", "expire", "tamat", "luput"
+                )
                 rejected_tokens = (
                     "rejected", "reject", "tolak", "ditolak", "batal", "cancel"
                 )
@@ -443,7 +511,9 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 )
 
                 final_status = "Pending"
-                if any(tok in db_status_norm for tok in approved_tokens):
+                if any(tok in db_status_norm for tok in expired_tokens):
+                    final_status = "Expired"
+                elif any(tok in db_status_norm for tok in approved_tokens):
                     final_status = "Approved"
                 elif (
                     any(tok in db_status_norm for tok in rejected_tokens)
@@ -464,40 +534,42 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                             # Fallback if ID not generated yet but status is Approved
                             msg = strings.get('STATUS_PENDING', lang)
                         else:
-                            # Format Date: 12/20/2025 (from db_timestamp)
-                            date_of_entry = db_timestamp.split(' ')[0]
-                            try:
-                                dt = None
-                                if '-' in date_of_entry:
-                                    dt = datetime.strptime(date_of_entry, "%Y-%m-%d")
-                                elif '/' in date_of_entry:
-                                    try:
-                                        dt = datetime.strptime(date_of_entry, "%m/%d/%Y")
-                                    except ValueError:
-                                        dt = datetime.strptime(date_of_entry, "%d/%m/%Y")
-                                
-                                if dt:
-                                    date_of_entry = dt.strftime("%d/%m/%y")
-                            except ValueError:
-                                pass
+                            register_date, expired_date, is_expired = _format_membership_dates(membership_start_raw)
+                            if is_expired:
+                                final_status = "Expired"
+                                try:
+                                    await run_db_call(db.update_status_by_row_or_matric, row_index, user_matric, "Expired")
+                                except Exception as e:
+                                    logger.error(f"Failed to auto-mark expired for {user_matric}: {e}")
+                            else:
+                                msg = strings.get('VERIFICATION_SUCCESS', lang).format(
+                                    membership_id=membership_id,
+                                    name=db_name,
+                                    matric=user_matric,
+                                    program=db_prog_short,
+                                    register_date=register_date,
+                                    expired_date=expired_date
+                                )
 
-                            msg = strings.get('VERIFICATION_SUCCESS', lang).format(
-                                membership_id=membership_id,
-                                name=db_name,
-                                matric=user_matric,
-                                program=db_prog_short,
-                                date=date_of_entry
-                            )
                     elif final_status == "Pending":
                         msg = strings.get('STATUS_PENDING', lang)
                     elif final_status == "Rejected":
-                         msg = strings.get('STATUS_REJECT', lang)
+                        msg = strings.get('STATUS_REJECT', lang)
+                    elif final_status == "Expired":
+                        _, expired_date, _ = _format_membership_dates(membership_start_raw)
+                        if not membership_id or membership_id == "-":
+                            membership_id = "-"
+                        msg = strings.get('STATUS_EXPIRED', lang).format(
+                            membership_id=membership_id,
+                            expired_date=expired_date,
+                        )
+                        show_renewal_prompt = True
                     else:
-                         msg = strings.get('STATUS_PENDING', lang) 
+                        msg = strings.get('STATUS_PENDING', lang)
                 else:
-                     msg = generic_fail_msg
-            else:
                     msg = generic_fail_msg
+            else:
+                msg = generic_fail_msg
         else:
             msg = generic_fail_msg
                 
@@ -513,6 +585,12 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     #     pass 
 
     await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=keyboards.get_main_menu(lang))
+    if show_renewal_prompt:
+        await update.message.reply_text(
+            strings.get('REGISTRATION_MSG', lang),
+            parse_mode="Markdown",
+            reply_markup=keyboards.get_become_member_keyboard(lang)
+        )
     _mark_verif_attempt(update.effective_user.id, user_matric, verification_ok)
     
     # Log the result
@@ -709,6 +787,38 @@ async def review_reject_callback(update: Update, context: ContextTypes.DEFAULT_T
         reply_markup=keyboards.get_admin_confirm_keyboard("reject", row_idx, matric, lang)
     )
 
+
+async def review_renew_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    lang = get_user_lang(context)
+
+    if not db.is_admin(query.from_user.id):
+        await query.answer("Admins only.", show_alert=True)
+        return
+
+    try:
+        _, row_raw, matric = query.data.split(":", 2)
+        row_idx = int(row_raw)
+    except Exception:
+        await query.edit_message_text("Invalid action payload.")
+        return
+
+    row_values, _ = await run_db_call(db.get_member_by_row_or_matric, row_idx, matric)
+    if not row_values:
+        await query.edit_message_text("Record not found.")
+        return
+
+    if not _row_is_expired(row_values):
+        await query.answer("This membership is still active.", show_alert=True)
+        return
+
+    await query.edit_message_text(
+        f"Confirm renewal (+1 year) for *{_escape_md(matric)}*?",
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_admin_confirm_keyboard("renew", row_idx, matric, lang)
+    )
+
 async def review_do_accept_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -775,6 +885,47 @@ async def review_do_reject_callback(update: Update, context: ContextTypes.DEFAUL
             parse_mode="Markdown"
         )
 
+
+async def review_do_renew_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if not db.is_admin(query.from_user.id):
+        await query.answer("Admins only.", show_alert=True)
+        return
+
+    try:
+        _, row_raw, matric = query.data.split(":", 2)
+        row_idx = int(row_raw)
+    except Exception:
+        await query.edit_message_text("Invalid action payload.")
+        return
+
+    result = await run_db_call(db.renew_membership_by_row_or_matric, row_idx, matric)
+    if result.get("ok"):
+        db.log_action(
+            f"{query.from_user.first_name} ({query.from_user.id})",
+            "RENEW_MEMBER",
+            (
+                f"Matric: {matric} | Row: {result.get('row')} | "
+                f"OldExpiry: {result.get('old_expiry')} | NewExpiry: {result.get('new_expiry')}"
+            ),
+            role="ADMIN"
+        )
+        await query.edit_message_text(
+            (
+                f"Renewed: *{_escape_md(matric)}*\n"
+                f"Old expiry: *{_escape_md(result.get('old_expiry', '-'))}*\n"
+                f"New expiry: *{_escape_md(result.get('new_expiry', '-'))}*"
+            ),
+            parse_mode="Markdown"
+        )
+    else:
+        await query.edit_message_text(
+            f"Could not renew `{_escape_md(matric)}`\nReason: {_escape_md(result.get('error', 'unknown'))}",
+            parse_mode="Markdown"
+        )
+
 async def review_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer("Action cancelled.")
@@ -794,7 +945,7 @@ async def review_cancel_callback(update: Update, context: ContextTypes.DEFAULT_T
     await query.edit_message_text(
         _build_review_summary(row_values),
         parse_mode="Markdown",
-        reply_markup=keyboards.get_admin_review_keyboard(row_idx, matric, lang)
+        reply_markup=keyboards.get_admin_review_keyboard(row_idx, matric, lang, show_renew=_row_is_expired(row_values))
     )
 
 async def review_detail_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -893,7 +1044,7 @@ async def review_detail_callback(update: Update, context: ContextTypes.DEFAULT_T
     await query.edit_message_text(
         details_text,
         parse_mode="Markdown",
-        reply_markup=keyboards.get_admin_review_detail_keyboard(row_idx, matric, lang)
+        reply_markup=keyboards.get_admin_review_detail_keyboard(row_idx, matric, lang, show_renew=_row_is_expired(row_values))
     )
 
 async def review_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -920,7 +1071,7 @@ async def review_back_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.edit_message_text(
         _build_review_summary(row_values),
         parse_mode="Markdown",
-        reply_markup=keyboards.get_admin_review_keyboard(row_idx, matric, lang)
+        reply_markup=keyboards.get_admin_review_keyboard(row_idx, matric, lang, show_renew=_row_is_expired(row_values))
     )
 
 async def send_daily_logs(context: ContextTypes.DEFAULT_TYPE):

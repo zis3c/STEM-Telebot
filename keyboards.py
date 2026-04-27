@@ -60,49 +60,78 @@ def get_help_back_inline_keyboard(lang='EN'):
         [[InlineKeyboardButton(strings.get('BTN_BACK', lang), callback_data="help_back")]]
     )
 
-def get_admin_review_keyboard(row_idx, matric, lang='EN'):
+def get_admin_review_keyboard(row_idx, matric, lang='EN', show_renew=False):
     safe_matric = str(matric).strip().upper()
-    return InlineKeyboardMarkup(
+    rows = [
         [
+            InlineKeyboardButton(
+                strings.get('BTN_VIEW_DETAILS', lang),
+                callback_data=f"review_detail:{row_idx}:{safe_matric}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                strings.get('BTN_APPROVE', lang),
+                callback_data=f"review_accept:{row_idx}:{safe_matric}",
+            ),
+            InlineKeyboardButton(
+                strings.get('BTN_REJECT', lang),
+                callback_data=f"review_reject:{row_idx}:{safe_matric}",
+            ),
+        ],
+    ]
+    if show_renew:
+        rows.append(
             [
                 InlineKeyboardButton(
-                    strings.get('BTN_VIEW_DETAILS', lang),
-                    callback_data=f"review_detail:{row_idx}:{safe_matric}",
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    strings.get('BTN_APPROVE', lang),
-                    callback_data=f"review_accept:{row_idx}:{safe_matric}",
-                ),
-                InlineKeyboardButton(
-                    strings.get('BTN_REJECT', lang),
-                    callback_data=f"review_reject:{row_idx}:{safe_matric}",
+                    strings.get('BTN_RENEW', lang),
+                    callback_data=f"review_renew:{row_idx}:{safe_matric}",
                 ),
             ]
-        ]
-    )
+        )
+    return InlineKeyboardMarkup(rows)
 
-def get_admin_review_detail_keyboard(row_idx, matric, lang='EN'):
+def get_admin_review_detail_keyboard(row_idx, matric, lang='EN', show_renew=False):
+    safe_matric = str(matric).strip().upper()
+    rows = [
+        [
+            InlineKeyboardButton(
+                strings.get('BTN_BACK', lang),
+                callback_data=f"review_back:{row_idx}:{safe_matric}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                strings.get('BTN_APPROVE', lang),
+                callback_data=f"review_accept:{row_idx}:{safe_matric}",
+            ),
+            InlineKeyboardButton(
+                strings.get('BTN_REJECT', lang),
+                callback_data=f"review_reject:{row_idx}:{safe_matric}",
+            ),
+        ],
+    ]
+    if show_renew:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    strings.get('BTN_RENEW', lang),
+                    callback_data=f"review_renew:{row_idx}:{safe_matric}",
+                ),
+            ]
+        )
+    return InlineKeyboardMarkup(rows)
+
+def get_admin_renew_keyboard(row_idx, matric, lang='EN'):
     safe_matric = str(matric).strip().upper()
     return InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton(
-                    strings.get('BTN_BACK', lang),
-                    callback_data=f"review_back:{row_idx}:{safe_matric}",
+                    strings.get('BTN_RENEW', lang),
+                    callback_data=f"review_renew:{row_idx}:{safe_matric}",
                 ),
-            ],
-            [
-                InlineKeyboardButton(
-                    strings.get('BTN_APPROVE', lang),
-                    callback_data=f"review_accept:{row_idx}:{safe_matric}",
-                ),
-                InlineKeyboardButton(
-                    strings.get('BTN_REJECT', lang),
-                    callback_data=f"review_reject:{row_idx}:{safe_matric}",
-                ),
-            ],
+            ]
         ]
     )
 
