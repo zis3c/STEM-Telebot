@@ -38,6 +38,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 KL_TZ = ZoneInfo("Asia/Kuala_Lumpur")
+WEBHOOK_ERROR_ALERT_MAX_AGE_SECONDS = int(
+    os.getenv("WEBHOOK_ERROR_ALERT_MAX_AGE_SECONDS", "300")
+)
 
 
 # --- SELF PINGER (KEEP ALIVE) ---
@@ -77,17 +80,39 @@ async def maintenance_loop(application):
                         webhook_issues.append(
                             f"Pending updates high: {info.pending_update_count}."
                         )
-                    if getattr(info, "last_error_message", ""):
-                        webhook_issues.append(
-                            f"Last error: {str(info.last_error_message)[:120]}"
+
+                    last_error_message = str(
+                        getattr(info, "last_error_message", "") or ""
+                    ).strip()
+                    last_error_date = int(getattr(info, "last_error_date", 0) or 0)
+                    if last_error_message:
+                        now_utc_ts = int(
+                            datetime.datetime.now(datetime.timezone.utc).timestamp()
                         )
+                        error_age_seconds = (
+                            now_utc_ts - last_error_date if last_error_date > 0 else None
+                        )
+                        is_recent_error = (
+                            error_age_seconds is not None
+                            and 0 <= error_age_seconds <= WEBHOOK_ERROR_ALERT_MAX_AGE_SECONDS
+                        )
+                        if is_recent_error:
+                            webhook_issues.append(
+                                f"Last error: {last_error_message[:120]}"
+                            )
+                        else:
+                            logger.info(
+                                "Ignoring stale webhook last_error_message (age=%ss): %s",
+                                error_age_seconds,
+                                last_error_message[:120],
+                            )
 
                     if webhook_issues:
                         await send_superadmin_alert(
                             application.bot,
                             "webhook_health_issue",
                             (
-                                "🚨 *Webhook Health Alert*\n"
+                                "*Webhook Health Alert*\n"
                                 + "\n".join(f"- {_}" for _ in webhook_issues)
                             ),
                             cooldown_seconds=900,
@@ -98,7 +123,7 @@ async def maintenance_loop(application):
                         application.bot,
                         "webhook_health_check_error",
                         (
-                            "🚨 *Webhook Health Check Failed*\n"
+                            "*Webhook Health Check Failed*\n"
                             f"Error: `{str(e)[:180]}`"
                         ),
                         cooldown_seconds=900,
@@ -111,7 +136,7 @@ async def maintenance_loop(application):
                     await send_superadmin_alert(
                         application.bot,
                         "sheets_connectivity_issue",
-                        "🚨 *Sheets/API Error*\nCould not access `Registrations` sheet.",
+                        "*Sheets/API Error*\nCould not access `Registrations` sheet.",
                         cooldown_seconds=900,
                     )
             except Exception as e:
@@ -120,7 +145,7 @@ async def maintenance_loop(application):
                     application.bot,
                     "sheets_connectivity_check_error",
                     (
-                        "🚨 *Sheets/API Check Failed*\n"
+                        "*Sheets/API Check Failed*\n"
                         f"Error: `{str(e)[:180]}`"
                     ),
                     cooldown_seconds=900,
