@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import datetime
 import hmac
 import logging
@@ -452,6 +453,15 @@ async def main():
         course_vals = [float(item.get("pct", 0.0)) for item in course]
         birth_labels = [str(item.get("label", "Unknown")) for item in birth]
         birth_vals = [float(item.get("pct", 0.0)) for item in birth]
+        favicon_tag = ""
+        logo_path = os.path.join(os.path.dirname(__file__), "logostem.png")
+        with suppress(Exception):
+            with open(logo_path, "rb") as logo_file:
+                logo_b64 = base64.b64encode(logo_file.read()).decode("ascii")
+                favicon_tag = (
+                    '<link rel="icon" type="image/png" '
+                    f'href="data:image/png;base64,{logo_b64}" />'
+                )
 
         html = f"""<!doctype html>
 <html>
@@ -459,6 +469,7 @@ async def main():
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Demographic Report</title>
+  {favicon_tag}
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
