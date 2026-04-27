@@ -1,4 +1,5 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.error import BadRequest
 from telegram.ext import ConversationHandler, ContextTypes
 import strings
 import keyboards
@@ -21,6 +22,23 @@ def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
 
 async def run_db_call(func, *args, **kwargs):
     return await asyncio.to_thread(func, *args, **kwargs)
+
+
+async def _delete_message_job(context: ContextTypes.DEFAULT_TYPE):
+    job = context.job
+    if not job:
+        return
+    chat_id = job.data.get("chat_id")
+    message_id = job.data.get("message_id")
+    if not chat_id or not message_id:
+        return
+    try:
+        await context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+    except BadRequest:
+        # Message may already be deleted/expired. Ignore safely.
+        pass
+    except Exception as e:
+        logger.warning("Could not delete scheduled stats message: %s", e)
 
 
 def _parse_membership_datetime(raw_value):
@@ -207,21 +225,47 @@ async def stats_demographic(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         report_url = f"{base_url}/stats/demographic/{token}"
 
         message = (
-            f"*Demographic Stats Ready*\n\n"
+            f"*Demographic Stats*\n\n"
             f"[Open Web Report]({report_url})\n\n"
-            f"_This secure link expires in 20 minutes._"
+            f"_This secure link expires in 20 minutes, and generating a new report will expire the previous link too._"
         )
         if lang == "MS":
             message = (
-                f"*Statistik Demografi Sedia*\n\n"
+                f"*Statistik Demografi*\n\n"
                 f"[Buka Laporan Web]({report_url})\n\n"
-                f"_Pautan selamat ini tamat dalam 20 minit._"
+                f"_Pautan selamat ini tamat dalam 20 minit. Jika anda jana laporan statistik baharu, pautan lama juga akan tamat._"
             )
 
-        await update.message.reply_text(
+        # Remove previous demographic link bubble immediately when generating a new one.
+        prev_meta = context.user_data.get("last_demographic_report_message")
+        if prev_meta:
+            try:
+                await context.bot.delete_message(
+                    chat_id=prev_meta.get("chat_id"),
+                    message_id=prev_meta.get("message_id"),
+                )
+            except BadRequest:
+                pass
+            except Exception as e:
+                logger.warning("Could not delete previous demographic report message: %s", e)
+
+        sent_report_message = await update.message.reply_text(
             message,
             parse_mode="Markdown",
         )
+        context.user_data["last_demographic_report_message"] = {
+            "chat_id": sent_report_message.chat_id,
+            "message_id": sent_report_message.message_id,
+        }
+        if context.job_queue:
+            context.job_queue.run_once(
+                _delete_message_job,
+                when=20 * 60,
+                data={
+                    "chat_id": sent_report_message.chat_id,
+                    "message_id": sent_report_message.message_id,
+                },
+            )
         await update.message.reply_text(
             strings.get('ADMIN_STATS_MENU_PROMPT', lang),
             parse_mode="Markdown",
