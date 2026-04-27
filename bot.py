@@ -789,186 +789,183 @@ async def main():
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {{
-      --bg: #0b1325;
-      --panel: #223f84;
-      --panel-2: #162d61;
-      --line: rgba(255, 229, 176, 0.42);
       --text: #eef4ff;
-      --muted: #bfd0f6;
-      --blue: #213e80;
-      --gold: #cc912b;
-      --ok: #22c55e;
-      --shadow: 0 14px 34px rgba(2, 6, 23, 0.45);
+      --muted: #c9d7f2;
+      --line: rgba(255, 235, 191, 0.45);
+      --shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
     }}
     * {{ box-sizing: border-box; }}
     body {{
       margin: 0;
-      font-family: "Inter", "Segoe UI", Arial, sans-serif;
+      background: #000;
       color: var(--text);
-      background: #000000;
+      font-family: "Inter", "Segoe UI", Arial, sans-serif;
       min-height: 100vh;
-      padding: 24px 14px;
+      padding: 22px 14px;
     }}
     .wrap {{
-      max-width: 860px;
+      max-width: 920px;
       margin: 0 auto;
-      min-height: calc(100vh - 48px);
+      min-height: calc(100vh - 44px);
       display: grid;
       place-items: center;
     }}
     .card {{
-      width: min(100%, 640px);
+      width: min(100%, 700px);
       aspect-ratio: 1.586;
       border: 1px solid var(--line);
-      background:
-        radial-gradient(420px 300px at var(--g1x, 15%) var(--g1y, 20%), rgba(33, 62, 128, 0.96), transparent 64%),
-        radial-gradient(440px 300px at var(--g2x, 85%) var(--g2y, 78%), rgba(204, 145, 43, 0.82), transparent 66%),
-        linear-gradient(145deg, #1a3268 0%, #27498f 38%, #cc912b 100%);
       border-radius: 22px;
       box-shadow: var(--shadow);
+      position: relative;
       overflow: hidden;
+      isolation: isolate;
       transform-style: preserve-3d;
-      transition: transform 0.15s ease;
+      transition: transform 0.16s ease;
       display: flex;
       flex-direction: column;
-      position: relative;
-      isolation: isolate;
+      padding: 16px 18px;
+      background:
+        radial-gradient(520px 320px at var(--gx1, 20%) var(--gy1, 20%), rgba(33, 62, 128, 0.95), transparent 66%),
+        radial-gradient(520px 320px at var(--gx2, 80%) var(--gy2, 75%), rgba(204, 145, 43, 0.8), transparent 68%),
+        linear-gradient(140deg, #203f82 0%, #17336d 42%, #cc912b 100%);
     }}
-    .card::before {{
+    .card::after {{
       content: "";
       position: absolute;
-      inset: -20%;
+      inset: 0;
       z-index: -1;
       background:
-        radial-gradient(50% 46% at 20% 24%, rgba(33, 62, 128, 0.6), transparent 70%),
-        radial-gradient(50% 46% at 80% 74%, rgba(204, 145, 43, 0.55), transparent 72%);
-      filter: blur(18px);
-      opacity: 0.9;
-      animation: bankAura 9s ease-in-out infinite alternate;
+        linear-gradient(118deg, rgba(255, 255, 255, 0.18) 8%, rgba(255, 255, 255, 0.03) 36%, transparent 62%);
       pointer-events: none;
     }}
-    @keyframes bankAura {{
-      0% {{ transform: translate3d(-2%, -1%, 0) scale(1); }}
-      50% {{ transform: translate3d(1%, 2%, 0) scale(1.03); }}
-      100% {{ transform: translate3d(2%, -1%, 0) scale(1.01); }}
-    }}
     .top {{
-      padding: 16px 16px 12px;
-      border-bottom: 1px solid rgba(33, 62, 128, 0.18);
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
     }}
-    .title-wrap {{ display: flex; align-items: center; gap: 12px; }}
+    .brand {{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }}
     .logo {{
-      width: 46px;
-      height: 46px;
+      width: 44px;
+      height: 44px;
       border-radius: 10px;
       object-fit: cover;
-      border: 1px solid rgba(255, 229, 176, 0.42);
-      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 235, 191, 0.5);
+      background: rgba(255, 255, 255, 0.14);
     }}
-    .title {{
+    .brand-name {{
       margin: 0;
+      font-size: 15px;
       font-weight: 800;
-      font-size: clamp(18px, 3.5vw, 24px);
-      letter-spacing: -0.02em;
-      color: #f8fbff;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #fff7df;
     }}
     .badge {{
       border-radius: 999px;
-      padding: 7px 10px;
+      padding: 6px 10px;
       font-size: 11px;
       font-weight: 700;
       white-space: nowrap;
+      border: 1px solid transparent;
     }}
     .badge.verified {{
-      border: 1px solid rgba(34, 197, 94, 0.55);
-      background: rgba(34, 197, 94, 0.2);
+      border-color: rgba(34, 197, 94, 0.55);
+      background: rgba(34, 197, 94, 0.22);
       color: #bbf7d0;
     }}
     .badge.pending {{
-      border: 1px solid rgba(250, 204, 21, 0.55);
-      background: rgba(250, 204, 21, 0.22);
+      border-color: rgba(250, 204, 21, 0.58);
+      background: rgba(250, 204, 21, 0.24);
       color: #fef08a;
     }}
     .badge.expired {{
-      border: 1px solid rgba(239, 68, 68, 0.55);
-      background: rgba(239, 68, 68, 0.22);
+      border-color: rgba(239, 68, 68, 0.58);
+      background: rgba(239, 68, 68, 0.24);
       color: #fecaca;
     }}
-    .body {{
-      padding: 14px 16px 16px;
-      display: flex;
-      flex-direction: column;
-      flex: 1;
+    .chip {{
+      margin-top: 16px;
+      width: 52px;
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 241, 209, 0.5);
+      background:
+        linear-gradient(135deg, rgba(255, 214, 131, 0.78), rgba(177, 124, 25, 0.85));
     }}
     .id-row {{
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 8px;
-      margin-bottom: 14px;
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }}
+    .id-label {{
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 6px;
+      font-weight: 600;
     }}
     .id {{
-      font-size: 14px;
-      border: 1px solid rgba(255, 229, 176, 0.34);
-      border-radius: 10px;
-      padding: 10px 11px;
-      background: rgba(255, 255, 255, 0.1);
-      color: #f4f8ff;
+      font-size: clamp(15px, 2.4vw, 19px);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #fef7e2;
+      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.3);
       overflow-wrap: anywhere;
     }}
     .btn {{
-      border: 1px solid rgba(255, 229, 176, 0.44);
-      background: rgba(204, 145, 43, 0.2);
-      color: #fff2d5;
+      border: 1px solid rgba(255, 235, 191, 0.5);
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff3d1;
       border-radius: 10px;
       padding: 8px 10px;
       font-family: inherit;
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
-      justify-self: end;
+      transition: filter 0.2s ease, background 0.2s ease;
+      flex-shrink: 0;
     }}
-    .btn:hover {{ filter: brightness(1.08); }}
-    .grid {{
+    .btn:hover {{ filter: brightness(1.08); background: rgba(255, 255, 255, 0.18); }}
+    .bottom {{
+      margin-top: auto;
+      border-top: 1px dashed rgba(255, 235, 191, 0.34);
+      padding-top: 12px;
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 8px;
+      grid-template-columns: 1.35fr 1fr 1fr;
+      gap: 10px 14px;
+      align-items: end;
     }}
-    .item {{
-      border: 1px solid rgba(255, 229, 176, 0.3);
-      border-radius: 10px;
-      padding: 9px 10px;
-      background: rgba(255, 255, 255, 0.08);
-    }}
-    .item.full {{ grid-column: 1 / -1; }}
-    .label {{
-      color: #bcd0f1;
+    .field .label {{
+      color: var(--muted);
       font-size: 10px;
-      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.11em;
       margin-bottom: 4px;
+      font-weight: 600;
     }}
-    .value {{
+    .field .value {{
       color: #f8fbff;
       font-size: 14px;
       font-weight: 700;
-      line-height: 1.35;
+      line-height: 1.3;
       overflow-wrap: anywhere;
     }}
-    .foot {{
-      margin-top: auto;
-      padding-top: 10px;
-      color: #b8c8e9;
+    .meta {{
+      margin-top: 10px;
+      color: #cfdbf6;
       font-size: 11px;
       display: flex;
       justify-content: space-between;
       gap: 10px;
       flex-wrap: wrap;
-      border-top: 1px dashed rgba(255, 229, 176, 0.32);
     }}
     #confettiCanvas {{
       position: fixed;
@@ -982,8 +979,8 @@ async def main():
       position: fixed;
       right: 14px;
       bottom: 14px;
-      border: 1px solid rgba(204, 145, 43, 0.35);
-      background: rgba(204, 145, 43, 0.22);
+      border: 1px solid rgba(204, 145, 43, 0.45);
+      background: rgba(204, 145, 43, 0.24);
       color: #fde7ba;
       border-radius: 10px;
       padding: 10px 12px;
@@ -996,13 +993,15 @@ async def main():
     .toast.show {{ opacity: 1; transform: translateY(0); }}
     @media (max-width: 760px) {{
       .card {{
-        width: min(100%, 390px);
-        aspect-ratio: 0.9;
+        width: min(100%, 420px);
+        aspect-ratio: 0.95;
+        padding: 14px;
       }}
-      .id-row {{ grid-template-columns: 1fr; }}
-      .btn {{ justify-self: start; }}
-      .grid {{ grid-template-columns: 1fr; }}
-      .logo {{ width: 40px; height: 40px; }}
+      .bottom {{
+        grid-template-columns: 1fr 1fr;
+      }}
+      .field.full-mobile {{ grid-column: 1 / -1; }}
+      .id-row {{ flex-direction: column; align-items: flex-start; }}
     }}
   </style>
 </head>
@@ -1010,44 +1009,50 @@ async def main():
   <div class="wrap">
     <article class="card" id="profileCard">
       <section class="top">
-        <div class="title-wrap">
+        <div class="brand">
           <img class="logo" src="{logo_src}" alt="STEM Logo" />
-          <h1 class="title">Membership Profile Card</h1>
+          <h1 class="brand-name">STEM Membership</h1>
         </div>
         <div class="badge {badge_class}">{badge_text}</div>
       </section>
-      <section class="body">
-        <div class="id-row">
-          <div class="id"><strong>Membership ID:</strong> {membership_id}</div>
-          <button class="btn" id="copyIdBtn" type="button">Copy ID</button>
+
+      <div class="chip" aria-hidden="true"></div>
+
+      <section class="id-row">
+        <div>
+          <div class="id-label">Membership ID</div>
+          <div class="id">{membership_id}</div>
         </div>
-        <div class="grid">
-          <div class="item full">
-            <div class="label">Name</div>
-            <div class="value">{name}</div>
-          </div>
-          <div class="item">
-            <div class="label">Matric</div>
-            <div class="value">{matric}</div>
-          </div>
-          <div class="item">
-            <div class="label">Program</div>
-            <div class="value">{program}</div>
-          </div>
-          <div class="item">
-            <div class="label">Register Date</div>
-            <div class="value">{register_date}</div>
-          </div>
-          <div class="item">
-            <div class="label">Expired Date</div>
-            <div class="value">{expired_date}</div>
-          </div>
+        <button class="btn" id="copyIdBtn" type="button">Copy ID</button>
+      </section>
+
+      <section class="bottom">
+        <div class="field full-mobile">
+          <div class="label">Cardholder Name</div>
+          <div class="value">{name}</div>
         </div>
-        <div class="foot">
-          <span>Generated: {generated_at} (Asia/Kuala Lumpur)</span>
-          <span>Secure temporary profile link</span>
+        <div class="field">
+          <div class="label">Matric</div>
+          <div class="value">{matric}</div>
+        </div>
+        <div class="field">
+          <div class="label">Program</div>
+          <div class="value">{program}</div>
+        </div>
+        <div class="field">
+          <div class="label">Register Date</div>
+          <div class="value">{register_date}</div>
+        </div>
+        <div class="field">
+          <div class="label">Expired Date</div>
+          <div class="value">{expired_date}</div>
         </div>
       </section>
+
+      <div class="meta">
+        <span>Generated: {generated_at} (Asia/Kuala Lumpur)</span>
+        <span>Secure temporary profile link</span>
+      </div>
     </article>
   </div>
   <canvas id="confettiCanvas"></canvas>
@@ -1081,30 +1086,39 @@ async def main():
       const y = (e.clientY - rect.top) / rect.height;
       const rx = (0.5 - y) * maxTilt;
       const ry = (x - 0.5) * maxTilt;
-      card.style.transform = `perspective(900px) rotateX(${{rx}}deg) rotateY(${{ry}}deg)`;
+      card.style.transform = 'perspective(1000px) rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
     }});
     card.addEventListener('mouseleave', () => {{
-      card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg)';
+      card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg)';
     }});
 
-    const gradientMotion = (() => {{
-      let t = 0;
-      const seedA = Math.random() * Math.PI * 2;
-      const seedB = Math.random() * Math.PI * 2;
-      const tick = () => {{
-        t += 0.0052;
-        const g1x = 20 + Math.sin(t + seedA) * 12 + Math.sin(t * 0.45) * 4;
-        const g1y = 24 + Math.cos(t * 0.8 + seedB) * 11;
-        const g2x = 80 + Math.cos(t * 0.9 + seedA) * 10;
-        const g2y = 76 + Math.sin(t * 0.7 + seedB) * 9;
-        card.style.setProperty('--g1x', `${{g1x.toFixed(2)}}%`);
-        card.style.setProperty('--g1y', `${{g1y.toFixed(2)}}%`);
-        card.style.setProperty('--g2x', `${{g2x.toFixed(2)}}%`);
-        card.style.setProperty('--g2y', `${{g2y.toFixed(2)}}%`);
-        requestAnimationFrame(tick);
-      }};
-      requestAnimationFrame(tick);
-    }})();
+    let gT = 0;
+    const gradientState = {{
+      c1x: 20, c1y: 20, c2x: 80, c2y: 75,
+      t1x: 20, t1y: 20, t2x: 80, t2y: 75,
+    }};
+    const nextTargets = () => {{
+      gradientState.t1x = 10 + Math.random() * 28;
+      gradientState.t1y = 10 + Math.random() * 34;
+      gradientState.t2x = 62 + Math.random() * 28;
+      gradientState.t2y = 58 + Math.random() * 32;
+    }};
+    nextTargets();
+    const gradientTick = () => {{
+      gT += 1;
+      if (gT % 240 === 0) nextTargets();
+      const lerp = 0.012;
+      gradientState.c1x += (gradientState.t1x - gradientState.c1x) * lerp;
+      gradientState.c1y += (gradientState.t1y - gradientState.c1y) * lerp;
+      gradientState.c2x += (gradientState.t2x - gradientState.c2x) * lerp;
+      gradientState.c2y += (gradientState.t2y - gradientState.c2y) * lerp;
+      card.style.setProperty('--gx1', gradientState.c1x.toFixed(2) + '%');
+      card.style.setProperty('--gy1', gradientState.c1y.toFixed(2) + '%');
+      card.style.setProperty('--gx2', gradientState.c2x.toFixed(2) + '%');
+      card.style.setProperty('--gy2', gradientState.c2y.toFixed(2) + '%');
+      requestAnimationFrame(gradientTick);
+    }};
+    requestAnimationFrame(gradientTick);
 
     const runConfetti = () => {{
       const canvas = document.getElementById('confettiCanvas');
