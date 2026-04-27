@@ -460,98 +460,116 @@ async def main():
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Demographic Report</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {{
-      --bg-0: #f2f6ff;
-      --bg-1: #e8f4ff;
-      --text-main: #0f172a;
-      --text-soft: #475569;
-      --card: rgba(255, 255, 255, 0.9);
-      --border: rgba(148, 163, 184, 0.25);
-      --shadow: 0 18px 38px rgba(15, 23, 42, 0.12);
+      --stem-blue: #213e80;
+      --stem-gold: #cc912b;
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --line: #e2e8f0;
+      --text: #0f172a;
+      --muted: #475569;
+      --shadow-soft: 0 8px 24px rgba(2, 6, 23, 0.06);
     }}
     * {{ box-sizing: border-box; }}
     body {{
       margin: 0;
-      color: var(--text-main);
-      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      font-family: "Inter", "Segoe UI", Arial, sans-serif;
       background:
-        radial-gradient(1200px 580px at 92% -10%, rgba(29, 78, 216, 0.12), transparent 65%),
-        radial-gradient(920px 520px at -5% 0%, rgba(8, 145, 178, 0.14), transparent 60%),
-        linear-gradient(160deg, var(--bg-0), var(--bg-1));
+        radial-gradient(900px 420px at 100% -12%, rgba(33, 62, 128, 0.1), transparent 65%),
+        radial-gradient(900px 420px at -8% 0%, rgba(204, 145, 43, 0.08), transparent 62%),
+        var(--bg);
       min-height: 100vh;
     }}
     .wrap {{
-      max-width: 1160px;
+      max-width: 1120px;
       margin: 0 auto;
-      padding: 28px 16px 36px;
+      padding: 28px 18px 40px;
     }}
     .hero {{
-      border: 1px solid rgba(255, 255, 255, 0.7);
-      background: linear-gradient(135deg, rgba(8, 145, 178, 0.12), rgba(29, 78, 216, 0.12));
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-      padding: 20px;
-      backdrop-filter: blur(6px);
-      margin-bottom: 16px;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95)),
+        linear-gradient(120deg, rgba(33, 62, 128, 0.06), rgba(204, 145, 43, 0.06));
+      border-radius: 18px;
+      box-shadow: var(--shadow-soft);
+      padding: 22px;
+      margin-bottom: 14px;
     }}
     .hero h1 {{
-      margin: 0 0 6px;
-      font-size: clamp(24px, 4vw, 36px);
-      line-height: 1.1;
-      letter-spacing: 0.2px;
+      margin: 0 0 8px;
+      font-size: clamp(24px, 4vw, 34px);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      font-weight: 800;
     }}
     .hero .sub {{
-      color: var(--text-soft);
+      color: var(--muted);
       font-size: 14px;
       line-height: 1.45;
+      max-width: 760px;
     }}
     .chips {{
-      margin-top: 14px;
+      margin-top: 16px;
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
     }}
     .chip {{
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.85);
+      padding: 8px 11px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
       font-size: 13px;
-      color: #0b2447;
+      color: #1e293b;
+      font-weight: 500;
+    }}
+    .chip.primary {{
+      border-color: rgba(33, 62, 128, 0.25);
+      color: var(--stem-blue);
+      background: rgba(33, 62, 128, 0.06);
+    }}
+    .chip.accent {{
+      border-color: rgba(204, 145, 43, 0.3);
+      color: #8b5e14;
+      background: rgba(204, 145, 43, 0.12);
     }}
     .grid {{
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
+      gap: 14px;
     }}
     .card {{
-      border-radius: 20px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1);
-      padding: 18px;
-      backdrop-filter: blur(8px);
+      border-radius: 16px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-soft);
+      padding: 16px;
     }}
     .card h3 {{
       margin: 0;
-      font-size: 18px;
-      letter-spacing: 0.2px;
+      font-size: 17px;
+      letter-spacing: -0.01em;
+      font-weight: 700;
     }}
     .muted {{
-      margin-top: 6px;
-      color: var(--text-soft);
+      margin-top: 4px;
+      color: var(--muted);
       font-size: 13px;
     }}
     .chart-box {{
-      margin-top: 10px;
-      height: 360px;
+      margin-top: 12px;
+      height: 380px;
       position: relative;
     }}
     canvas {{ width: 100% !important; height: 100% !important; }}
     @media (max-width: 920px) {{
       .grid {{ grid-template-columns: 1fr; }}
-      .chart-box {{ height: 330px; }}
+      .chart-box {{ height: 340px; }}
     }}
   </style>
 </head>
@@ -561,8 +579,8 @@ async def main():
       <h1>Demographic Dashboard</h1>
       <div class="sub">Interactive membership demographic overview with breakdown by course and year of birth.</div>
       <div class="chips">
-        <div class="chip">Period: {stats_month_year}</div>
-        <div class="chip">Total Members: {total}</div>
+        <div class="chip primary">Period: {stats_month_year}</div>
+        <div class="chip accent">Total Members: {total}</div>
         <div class="chip">Generated: {generated_at}</div>
       </div>
     </section>
@@ -586,9 +604,9 @@ async def main():
     const birthValues = {json.dumps(birth_vals)};
 
     const palette = [
-      '#0ea5e9', '#2563eb', '#06b6d4', '#14b8a6', '#22c55e',
-      '#84cc16', '#f59e0b', '#f97316', '#ef4444', '#ec4899',
-      '#8b5cf6', '#6366f1'
+      '#213e80', '#cc912b', '#2f57ad', '#d7a44f', '#3f6bc6',
+      '#e1b56f', '#4a77cf', '#e8c488', '#6a90d7', '#f0d4a6',
+      '#8aaadf', '#f8e2c4'
     ];
 
     const centerTextPlugin = {{
@@ -606,10 +624,10 @@ async def main():
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#0f172a';
-        ctx.font = '700 26px Segoe UI';
+        ctx.font = '700 26px Inter';
         ctx.fillText(String(cfg.text), x, y - 6);
         ctx.fillStyle = '#64748b';
-        ctx.font = '500 12px Segoe UI';
+        ctx.font = '500 12px Inter';
         ctx.fillText('segments', x, y + 16);
         ctx.restore();
       }}
@@ -647,12 +665,14 @@ async def main():
                 boxHeight: 10,
                 padding: 14,
                 color: '#1e293b',
-                font: {{ size: 12 }}
+                font: {{ family: 'Inter', size: 12, weight: 500 }}
               }}
             }},
             tooltip: {{
               backgroundColor: 'rgba(15, 23, 42, 0.95)',
               padding: 10,
+              titleFont: {{ family: 'Inter', size: 12, weight: 700 }},
+              bodyFont: {{ family: 'Inter', size: 12, weight: 500 }},
               callbacks: {{
                 label: (ctx) => ctx.label + ': ' + ctx.formattedValue + '%'
               }}
