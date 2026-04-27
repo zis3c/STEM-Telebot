@@ -781,22 +781,25 @@ async def main():
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>STEM Membership Profile</title>
+  <title>STEM Membership</title>
   {favicon_tag}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {{
-      --text: #f6fbff;
-      --muted: #d6e0ef;
-      --line: rgba(255, 235, 191, 0.42);
-      --shadow: 0 24px 52px rgba(0, 0, 0, 0.6);
+      --text: #f8fafc;
+      --muted: #9ca3af;
+      --line: rgba(148, 163, 184, 0.24);
+      --shadow: 0 24px 64px rgba(0, 0, 0, 0.58);
     }}
     * {{ box-sizing: border-box; }}
     body {{
       margin: 0;
-      background: #000;
+      background:
+        radial-gradient(980px 560px at 92% -12%, rgba(33, 62, 128, 0.28), transparent 62%),
+        radial-gradient(860px 520px at -12% -6%, rgba(204, 145, 43, 0.16), transparent 58%),
+        #020617;
       color: var(--text);
       font-family: "Inter", "Segoe UI", Arial, sans-serif;
       min-height: 100vh;
@@ -810,10 +813,10 @@ async def main():
       place-items: center;
     }}
     .card {{
-      width: min(100%, 560px);
+      width: min(100%, 540px);
       aspect-ratio: 1.586;
       border: 1px solid var(--line);
-      border-radius: 22px;
+      border-radius: 24px;
       box-shadow: var(--shadow);
       position: relative;
       overflow: hidden;
@@ -822,11 +825,12 @@ async def main():
       transition: transform 0.16s ease;
       display: flex;
       flex-direction: column;
-      padding: 12px 14px;
+      padding: 14px 16px;
       background:
-        radial-gradient(520px 320px at var(--gx1, 20%) var(--gy1, 20%), rgba(33, 62, 128, 0.95), transparent 66%),
-        radial-gradient(520px 320px at var(--gx2, 80%) var(--gy2, 75%), rgba(204, 145, 43, 0.8), transparent 68%),
-        linear-gradient(136deg, #203f82 0%, #1a3670 36%, #355a9f 56%, #cc912b 100%);
+        radial-gradient(520px 300px at var(--gx1, 24%) var(--gy1, 20%), rgba(33, 62, 128, 0.52), transparent 66%),
+        radial-gradient(520px 300px at var(--gx2, 80%) var(--gy2, 72%), rgba(204, 145, 43, 0.28), transparent 70%),
+        linear-gradient(142deg, #0b1220 0%, #101a2f 50%, #0f172a 100%);
+      backdrop-filter: blur(8px);
     }}
     .card.booting {{
       transform: perspective(1000px) scale(1.2);
@@ -839,10 +843,10 @@ async def main():
       content: "";
       position: absolute;
       inset: 0 0 auto 0;
-      height: 48%;
+      height: 52%;
       z-index: -1;
       background:
-        linear-gradient(118deg, rgba(255, 255, 255, 0.22) 4%, rgba(255, 255, 255, 0.03) 42%, transparent 72%);
+        linear-gradient(118deg, rgba(255, 255, 255, 0.16) 4%, rgba(255, 255, 255, 0.03) 42%, transparent 72%);
       pointer-events: none;
     }}
     .card::after {{
@@ -850,15 +854,10 @@ async def main():
       position: absolute;
       inset: 0;
       z-index: -1;
-      background-image:
-        repeating-linear-gradient(
-          120deg,
-          rgba(255, 255, 255, 0.03) 0px,
-          rgba(255, 255, 255, 0.03) 1px,
-          transparent 1px,
-          transparent 9px
-        );
-      opacity: 0.5;
+      background:
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.06), transparent 28%),
+        linear-gradient(to right, rgba(255, 255, 255, 0.03), transparent 24%);
+      opacity: 0.35;
       pointer-events: none;
     }}
     .top {{
@@ -870,23 +869,23 @@ async def main():
     .brand {{
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }}
     .logo {{
-      width: 36px;
-      height: 36px;
+      width: 38px;
+      height: 38px;
       border-radius: 10px;
       object-fit: cover;
-      border: 1px solid rgba(255, 235, 191, 0.5);
-      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(148, 163, 184, 0.34);
+      background: rgba(255, 255, 255, 0.08);
     }}
     .brand-name {{
       margin: 0;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: #fff7df;
+      color: #e2e8f0;
     }}
     .badge {{
       border-radius: 999px;
@@ -897,22 +896,22 @@ async def main():
       border: 1px solid transparent;
     }}
     .badge.verified {{
-      border-color: rgba(34, 197, 94, 0.55);
-      background: rgba(34, 197, 94, 0.22);
+      border-color: rgba(34, 197, 94, 0.5);
+      background: rgba(34, 197, 94, 0.18);
       color: #bbf7d0;
     }}
     .badge.pending {{
-      border-color: rgba(250, 204, 21, 0.58);
-      background: rgba(250, 204, 21, 0.24);
-      color: #fef08a;
+      border-color: rgba(250, 204, 21, 0.52);
+      background: rgba(250, 204, 21, 0.18);
+      color: #fde68a;
     }}
     .badge.expired {{
-      border-color: rgba(239, 68, 68, 0.58);
-      background: rgba(239, 68, 68, 0.24);
+      border-color: rgba(239, 68, 68, 0.52);
+      background: rgba(239, 68, 68, 0.18);
       color: #fecaca;
     }}
     .id-row {{
-      margin-top: 14px;
+      margin-top: 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -927,18 +926,18 @@ async def main():
       font-weight: 600;
     }}
     .id {{
-      font-size: clamp(14px, 2vw, 17px);
+      font-size: clamp(14px, 2vw, 16px);
       font-weight: 700;
       letter-spacing: 0.11em;
-      color: #fef7e2;
-      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.3);
+      color: #f8fafc;
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
       overflow-wrap: anywhere;
     }}
     .btn {{
-      border: 1px solid rgba(255, 235, 191, 0.5);
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff3d1;
-      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(148, 163, 184, 0.12);
+      color: #e2e8f0;
+      border-radius: 12px;
       padding: 8px 10px;
       font-family: inherit;
       font-size: 11px;
@@ -947,11 +946,11 @@ async def main():
       transition: filter 0.2s ease, background 0.2s ease;
       flex-shrink: 0;
     }}
-    .btn:hover {{ filter: brightness(1.08); background: rgba(255, 255, 255, 0.18); }}
+    .btn:hover {{ filter: brightness(1.08); background: rgba(148, 163, 184, 0.2); }}
     .bottom {{
       margin-top: auto;
-      border-top: 1px dashed rgba(255, 235, 191, 0.34);
-      padding-top: 8px;
+      border-top: 1px dashed rgba(148, 163, 184, 0.32);
+      padding-top: 10px;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -961,7 +960,7 @@ async def main():
       width: 100%;
       display: grid;
       grid-template-columns: 1.35fr 1fr 1fr;
-      gap: 10px 14px;
+      gap: 10px 12px;
       align-items: end;
     }}
     .field .label {{
@@ -973,8 +972,8 @@ async def main():
       font-weight: 600;
     }}
     .field .value {{
-      color: #f8fbff;
-      font-size: 12px;
+      color: #f8fafc;
+      font-size: 11px;
       font-weight: 700;
       line-height: 1.3;
       overflow-wrap: anywhere;
@@ -994,8 +993,8 @@ async def main():
       justify-content: center;
       flex-direction: column;
       gap: 12px;
-      background: rgba(9, 18, 38, 0.08);
-      backdrop-filter: blur(2px);
+      background: rgba(2, 6, 23, 0.42);
+      backdrop-filter: blur(3px);
       z-index: 5;
       transition: opacity 0.35s ease, transform 0.35s ease;
     }}
@@ -1005,17 +1004,17 @@ async def main():
       pointer-events: none;
     }}
     .intro-logo {{
-      width: 76px;
-      height: 76px;
-      border-radius: 16px;
-      border: 1px solid rgba(255, 235, 191, 0.56);
-      background: rgba(255, 255, 255, 0.15);
+      width: 72px;
+      height: 72px;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      background: rgba(255, 255, 255, 0.12);
       object-fit: cover;
       box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
     }}
     .intro-title {{
-      color: #fff6df;
-      letter-spacing: 0.2em;
+      color: #e2e8f0;
+      letter-spacing: 0.16em;
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
@@ -1024,9 +1023,9 @@ async def main():
       position: fixed;
       right: 14px;
       bottom: 14px;
-      border: 1px solid rgba(204, 145, 43, 0.45);
-      background: rgba(204, 145, 43, 0.24);
-      color: #fde7ba;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      background: rgba(15, 23, 42, 0.84);
+      color: #e2e8f0;
       border-radius: 10px;
       padding: 10px 12px;
       font-size: 12px;
@@ -1038,7 +1037,7 @@ async def main():
     .toast.show {{ opacity: 1; transform: translateY(0); }}
     @media (max-width: 760px) {{
       .card {{
-        width: min(100%, 360px);
+        width: min(100%, 370px);
         aspect-ratio: 0.95;
         padding: 10px;
       }}
