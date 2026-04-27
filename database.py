@@ -295,6 +295,24 @@ class Database:
                 continue
         return None
 
+    def _extract_birth_year(self, raw_value):
+        """Extract birth year from sheet birthday value."""
+        dt = self._parse_sheet_date(raw_value)
+        now_year = datetime.now().year
+        if dt and 1900 <= dt.year <= now_year:
+            return str(dt.year)
+
+        text = str(raw_value or "").strip()
+        if not text or text == "-":
+            return "Unknown"
+
+        # Prefer explicit 4-digit year.
+        m = re.search(r"(19\d{2}|20\d{2})", text)
+        if m:
+            return m.group(1)
+
+        return "Unknown"
+
     def _normalize_status(self, status_raw):
         """Normalize raw sheet status into approved/rejected/expired/pending."""
         status = str(status_raw or "").strip().lower()
@@ -325,6 +343,10 @@ class Database:
         expiring_next_30 = 0
         expired_this_month = 0
         registered_current_month_names = []
+        registered_all_names = []
+        course_counts = {}
+        birth_year_counts = {}
+        demographic_total = 0
 
         for row, _ in self.student_cache.values():
             status = self._normalize_status(row[17] if len(row) > 17 else "")
@@ -349,6 +371,16 @@ class Database:
                 if name:
                     registered_current_month_names.append(name)
 
+            # Whole-DB demographic mix across all registered records.
+            name_all = str(row[2]).strip() if len(row) > 2 else ""
+            if name_all:
+                registered_all_names.append(name_all)
+            demographic_total += 1
+            course = str(row[4]).strip() if len(row) > 4 and str(row[4]).strip() else "Unknown"
+            birth_year = self._extract_birth_year(row[10] if len(row) > 10 else "")
+            course_counts[course] = course_counts.get(course, 0) + 1
+            birth_year_counts[birth_year] = birth_year_counts.get(birth_year, 0) + 1
+
             if status == "approved":
                 entry_date = self._parse_sheet_date(row[13] if len(row) > 13 else "")
                 if not entry_date:
@@ -362,6 +394,27 @@ class Database:
 
         decisions_last_30 = approved_last_30 + rejected_last_30
         approval_rate = (approved_last_30 / decisions_last_30 * 100.0) if decisions_last_30 else 0.0
+        safe_total = max(demographic_total, 1)
+
+        course_distribution = [
+            {
+                "label": course,
+                "count": count,
+                "pct": round((count / safe_total) * 100.0, 1),
+            }
+            for course, count in sorted(course_counts.items(), key=lambda item: item[1], reverse=True)
+        ]
+        birth_year_distribution = [
+            {
+                "label": year,
+                "count": count,
+                "pct": round((count / safe_total) * 100.0, 1),
+            }
+            for year, count in sorted(
+                birth_year_counts.items(),
+                key=lambda item: (item[0] == "Unknown", -item[1], item[0]),
+            )
+        ]
 
         return {
             "total_last_30": total_last_30,
@@ -373,6 +426,11 @@ class Database:
             "expired_this_month": expired_this_month,
             "registered_current_month_count": len(registered_current_month_names),
             "registered_current_month_names": registered_current_month_names,
+            "registered_all_count": len(registered_all_names),
+            "registered_all_names": registered_all_names,
+            "demographic_total": demographic_total,
+            "course_distribution": course_distribution,
+            "birth_year_distribution": birth_year_distribution,
         }
     def add_member(self, name, matric, ic, prog):
         sheet = self.get_sheet("Registrations")

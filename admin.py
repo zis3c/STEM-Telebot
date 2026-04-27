@@ -80,19 +80,6 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         data = await run_db_call(db.get_stats)
         stats_month_year = datetime.now().strftime("%B %Y")
 
-        def escape_md(text):
-            return str(text).replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
-
-        month_names = data.get('registered_current_month_names', [])
-        max_listed_names = 20
-        if month_names:
-            listed = [f"- {escape_md(name)}" for name in month_names[:max_listed_names]]
-            if len(month_names) > max_listed_names:
-                listed.append(f"_...and {len(month_names) - max_listed_names} more._")
-            registered_current_month_list = "\n".join(listed)
-        else:
-            registered_current_month_list = "-"
-
         await update.message.reply_text(
             strings.get('ADMIN_STATS', lang).format(
                 stats_month_year=stats_month_year,
@@ -104,8 +91,68 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 expiring_next_30=data['expiring_next_30'],
                 expired_this_month=data['expired_this_month'],
                 registered_current_month_count=data['registered_current_month_count'],
-                registered_current_month_list=registered_current_month_list,
             ), 
+            parse_mode="Markdown",
+            reply_markup=keyboards.get_admin_menu(lang)
+        )
+    except Exception as e:
+        logger.error(e)
+        await update.message.reply_text(strings.get('ERR_DB_CONNECTION', lang))
+    return states.ADMIN_MENU
+
+async def stats_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    lang = get_user_lang(context)
+    try:
+        data = await run_db_call(db.get_stats)
+        stats_month_year = datetime.now().strftime("%B %Y")
+
+        def escape_md(text):
+            return str(text).replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
+
+        def format_distribution(items, max_items=8, normalize_program=False):
+            if not items:
+                return "-"
+            lines = []
+            for item in items[:max_items]:
+                label = item.get("label", "Unknown")
+                if normalize_program:
+                    label = strings.format_program_short(label)
+                label = escape_md(label)
+                lines.append(f"- {label}: *{item.get('pct', 0)}%* ({item.get('count', 0)})")
+            if len(items) > max_items:
+                lines.append(f"_...and {len(items) - max_items} more._")
+            return "\n".join(lines)
+
+        month_names = data.get('registered_all_names', [])
+        max_listed_names = 20
+        if month_names:
+            listed = [f"- {escape_md(name)}" for name in month_names[:max_listed_names]]
+            if len(month_names) > max_listed_names:
+                listed.append(f"_...and {len(month_names) - max_listed_names} more._")
+            registered_current_month_list = "\n".join(listed)
+        else:
+            registered_current_month_list = "-"
+
+        course_breakdown = format_distribution(
+            data.get("course_distribution", []),
+            max_items=8,
+            normalize_program=True,
+        )
+        birth_year_breakdown = format_distribution(
+            data.get("birth_year_distribution", []),
+            max_items=8,
+            normalize_program=False,
+        )
+
+        await update.message.reply_text(
+            strings.get('ADMIN_STATS_DETAIL', lang).format(
+                stats_month_year=stats_month_year,
+                registered_current_month_count=data.get('registered_all_count', 0),
+                registered_current_month_list=registered_current_month_list,
+                demographic_total=data.get('demographic_total', 0),
+                course_breakdown=course_breakdown,
+                birth_year_breakdown=birth_year_breakdown,
+            ),
             parse_mode="Markdown",
             reply_markup=keyboards.get_admin_menu(lang)
         )

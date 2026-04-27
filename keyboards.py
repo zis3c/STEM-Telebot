@@ -155,7 +155,8 @@ def get_admin_confirm_keyboard(action, row_idx, matric, lang='EN'):
 def get_admin_menu(lang='EN'):
     return ReplyKeyboardMarkup([
         [strings.get('BTN_ADMIN_MANAGE', lang), strings.get('BTN_ADMIN_CHECK_PENDING', lang)],
-        [strings.get('BTN_ADMIN_STATS', lang), strings.get('BTN_ADMIN_BROADCAST', lang)],
+        [strings.get('BTN_ADMIN_STATS', lang), strings.get('BTN_ADMIN_STATS_DETAIL', lang)],
+        [strings.get('BTN_ADMIN_BROADCAST', lang)],
         [strings.get('BTN_ADMIN_EXIT', lang)]
     ], resize_keyboard=True, one_time_keyboard=False)
 
