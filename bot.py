@@ -788,83 +788,71 @@ async def main():
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {{
+      --bg: #020617;
+      --panel: rgba(15, 23, 42, 0.72);
+      --panel-strong: rgba(15, 23, 42, 0.88);
       --text: #f8fafc;
-      --muted: #9ca3af;
-      --line: rgba(148, 163, 184, 0.24);
-      --shadow: 0 24px 64px rgba(0, 0, 0, 0.58);
+      --muted: #94a3b8;
+      --line: rgba(148, 163, 184, 0.25);
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
     }}
     * {{ box-sizing: border-box; }}
     body {{
       margin: 0;
       background:
-        radial-gradient(980px 560px at 92% -12%, rgba(33, 62, 128, 0.28), transparent 62%),
-        radial-gradient(860px 520px at -12% -6%, rgba(204, 145, 43, 0.16), transparent 58%),
-        #020617;
+        radial-gradient(1000px 560px at 90% -10%, rgba(33, 62, 128, 0.35), transparent 62%),
+        radial-gradient(860px 520px at -10% -8%, rgba(204, 145, 43, 0.2), transparent 58%),
+        var(--bg);
       color: var(--text);
       font-family: "Inter", "Segoe UI", Arial, sans-serif;
       min-height: 100vh;
-      padding: 22px 14px;
+      padding: 24px 14px;
     }}
-    .wrap {{
-      max-width: 920px;
+    .shell {{
+      max-width: 860px;
       margin: 0 auto;
-      min-height: calc(100vh - 44px);
+      min-height: calc(100vh - 48px);
       display: grid;
       place-items: center;
     }}
-    .card {{
-      width: min(100%, 540px);
-      aspect-ratio: 1.586;
+    .panel {{
+      width: min(100%, 700px);
+      background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 24px;
+      border-radius: 22px;
       box-shadow: var(--shadow);
       position: relative;
       overflow: hidden;
-      isolation: isolate;
-      transform-style: preserve-3d;
-      transition: transform 0.16s ease;
-      display: flex;
-      flex-direction: column;
-      padding: 14px 16px;
-      background:
-        radial-gradient(520px 300px at var(--gx1, 24%) var(--gy1, 20%), rgba(33, 62, 128, 0.52), transparent 66%),
-        radial-gradient(520px 300px at var(--gx2, 80%) var(--gy2, 72%), rgba(204, 145, 43, 0.28), transparent 70%),
-        linear-gradient(142deg, #0b1220 0%, #101a2f 50%, #0f172a 100%);
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(10px);
     }}
-    .card.booting {{
-      transform: perspective(1000px) scale(1.2);
-    }}
-    .card.settle {{
-      transition: transform 0.95s cubic-bezier(0.16, 1, 0.3, 1);
-      transform: perspective(1000px) scale(1);
-    }}
-    .card::before {{
+    .panel::before {{
       content: "";
       position: absolute;
       inset: 0 0 auto 0;
-      height: 52%;
-      z-index: -1;
+      height: 180px;
       background:
-        linear-gradient(118deg, rgba(255, 255, 255, 0.16) 4%, rgba(255, 255, 255, 0.03) 42%, transparent 72%);
+        linear-gradient(150deg, rgba(33, 62, 128, 0.45), rgba(204, 145, 43, 0.24) 62%, transparent);
       pointer-events: none;
     }}
-    .card::after {{
+    .panel::after {{
       content: "";
       position: absolute;
       inset: 0;
-      z-index: -1;
-      background:
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.06), transparent 28%),
-        linear-gradient(to right, rgba(255, 255, 255, 0.03), transparent 24%);
-      opacity: 0.35;
+      background-image: linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), transparent 75%);
+      opacity: 0.18;
       pointer-events: none;
     }}
-    .top {{
+    .header {{
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 14px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.42);
     }}
     .brand {{
       display: flex;
@@ -881,16 +869,15 @@ async def main():
     }}
     .brand-name {{
       margin: 0;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
+      letter-spacing: 0.02em;
       color: #e2e8f0;
     }}
     .badge {{
       border-radius: 999px;
-      padding: 6px 10px;
-      font-size: 11px;
+      padding: 7px 12px;
+      font-size: 12px;
       font-weight: 700;
       white-space: nowrap;
       border: 1px solid transparent;
@@ -910,114 +897,78 @@ async def main():
       background: rgba(239, 68, 68, 0.18);
       color: #fecaca;
     }}
-    .id-row {{
-      margin-top: 16px;
+    .body {{
+      padding: 18px 20px 20px;
+      display: grid;
+      gap: 16px;
+    }}
+    .hero {{
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: rgba(15, 23, 42, 0.55);
     }}
     .id-label {{
       color: var(--muted);
-      font-size: 9px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.12em;
       margin-bottom: 6px;
       font-weight: 600;
     }}
     .id {{
-      font-size: clamp(14px, 2vw, 16px);
+      font-size: clamp(14px, 2vw, 18px);
       font-weight: 700;
-      letter-spacing: 0.11em;
+      letter-spacing: 0.06em;
       color: #f8fafc;
-      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
       overflow-wrap: anywhere;
     }}
     .btn {{
       border: 1px solid rgba(148, 163, 184, 0.35);
-      background: rgba(148, 163, 184, 0.12);
+      background: rgba(51, 65, 85, 0.42);
       color: #e2e8f0;
       border-radius: 12px;
-      padding: 8px 10px;
+      padding: 10px 12px;
       font-family: inherit;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
       cursor: pointer;
       transition: filter 0.2s ease, background 0.2s ease;
       flex-shrink: 0;
     }}
-    .btn:hover {{ filter: brightness(1.08); background: rgba(148, 163, 184, 0.2); }}
-    .bottom {{
-      margin-top: auto;
-      border-top: 1px dashed rgba(148, 163, 184, 0.32);
-      padding-top: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      align-items: end;
-    }}
-    .line {{
-      width: 100%;
+    .btn:hover {{ filter: brightness(1.08); background: rgba(51, 65, 85, 0.6); }}
+    .grid {{
       display: grid;
-      grid-template-columns: 1.35fr 1fr 1fr;
-      gap: 10px 12px;
-      align-items: end;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
     }}
-    .field .label {{
+    .item {{
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: var(--panel-strong);
+    }}
+    .item .label {{
       color: var(--muted);
-      font-size: 9px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.11em;
       margin-bottom: 4px;
       font-weight: 600;
     }}
-    .field .value {{
+    .item .value {{
       color: #f8fafc;
-      font-size: 11px;
-      font-weight: 700;
+      font-size: 13px;
+      font-weight: 600;
       line-height: 1.3;
       overflow-wrap: anywhere;
     }}
-    .card-content {{
-      opacity: 0;
-      transition: opacity 0.35s ease;
-    }}
-    .card-content.show {{
-      opacity: 1;
-    }}
-    .intro-screen {{
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 12px;
-      background: rgba(2, 6, 23, 0.42);
-      backdrop-filter: blur(3px);
-      z-index: 5;
-      transition: opacity 0.35s ease, transform 0.35s ease;
-    }}
-    .intro-screen.hide {{
-      opacity: 0;
-      transform: scale(1.03);
-      pointer-events: none;
-    }}
-    .intro-logo {{
-      width: 72px;
-      height: 72px;
-      border-radius: 14px;
-      border: 1px solid rgba(148, 163, 184, 0.45);
-      background: rgba(255, 255, 255, 0.12);
-      object-fit: cover;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
-    }}
-    .intro-title {{
-      color: #e2e8f0;
-      letter-spacing: 0.16em;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
+    .full {{
+      grid-column: 1 / -1;
     }}
     .toast {{
       position: fixed;
@@ -1035,76 +986,62 @@ async def main():
       transition: 0.2s ease;
     }}
     .toast.show {{ opacity: 1; transform: translateY(0); }}
-    @media (max-width: 760px) {{
-      .card {{
-        width: min(100%, 370px);
-        aspect-ratio: 0.95;
-        padding: 10px;
+    @media (max-width: 680px) {{
+      .header, .body {{ padding: 14px; }}
+      .hero {{
+        flex-direction: column;
+        align-items: flex-start;
       }}
-      .line {{
-        grid-template-columns: 1fr 1fr;
-      }}
-      .field.full-mobile {{ grid-column: 1 / -1; }}
-      .id-row {{ flex-direction: column; align-items: flex-start; }}
-      .intro-logo {{ width: 66px; height: 66px; }}
+      .grid {{ grid-template-columns: 1fr; }}
+      .full {{ grid-column: auto; }}
     }}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <article class="card" id="profileCard">
-      <div class="intro-screen" id="introScreen">
-        <img class="intro-logo" src="{logo_src}" alt="STEM Logo" />
-        <div class="intro-title">STEM Membership</div>
-      </div>
-      <div class="card-content" id="cardContent">
-        <section class="top">
-          <div class="brand">
-            <img class="logo" src="{logo_src}" alt="STEM Logo" />
-            <h1 class="brand-name">STEM Membership</h1>
-          </div>
-          <div class="badge {badge_class}">{badge_text}</div>
-        </section>
-
-        <section class="id-row">
+  <div class="shell">
+    <article class="panel">
+      <section class="header">
+        <div class="brand">
+          <img class="logo" src="{logo_src}" alt="STEM Logo" />
+          <h1 class="brand-name">STEM Membership</h1>
+        </div>
+        <div class="badge {badge_class}">{badge_text}</div>
+      </section>
+      <section class="body">
+        <div class="hero">
           <div>
             <div class="id-label">Membership ID</div>
-            <div class="id"><span class="reveal" data-final="{membership_id}"></span></div>
+            <div class="id">{membership_id}</div>
           </div>
           <button class="btn" id="copyIdBtn" type="button">Copy ID</button>
-        </section>
-
-        <section class="bottom">
-          <div class="line">
-            <div class="field full-mobile">
-              <div class="label">Cardholder Name</div>
-              <div class="value"><span class="reveal" data-final="{name}"></span></div>
-            </div>
-            <div class="field">
-              <div class="label">Matric</div>
-              <div class="value"><span class="reveal" data-final="{matric}"></span></div>
-            </div>
-            <div class="field">
-              <div class="label">Status</div>
-              <div class="value"><span class="reveal" data-final="{badge_text}"></span></div>
-            </div>
+        </div>
+        <div class="grid">
+          <div class="item full">
+            <div class="label">Name</div>
+            <div class="value">{name}</div>
           </div>
-          <div class="line">
-            <div class="field">
-              <div class="label">Expired Date</div>
-              <div class="value"><span class="reveal" data-final="{expired_date}"></span></div>
-            </div>
-            <div class="field">
-              <div class="label">Register Date</div>
-              <div class="value"><span class="reveal" data-final="{register_date}"></span></div>
-            </div>
-            <div class="field">
-              <div class="label">Program</div>
-              <div class="value"><span class="reveal" data-final="{program}"></span></div>
-            </div>
+          <div class="item">
+            <div class="label">Matric</div>
+            <div class="value">{matric}</div>
           </div>
-        </section>
-      </div>
+          <div class="item">
+            <div class="label">Program</div>
+            <div class="value">{program}</div>
+          </div>
+          <div class="item">
+            <div class="label">Register Date</div>
+            <div class="value">{register_date}</div>
+          </div>
+          <div class="item">
+            <div class="label">Expired Date</div>
+            <div class="value">{expired_date}</div>
+          </div>
+          <div class="item full">
+            <div class="label">Status</div>
+            <div class="value">{badge_text}</div>
+          </div>
+        </div>
+      </section>
     </article>
   </div>
   <div class="toast" id="toast">Copied</div>
@@ -1112,11 +1049,6 @@ async def main():
     const membershipId = {membership_id!r};
     const copyBtn = document.getElementById('copyIdBtn');
     const toast = document.getElementById('toast');
-    const card = document.getElementById('profileCard');
-    const introScreen = document.getElementById('introScreen');
-    const cardContent = document.getElementById('cardContent');
-    const revealNodes = Array.from(document.querySelectorAll('.reveal'));
-    let canTilt = false;
 
     const showToast = (text) => {{
       toast.textContent = text;
@@ -1132,91 +1064,6 @@ async def main():
         showToast('Copy failed');
       }}
     }});
-
-    const maxTilt = 3;
-    card.addEventListener('mousemove', (e) => {{
-      if (!canTilt) return;
-      const rect = card.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width;
-      const y = (e.clientY - rect.top) / rect.height;
-      const rx = (0.5 - y) * maxTilt;
-      const ry = (x - 0.5) * maxTilt;
-      card.style.transform = 'perspective(1000px) rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
-    }});
-    card.addEventListener('mouseleave', () => {{
-      card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg)';
-    }});
-
-    let gT = 0;
-    const gradientState = {{
-      c1x: 20, c1y: 20, c2x: 80, c2y: 75,
-      t1x: 20, t1y: 20, t2x: 80, t2y: 75,
-    }};
-    const nextTargets = () => {{
-      gradientState.t1x = 10 + Math.random() * 28;
-      gradientState.t1y = 10 + Math.random() * 34;
-      gradientState.t2x = 62 + Math.random() * 28;
-      gradientState.t2y = 58 + Math.random() * 32;
-    }};
-    nextTargets();
-    const gradientTick = () => {{
-      gT += 1;
-      if (gT % 240 === 0) nextTargets();
-      const lerp = 0.012;
-      gradientState.c1x += (gradientState.t1x - gradientState.c1x) * lerp;
-      gradientState.c1y += (gradientState.t1y - gradientState.c1y) * lerp;
-      gradientState.c2x += (gradientState.t2x - gradientState.c2x) * lerp;
-      gradientState.c2y += (gradientState.t2y - gradientState.c2y) * lerp;
-      card.style.setProperty('--gx1', gradientState.c1x.toFixed(2) + '%');
-      card.style.setProperty('--gy1', gradientState.c1y.toFixed(2) + '%');
-      card.style.setProperty('--gx2', gradientState.c2x.toFixed(2) + '%');
-      card.style.setProperty('--gy2', gradientState.c2y.toFixed(2) + '%');
-      requestAnimationFrame(gradientTick);
-    }};
-    requestAnimationFrame(gradientTick);
-
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    const scrambleTo = (node, finalText, delayMs) => {{
-      setTimeout(() => {{
-        const text = String(finalText || '');
-        const duration = 680 + Math.random() * 320;
-        const start = performance.now();
-        const step = (now) => {{
-          const progress = Math.min(1, (now - start) / duration);
-          const reveal = Math.floor(progress * text.length);
-          const next = text
-            .split('')
-            .map((ch, idx) => {{
-              if (idx < reveal) return ch;
-              if (ch === ' ') return ' ';
-              return chars[Math.floor(Math.random() * chars.length)];
-            }})
-            .join('');
-          node.textContent = next;
-          if (progress < 1) requestAnimationFrame(step);
-          else node.textContent = text;
-        }};
-        requestAnimationFrame(step);
-      }}, delayMs);
-    }};
-
-    const startReveal = () => {{
-      revealNodes.forEach((node, idx) => {{
-        scrambleTo(node, node.dataset.final || '', idx * 140);
-      }});
-    }};
-
-    card.classList.add('booting');
-    requestAnimationFrame(() => {{
-      card.classList.add('settle');
-      card.classList.remove('booting');
-    }});
-    setTimeout(() => {{
-      introScreen.classList.add('hide');
-      cardContent.classList.add('show');
-      startReveal();
-      canTilt = true;
-    }}, 980);
   </script>
 </body>
 </html>"""
