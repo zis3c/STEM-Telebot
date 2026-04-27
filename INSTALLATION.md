@@ -237,6 +237,23 @@ If successful, you will see `Bot is polling...` in the console.
 
 ---
 
+## Domain for Web Templates
+
+Membership and demographic web pages are served by the bot itself:
+
+- `/profile/membership/<token>`
+- `/stats/demographic/<token>`
+
+To use these links publicly, you need:
+
+1. A domain/subdomain (for example `bot.yourdomain.com`) pointing to your droplet IP via DNS `A` record.
+2. HTTPS enabled on that domain (Telegram webhook requires valid SSL).
+3. `WEBHOOK_URL` set to your public HTTPS base URL (example: `https://bot.yourdomain.com`).
+
+If `WEBHOOK_URL` is empty (polling mode), bot features still work, but public web report links will not be reachable from the internet unless you expose the server separately.
+
+---
+
 ## Web Report Templates (Quick Reference)
 
 The bot now uses separate Python template modules for web report UIs:
