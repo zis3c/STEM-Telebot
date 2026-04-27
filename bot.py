@@ -473,6 +473,11 @@ async def main():
       --text: #0f172a;
       --muted: #475569;
       --shadow-soft: 0 8px 24px rgba(2, 6, 23, 0.06);
+      --chip-primary-bg: rgba(33, 62, 128, 0.06);
+      --chip-primary-border: rgba(33, 62, 128, 0.25);
+      --chip-accent-bg: rgba(204, 145, 43, 0.12);
+      --chip-accent-border: rgba(204, 145, 43, 0.3);
+      --chip-accent-text: #8b5e14;
     }}
     * {{ box-sizing: border-box; }}
     body {{
@@ -484,6 +489,33 @@ async def main():
         radial-gradient(900px 420px at -8% 0%, rgba(204, 145, 43, 0.08), transparent 62%),
         var(--bg);
       min-height: 100vh;
+      transition: background 0.25s ease, color 0.25s ease;
+    }}
+    body[data-theme="dark"] {{
+      --bg: #0b1325;
+      --panel: #111c34;
+      --line: #22314f;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --shadow-soft: 0 10px 28px rgba(2, 6, 23, 0.4);
+      --chip-primary-bg: rgba(90, 137, 250, 0.16);
+      --chip-primary-border: rgba(90, 137, 250, 0.32);
+      --chip-accent-bg: rgba(204, 145, 43, 0.18);
+      --chip-accent-border: rgba(204, 145, 43, 0.45);
+      --chip-accent-text: #f1c77f;
+    }}
+    body[data-theme="gold"] {{
+      --bg: #fffaf0;
+      --panel: #ffffff;
+      --line: #f0dfbf;
+      --text: #211910;
+      --muted: #6f5b45;
+      --shadow-soft: 0 8px 24px rgba(71, 52, 20, 0.12);
+      --chip-primary-bg: rgba(33, 62, 128, 0.08);
+      --chip-primary-border: rgba(33, 62, 128, 0.24);
+      --chip-accent-bg: rgba(204, 145, 43, 0.2);
+      --chip-accent-border: rgba(204, 145, 43, 0.38);
+      --chip-accent-text: #774f11;
     }}
     .wrap {{
       max-width: 1120px;
@@ -499,6 +531,47 @@ async def main():
       box-shadow: var(--shadow-soft);
       padding: 22px;
       margin-bottom: 14px;
+    }}
+    .hero-top {{
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 10px;
+    }}
+    .theme-toggle {{
+      display: inline-flex;
+      gap: 6px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 5px;
+    }}
+    .theme-btn {{
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1;
+      padding: 7px 9px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }}
+    .theme-btn.active {{
+      color: var(--stem-blue);
+      background: rgba(33, 62, 128, 0.1);
+      border-color: rgba(33, 62, 128, 0.18);
+    }}
+    body[data-theme="gold"] .theme-btn.active {{
+      color: #7a5111;
+      background: rgba(204, 145, 43, 0.24);
+      border-color: rgba(204, 145, 43, 0.4);
+    }}
+    body[data-theme="dark"] .theme-btn.active {{
+      color: #dbeafe;
+      background: rgba(88, 134, 245, 0.28);
+      border-color: rgba(88, 134, 245, 0.38);
     }}
     .hero h1 {{
       margin: 0 0 8px;
@@ -529,14 +602,14 @@ async def main():
       font-weight: 500;
     }}
     .chip.primary {{
-      border-color: rgba(33, 62, 128, 0.25);
+      border-color: var(--chip-primary-border);
       color: var(--stem-blue);
-      background: rgba(33, 62, 128, 0.06);
+      background: var(--chip-primary-bg);
     }}
     .chip.accent {{
-      border-color: rgba(204, 145, 43, 0.3);
-      color: #8b5e14;
-      background: rgba(204, 145, 43, 0.12);
+      border-color: var(--chip-accent-border);
+      color: var(--chip-accent-text);
+      background: var(--chip-accent-bg);
     }}
     .grid {{
       display: grid;
@@ -576,6 +649,13 @@ async def main():
 <body>
   <div class="wrap">
     <section class="hero">
+      <div class="hero-top">
+        <div class="theme-toggle" role="group" aria-label="Theme toggle">
+          <button class="theme-btn" data-theme-choice="stem" type="button">STEM</button>
+          <button class="theme-btn" data-theme-choice="gold" type="button">Gold</button>
+          <button class="theme-btn" data-theme-choice="dark" type="button">Dark</button>
+        </div>
+      </div>
       <h1>Demographic Dashboard</h1>
       <div class="sub">Interactive membership demographic overview with breakdown by course and year of birth.</div>
       <div class="chips">
@@ -603,11 +683,30 @@ async def main():
     const birthLabels = {json.dumps(birth_labels)};
     const birthValues = {json.dumps(birth_vals)};
 
-    const palette = [
-      '#213e80', '#cc912b', '#2f57ad', '#d7a44f', '#3f6bc6',
-      '#e1b56f', '#4a77cf', '#e8c488', '#6a90d7', '#f0d4a6',
-      '#8aaadf', '#f8e2c4'
-    ];
+    const THEMES = {{
+      stem: {{
+        palette: ['#213e80', '#cc912b', '#2f57ad', '#d7a44f', '#3f6bc6', '#e1b56f', '#4a77cf', '#e8c488', '#6a90d7', '#f0d4a6', '#8aaadf', '#f8e2c4'],
+        legendColor: '#1e293b',
+        tooltipBg: 'rgba(15, 23, 42, 0.95)',
+        centerColor: '#0f172a',
+        centerSubColor: '#64748b',
+      }},
+      gold: {{
+        palette: ['#cc912b', '#213e80', '#db9f37', '#2f57ad', '#e8b260', '#3f6bc6', '#f0c98f', '#5b81cc', '#f5d8b0', '#7397d4', '#f8e6c9', '#9cb6df'],
+        legendColor: '#3a2a18',
+        tooltipBg: 'rgba(62, 43, 16, 0.95)',
+        centerColor: '#5b3b10',
+        centerSubColor: '#8b6b42',
+      }},
+      dark: {{
+        palette: ['#87a8f7', '#f2bf68', '#7198f0', '#e8ad46', '#5d86e8', '#df9d31', '#4b74de', '#cf8e1f', '#3961d1', '#bf7f10', '#2f57ad', '#ab7107'],
+        legendColor: '#dbe7ff',
+        tooltipBg: 'rgba(15, 23, 42, 0.95)',
+        centerColor: '#e2e8f0',
+        centerSubColor: '#94a3b8',
+      }},
+    }};
+    const THEME_KEY = 'stem_report_theme';
 
     const centerTextPlugin = {{
       id: 'centerTextPlugin',
@@ -620,27 +719,29 @@ async def main():
         const x = arc.x;
         const y = arc.y;
         const ctx = chart.ctx;
+        const centerColor = cfg.color || '#0f172a';
+        const centerSubColor = cfg.subColor || '#64748b';
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#0f172a';
+        ctx.fillStyle = centerColor;
         ctx.font = '700 26px Inter';
         ctx.fillText(String(cfg.text), x, y - 6);
-        ctx.fillStyle = '#64748b';
+        ctx.fillStyle = centerSubColor;
         ctx.font = '500 12px Inter';
         ctx.fillText('segments', x, y + 16);
         ctx.restore();
       }}
     }};
 
-    const makeChart = (el, labels, values) => {{
+    const makeChart = (el, labels, values, themeConfig) => {{
       return new Chart(el, {{
         type: 'doughnut',
         data: {{
           labels,
           datasets: [{{
             data: values,
-            backgroundColor: labels.map((_, i) => palette[i % palette.length]),
+            backgroundColor: labels.map((_, i) => themeConfig.palette[i % themeConfig.palette.length]),
             borderColor: '#ffffff',
             borderWidth: 3,
             hoverOffset: 14
@@ -655,7 +756,11 @@ async def main():
             easing: 'easeOutQuart'
           }},
           plugins: {{
-            centerText: {{ text: labels.length }},
+            centerText: {{
+              text: labels.length,
+              color: themeConfig.centerColor,
+              subColor: themeConfig.centerSubColor
+            }},
             legend: {{
               position: 'bottom',
               labels: {{
@@ -664,12 +769,12 @@ async def main():
                 boxWidth: 10,
                 boxHeight: 10,
                 padding: 14,
-                color: '#1e293b',
+                color: themeConfig.legendColor,
                 font: {{ family: 'Inter', size: 12, weight: 500 }}
               }}
             }},
             tooltip: {{
-              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              backgroundColor: themeConfig.tooltipBg,
               padding: 10,
               titleFont: {{ family: 'Inter', size: 12, weight: 700 }},
               bodyFont: {{ family: 'Inter', size: 12, weight: 500 }},
@@ -683,8 +788,51 @@ async def main():
       }});
     }};
 
-    makeChart(document.getElementById('courseChart'), courseLabels, courseValues);
-    makeChart(document.getElementById('birthChart'), birthLabels, birthValues);
+    const buttons = Array.from(document.querySelectorAll('[data-theme-choice]'));
+    const setActiveButton = (theme) => {{
+      buttons.forEach((btn) => btn.classList.toggle('active', btn.dataset.themeChoice === theme));
+    }};
+
+    const applyTheme = (theme) => {{
+      const selected = THEMES[theme] ? theme : 'stem';
+      const cfg = THEMES[selected];
+      document.body.setAttribute('data-theme', selected);
+      localStorage.setItem(THEME_KEY, selected);
+      setActiveButton(selected);
+      [courseChart, birthChart].forEach((chart) => {{
+        chart.data.datasets[0].backgroundColor = chart.data.labels.map(
+          (_, i) => cfg.palette[i % cfg.palette.length]
+        );
+        chart.options.plugins.centerText.color = cfg.centerColor;
+        chart.options.plugins.centerText.subColor = cfg.centerSubColor;
+        chart.options.plugins.legend.labels.color = cfg.legendColor;
+        chart.options.plugins.tooltip.backgroundColor = cfg.tooltipBg;
+        chart.update();
+      }});
+    }};
+
+    const savedTheme = localStorage.getItem(THEME_KEY) || 'stem';
+    const initialTheme = THEMES[savedTheme] ? savedTheme : 'stem';
+    const initialCfg = THEMES[initialTheme];
+    document.body.setAttribute('data-theme', initialTheme);
+
+    const courseChart = makeChart(
+      document.getElementById('courseChart'),
+      courseLabels,
+      courseValues,
+      initialCfg
+    );
+    const birthChart = makeChart(
+      document.getElementById('birthChart'),
+      birthLabels,
+      birthValues,
+      initialCfg
+    );
+
+    setActiveButton(initialTheme);
+    buttons.forEach((btn) => {{
+      btn.addEventListener('click', () => applyTheme(btn.dataset.themeChoice));
+    }});
   </script>
 </body>
 </html>"""
