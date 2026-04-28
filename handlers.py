@@ -1,4 +1,5 @@
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.error import BadRequest
 from telegram.ext import ConversationHandler, ContextTypes
 import strings
 import keyboards
@@ -36,6 +37,23 @@ ALERT_COOLDOWN_SECONDS = int(os.getenv("ALERT_COOLDOWN_SECONDS", "900"))
 ALERT_QUEUE_COOLDOWN_SECONDS = int(os.getenv("ALERT_QUEUE_COOLDOWN_SECONDS", "1800"))
 ALERT_QUEUE_BACKLOG_THRESHOLD = int(os.getenv("ALERT_QUEUE_BACKLOG_THRESHOLD", "25"))
 ALERT_WEBHOOK_PENDING_THRESHOLD = int(os.getenv("ALERT_WEBHOOK_PENDING_THRESHOLD", "50"))
+
+
+async def _delete_message_job(context: ContextTypes.DEFAULT_TYPE):
+    job = context.job
+    if not job:
+        return
+    chat_id = job.data.get("chat_id")
+    message_id = job.data.get("message_id")
+    if not chat_id or not message_id:
+        return
+    try:
+        await context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+    except BadRequest:
+        # Message may already be deleted/expired.
+        pass
+    except Exception as e:
+        logger.warning("Could not delete scheduled profile card message: %s", e)
 
 
 def _touch_verif_state(store, key, now_ts):
@@ -624,7 +642,19 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 "_Pautan selamat ini tamat dalam 20 minit._"
             )
             open_label = "Buka Kad Profil"
-        await update.message.reply_text(
+        prev_meta = context.user_data.get("last_profile_card_message")
+        if prev_meta:
+            try:
+                await context.bot.delete_message(
+                    chat_id=prev_meta.get("chat_id"),
+                    message_id=prev_meta.get("message_id"),
+                )
+            except BadRequest:
+                pass
+            except Exception as e:
+                logger.warning("Could not delete previous profile card message: %s", e)
+
+        sent_profile_message = await update.message.reply_text(
             profile_prompt,
             parse_mode="Markdown",
             disable_web_page_preview=True,
@@ -632,6 +662,20 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 [[InlineKeyboardButton(open_label, url=profile_card_url)]]
             ),
         )
+        context.user_data["last_profile_card_message"] = {
+            "chat_id": sent_profile_message.chat_id,
+            "message_id": sent_profile_message.message_id,
+        }
+        if context.job_queue:
+            context.job_queue.run_once(
+                _delete_message_job,
+                when=1200,
+                data={
+                    "chat_id": sent_profile_message.chat_id,
+                    "message_id": sent_profile_message.message_id,
+                },
+                name=f"profile_card_delete:{sent_profile_message.chat_id}:{sent_profile_message.message_id}",
+            )
     if show_renewal_prompt:
         await update.message.reply_text(
             strings.get('REGISTRATION_MSG', lang),

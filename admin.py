@@ -225,16 +225,16 @@ async def stats_demographic(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         report_url = f"{base_url}/stats/demographic/{token}"
 
         message = (
-            f"*Demographic Stats*\n\n"
-            f"[Open Web Report]({report_url})\n\n"
-            f"_This secure link expires in 20 minutes, and generating a new report will expire the previous link too._"
+            f"*Demographic Stats*\n"
+            f"_This secure link expires in 20 minutes._"
         )
+        open_label = "Open Stats Dashboard"
         if lang == "MS":
             message = (
-                f"*Statistik Demografi*\n\n"
-                f"[Buka Laporan Web]({report_url})\n\n"
-                f"_Pautan selamat ini tamat dalam 20 minit. Jika anda jana laporan statistik baharu, pautan lama juga akan tamat._"
+                f"*Statistik Demografi*\n"
+                f"_Pautan selamat ini tamat dalam 20 minit._"
             )
+            open_label = "Buka Dashboard Statistik"
 
         # Remove previous demographic link bubble immediately when generating a new one.
         prev_meta = context.user_data.get("last_demographic_report_message")
@@ -252,6 +252,10 @@ async def stats_demographic(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         sent_report_message = await update.message.reply_text(
             message,
             parse_mode="Markdown",
+            disable_web_page_preview=True,
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton(open_label, url=report_url)]]
+            ),
         )
         context.user_data["last_demographic_report_message"] = {
             "chat_id": sent_report_message.chat_id,
