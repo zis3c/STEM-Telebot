@@ -161,6 +161,14 @@ def render_membership_card(
       letter-spacing:0.08em;color:#f8fafc;
       word-break:break-all;
     }}
+    .mid-value.decode{{
+      min-height:1.35em;
+      text-shadow:0 0 10px rgba(255,255,255,0.1);
+      transition:text-shadow .25s ease;
+    }}
+    .mid-value.decode.done{{
+      text-shadow:0 0 14px rgba(204,145,43,0.16);
+    }}
 
     .name-row{{
       display:flex;align-items:flex-end;justify-content:space-between;
@@ -208,8 +216,11 @@ def render_membership_card(
       cursor:pointer;display:grid;place-items:center;
       transition:all 0.2s ease;
       opacity:0;
+      visibility:hidden;
+      pointer-events:none;
     }}
-    .card:hover .copy-btn,.card:focus-within .copy-btn{{opacity:1}}
+    body.id-ready .copy-btn{{visibility:visible;pointer-events:auto}}
+    body.id-ready .card:hover .copy-btn,body.id-ready .card:focus-within .copy-btn{{opacity:1}}
     .copy-btn:hover{{
       background:rgba(51,65,85,0.7);
       color:#e2e8f0;
@@ -249,7 +260,11 @@ def render_membership_card(
       font-size:13px;font-weight:600;
       cursor:pointer;transition:all 0.2s;
       text-align:center;
+      opacity:0;
+      pointer-events:none;
+      transform:translateY(4px);
     }}
+    body.id-ready .mobile-copy{{opacity:1;pointer-events:auto;transform:translateY(0)}}
     .mobile-copy:hover{{
       background:rgba(51,65,85,0.5);
       color:#e2e8f0;
@@ -271,8 +286,9 @@ def render_membership_card(
     @media(max-width:520px){{
       .card-inner{{padding:20px 18px 16px}}
       .card-footer{{padding:10px 18px}}
-      .copy-btn{{opacity:1;top:auto;bottom:58px;right:18px;
+      .copy-btn{{top:auto;bottom:58px;right:18px;
         width:30px;height:30px;border-radius:8px}}
+      body.id-ready .copy-btn{{opacity:1}}
       .mobile-copy{{display:block}}
       .name-row{{flex-direction:column;align-items:flex-start;gap:8px}}
     }}
@@ -299,7 +315,7 @@ def render_membership_card(
 
         <div class=\"mid-section\">
           <div class=\"mid-label\">Membership ID</div>
-          <div class=\"mid-value\">{membership_id}</div>
+          <div class=\"mid-value decode\" id=\"membershipIdDecode\" data-value=\"{membership_id}\">{membership_id}</div>
         </div>
 
         <div class=\"name-row\">
@@ -417,6 +433,44 @@ def render_membership_card(
     }}, {{ passive: true }});
     card.addEventListener('touchend', resetTilt, {{ passive: true }});
     card.addEventListener('touchcancel', resetTilt, {{ passive: true }});
+
+    const decodeEl = document.getElementById('membershipIdDecode');
+    if (decodeEl) {{
+      const target = decodeEl.dataset.value || decodeEl.textContent || '';
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const stableChars = new Set(['-', ' ', '/', '.']);
+      let frame = 0;
+      const totalFrames = 90;
+      const startDelay = 260;
+
+      const randomChar = () => chars[Math.floor(Math.random() * chars.length)];
+      const renderFrame = () => {{
+        frame += 1;
+        const progress = frame / totalFrames;
+        const eased = progress < 0.16 ? 0 : Math.pow((progress - 0.16) / 0.84, 1.15);
+        const settlePoint = Math.floor(eased * target.length);
+        const next = Array.from(target).map((ch, index) => {{
+          if (stableChars.has(ch)) return ch;
+          if (index < settlePoint) return ch;
+          const flicker = Math.random() > 0.16 ? randomChar() : ch;
+          return flicker;
+        }}).join('');
+        decodeEl.textContent = next;
+
+        if (frame < totalFrames) {{
+          requestAnimationFrame(renderFrame);
+        }} else {{
+          decodeEl.textContent = target;
+          decodeEl.classList.add('done');
+          document.body.classList.add('id-ready');
+        }}
+      }};
+
+      decodeEl.textContent = Array.from(target).map((ch) => stableChars.has(ch) ? ch : randomChar()).join('');
+      setTimeout(() => requestAnimationFrame(renderFrame), startDelay);
+    }} else {{
+      document.body.classList.add('id-ready');
+    }}
   </script>
 </body>
 </html>"""
