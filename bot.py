@@ -67,6 +67,12 @@ async def maintenance_loop(application):
     from database import db
     from handlers import send_daily_logs, send_superadmin_alert, ALERT_WEBHOOK_PENDING_THRESHOLD
 
+    def _seconds_until_next_quarter(now_dt: datetime.datetime) -> float:
+        """Return sleep seconds until the next 15-minute boundary."""
+        elapsed = (now_dt.minute * 60) + now_dt.second + (now_dt.microsecond / 1_000_000)
+        remainder = elapsed % (15 * 60)
+        return (15 * 60) - remainder if remainder else (15 * 60)
+
     while True:
         try:
             now_kl = datetime.datetime.now(KL_TZ)
@@ -163,29 +169,27 @@ async def maintenance_loop(application):
                 )
 
             # Only allow daily log dispatch from 08:00 onward (KL time).
-            if now_kl.hour < 8:
-                await asyncio.sleep(15 * 60)
-                continue
+            if now_kl.hour >= 8:
+                report_date = (now_kl.date() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+                last_date = await asyncio.to_thread(db.get_last_maintenance)
 
-            report_date = (now_kl.date() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-            last_date = await asyncio.to_thread(db.get_last_maintenance)
+                if report_date != last_date:
+                    logger.info(
+                        "Daily log report due. Last run: %s, Target: %s",
+                        last_date,
+                        report_date,
+                    )
 
-            if report_date != last_date:
-                logger.info(
-                    "Daily log report due. Last run: %s, Target: %s",
-                    last_date,
-                    report_date,
-                )
+                    class MockContext:
+                        def __init__(self, bot):
+                            self.bot = bot
 
-                class MockContext:
-                    def __init__(self, bot):
-                        self.bot = bot
-
-                await send_daily_logs(MockContext(application.bot))
+                    await send_daily_logs(MockContext(application.bot))
         except Exception as e:
             logger.error("Maintenance loop error: %s", e)
 
-        await asyncio.sleep(15 * 60)
+        now_kl = datetime.datetime.now(KL_TZ)
+        await asyncio.sleep(_seconds_until_next_quarter(now_kl))
 
 
 # --- HELPER FOR FILTERS ---
