@@ -3,7 +3,7 @@ from telegram.ext import ConversationHandler, ContextTypes
 import strings
 import keyboards
 import states
-from database import db
+from database import ACTIVITY_LOG_PATH, db
 import psutil
 import time
 import logging
@@ -96,10 +96,11 @@ async def toggle_maintenance(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def view_logs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
-        await update.message.reply_document(
-            document=open("activity.log", "rb"),
-            filename="activity.txt"
-        )
+        with open(ACTIVITY_LOG_PATH, "rb") as log_file:
+            await update.message.reply_document(
+                document=log_file,
+                filename="activity.txt"
+            )
     except FileNotFoundError:
         await update.message.reply_text("📂 Log file is empty or missing.")
     except Exception as e:

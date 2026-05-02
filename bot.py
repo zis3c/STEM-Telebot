@@ -41,6 +41,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 KL_TZ = ZoneInfo("Asia/Kuala_Lumpur")
+DAILY_LOG_HOUR = int(os.getenv("DAILY_LOG_HOUR", "8"))
+DAILY_LOG_MINUTE = int(os.getenv("DAILY_LOG_MINUTE", "0"))
 WEBHOOK_ERROR_ALERT_MAX_AGE_SECONDS = int(
     os.getenv("WEBHOOK_ERROR_ALERT_MAX_AGE_SECONDS", "300")
 )
@@ -59,6 +61,46 @@ async def self_pinger():
                         logger.info("Self-Ping status: %s", resp.status)
             except Exception as e:
                 logger.error("Self-Ping failed: %s", e)
+
+
+async def configure_runtime(application):
+    """Configure Telegram commands and scheduled jobs once."""
+    if application.bot_data.get("runtime_configured"):
+        return
+    application.bot_data["runtime_configured"] = True
+
+    from telegram import BotCommand
+
+    commands = [
+        BotCommand("start", "Start the bot"),
+        BotCommand("help", "Get help information"),
+        BotCommand("settings", "Open Settings"),
+    ]
+    await application.bot.set_my_commands(commands)
+
+    if application.job_queue is None:
+        logger.error("JobQueue unavailable: daily log autosend is disabled.")
+        return
+
+    daily_log_time = datetime.time(
+        hour=DAILY_LOG_HOUR,
+        minute=DAILY_LOG_MINUTE,
+        second=0,
+        tzinfo=KL_TZ,
+    )
+    if not application.job_queue.get_jobs_by_name("send_daily_logs"):
+        application.job_queue.run_daily(
+            handlers.send_daily_logs,
+            time=daily_log_time,
+            name="send_daily_logs",
+        )
+
+    logger.info(
+        "Scheduler started - daily logs at %02d:%02d (%s)",
+        DAILY_LOG_HOUR,
+        DAILY_LOG_MINUTE,
+        getattr(KL_TZ, "key", str(KL_TZ)),
+    )
 
 
 # --- MAINTENANCE LOOP (ROBUST SCHEDULING) ---
@@ -566,14 +608,7 @@ async def main():
             if application.updater:
                 await application.updater.start_polling()
 
-        from telegram import BotCommand
-
-        commands = [
-            BotCommand("start", "Start the bot"),
-            BotCommand("help", "Get help information"),
-            BotCommand("settings", "Open Settings"),
-        ]
-        await application.bot.set_my_commands(commands)
+        await configure_runtime(application)
 
         background_tasks.append(asyncio.create_task(self_pinger(), name="self_pinger"))
         background_tasks.append(

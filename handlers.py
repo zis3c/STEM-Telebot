@@ -4,7 +4,7 @@ from telegram.ext import ConversationHandler, ContextTypes
 import strings
 import keyboards
 import states
-from database import db
+from database import ACTIVITY_LOG_PATH, db
 import stats_web
 import logging
 import re
@@ -1175,8 +1175,11 @@ async def send_daily_logs(context: ContextTypes.DEFAULT_TYPE):
         target_date = (datetime.now(KL_TZ).date() - timedelta(days=1)).strftime("%Y-%m-%d")
         if await run_db_call(db.get_last_maintenance) == target_date:
             return
+        if not db.superadmin_ids:
+            logger.warning("Daily log job skipped: SUPERADMIN_IDS is not configured.")
+            return
 
-        filename = "activity.log"
+        filename = ACTIVITY_LOG_PATH
         if not os.path.exists(filename):
             await run_db_call(db.update_last_maintenance, target_date)
             return

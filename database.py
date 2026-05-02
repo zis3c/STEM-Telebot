@@ -8,8 +8,13 @@ import gspread
 from google.oauth2.service_account import Credentials
 import traceback
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ACTIVITY_LOG_PATH = os.path.join(BASE_DIR, "activity.log")
+LAST_MAINT_PATH = os.path.join(BASE_DIR, "last_maint.txt")
+KL_TZ = ZoneInfo("Asia/Kuala_Lumpur")
 
 
 def _redact_log_text(value):
@@ -54,15 +59,15 @@ class Database:
 
     def _init_maint_file(self):
         """Initializes the local maintenance tracking file if missing."""
-        if not os.path.exists("last_maint.txt"):
-            with open("last_maint.txt", "w") as f:
+        if not os.path.exists(LAST_MAINT_PATH):
+            with open(LAST_MAINT_PATH, "w") as f:
                 f.write("2000-01-01") # Old date
 
     def get_last_maintenance(self):
         """Returns the last maintenance date from local file."""
         try:
-            if os.path.exists("last_maint.txt"):
-                with open("last_maint.txt", "r") as f:
+            if os.path.exists(LAST_MAINT_PATH):
+                with open(LAST_MAINT_PATH, "r") as f:
                     return f.read().strip()
         except: pass
         return "2000-01-01"
@@ -70,12 +75,12 @@ class Database:
     def update_last_maintenance(self, date_value=None):
         """Updates the last maintenance/report date."""
         try:
-            value = date_value or datetime.now().strftime("%Y-%m-%d")
-            with open("last_maint.txt", "w") as f:
+            value = date_value or datetime.now(KL_TZ).strftime("%Y-%m-%d")
+            with open(LAST_MAINT_PATH, "w") as f:
                 f.write(value)
             return True
         except Exception as e:
-            logger.error(f"Failed to update last_maint.txt: {e}")
+            logger.error(f"Failed to update {LAST_MAINT_PATH}: {e}")
             return False
 
     def _parse_ids(self, env_key):
@@ -568,13 +573,13 @@ class Database:
     # --- ACTION LOGGING (FILE BASED) ---
     def log_action(self, name, action, details, role="ADMIN"):
         """Logs actions to a local file for daily reporting."""
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.now(KL_TZ).strftime("%Y-%m-%d %H:%M:%S")
         safe_name = _redact_log_text(name)
         safe_details = _redact_log_text(details)
         log_entry = f"[{timestamp}] {role}: {safe_name} | ACTION: {action} | {safe_details}\n"
         
         try:
-            with open("activity.log", "a", encoding="utf-8") as f:
+            with open(ACTIVITY_LOG_PATH, "a", encoding="utf-8") as f:
                 f.write(log_entry)
         except Exception as e:
             logger.error(f"Failed to write to log: {e}")
