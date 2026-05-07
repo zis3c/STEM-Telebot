@@ -16,7 +16,7 @@ def env_bool(name: str, default: bool = False) -> bool:
 
 
 DEFAULT_TELEGRAM_IP_RANGES = (
-    "149.154.160.0/20,91.108.4.0/22",
+    "149.154.160.0/20,91.108.4.0/22,91.108.8.0/21,91.108.16.0/20,91.108.56.0/22",
 )
 
 
@@ -47,9 +47,10 @@ def extract_client_ip(
         return remote_ip or None
 
     # Client IP sits before trusted proxy hops.
+    # If header has fewer hops than expected, safest guess is first XFF entry.
     idx = len(chain) - trust_proxy_hops - 1
     if idx < 0:
-        return None
+        return chain[0]
     return chain[idx]
 
 
