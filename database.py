@@ -6,9 +6,9 @@ import time  # Imported time
 import threading
 import gspread
 from google.oauth2.service_account import Credentials
-import traceback
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from security_utils import sanitize_sensitive_text
 
 logger = logging.getLogger(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -141,7 +141,6 @@ class Database:
                 
         except Exception as e:
             logger.error(f"DB Connection Error ({sheet_name}): {e}")
-            logger.error(traceback.format_exc())
             return None
 
     def refresh_system_config(self, force=False):
@@ -728,7 +727,7 @@ class Database:
                 "renewed_entry": renewal_anchor.strftime("%d/%m/%y"),
             }
         except Exception as e:
-            logger.error(f"Renew Membership Safe Error: {e}")
+            logger.error("Renew Membership Safe Error: %s", sanitize_sensitive_text(e))
             return {"ok": False, "error": str(e)}
 
     def get_member_by_row_or_matric(self, row_index, matric):

@@ -14,6 +14,7 @@ import time
 from datetime import datetime, timedelta
 from io import BytesIO
 from zoneinfo import ZoneInfo
+from security_utils import RATE_LIMITER, log_security_event
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,19 @@ ALERT_COOLDOWN_SECONDS = int(os.getenv("ALERT_COOLDOWN_SECONDS", "900"))
 ALERT_QUEUE_COOLDOWN_SECONDS = int(os.getenv("ALERT_QUEUE_COOLDOWN_SECONDS", "1800"))
 ALERT_QUEUE_BACKLOG_THRESHOLD = int(os.getenv("ALERT_QUEUE_BACKLOG_THRESHOLD", "25"))
 ALERT_WEBHOOK_PENDING_THRESHOLD = int(os.getenv("ALERT_WEBHOOK_PENDING_THRESHOLD", "50"))
+GLOBAL_RATE_WINDOW_SEC = int(os.getenv("GLOBAL_RATE_WINDOW_SEC", "60"))
+GLOBAL_RATE_MAX_REQ = int(os.getenv("GLOBAL_RATE_MAX_REQ", "25"))
+MAX_INPUT_LEN_MATRIC = int(os.getenv("MAX_INPUT_LEN_MATRIC", "24"))
+MAX_INPUT_LEN_SEARCH = int(os.getenv("MAX_INPUT_LEN_SEARCH", "80"))
+MAX_INPUT_LEN_BROADCAST = int(os.getenv("MAX_INPUT_LEN_BROADCAST", "2000"))
+
+
+def _global_rate_guard(user_id: int, scope: str):
+    key = f"{scope}:{user_id}"
+    ok, retry = RATE_LIMITER.check(key, GLOBAL_RATE_WINDOW_SEC, GLOBAL_RATE_MAX_REQ)
+    if not ok:
+        log_security_event("RATE_LIMIT_HIT", f"scope={scope} uid={user_id} retry={retry}")
+    return ok, retry
 
 
 async def _delete_message_job(context: ContextTypes.DEFAULT_TYPE):
@@ -281,6 +295,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     
     user = update.effective_user
+    ok, retry_after = _global_rate_guard(user.id, "start")
+    if not ok:
+        await update.message.reply_text(
+            f"Too many requests. Try again in {retry_after}s.",
+            reply_markup=keyboards.get_main_menu(lang),
+        )
+        return ConversationHandler.END
     
     # Maintenance Check
     if db.maintenance_mode and not db.is_admin(user.id):
@@ -405,6 +426,14 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def receive_matric(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     text = update.message.text.strip().upper()
+    if len(text) > MAX_INPUT_LEN_MATRIC:
+        log_security_event("INPUT_REJECT", f"field=matric len={len(text)} uid={update.effective_user.id}")
+        await update.message.reply_text(
+            strings.get('ERR_INVALID_MATRIC', lang),
+            parse_mode="Markdown",
+            reply_markup=keyboards.get_retry_menu(lang)
+        )
+        return states.ASK_MATRIC
     
     # Check Cancel
     if text in strings.get_all('BTN_CANCEL') or text == "CANCEL": 
@@ -438,6 +467,14 @@ async def receive_matric(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     text = update.message.text.strip()
+    if len(text) > 16:
+        log_security_event("INPUT_REJECT", f"field=ic len={len(text)} uid={update.effective_user.id}")
+        await update.message.reply_text(
+            strings.get('ERR_INVALID_IC', lang),
+            parse_mode="Markdown",
+            reply_markup=keyboards.get_retry_menu(lang)
+        )
+        return states.ASK_IC
     
     if text in strings.get_all('BTN_CANCEL') or text == "CANCEL": return await cancel(update, context)
 
@@ -469,6 +506,13 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     
     user_matric = context.user_data['matric']
     user_ic_last4 = text
+    ok, retry_after = _global_rate_guard(update.effective_user.id, "verify")
+    if not ok:
+        await update.message.reply_text(
+            f"Too many requests. Try again in {retry_after}s.",
+            reply_markup=keyboards.get_main_menu(lang),
+        )
+        return ConversationHandler.END
     limited, retry_after = _check_verif_limit(update.effective_user.id, user_matric)
     if limited:
         wait_for = _format_duration(retry_after)
@@ -619,7 +663,7 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             msg = generic_fail_msg
                 
     except Exception as e:
-        logger.error(e)
+        logger.error("Verification flow error [%s]: %s", "INC-VERIFY", e)
         verification_ok = False
 
     # AUTO DELETE LOADING MESSAGE
@@ -818,7 +862,7 @@ async def check_registrations(context: ContextTypes.DEFAULT_TYPE):
             (
                 "🚨 *Sheets/API Error*\n"
                 "Failed while scanning pending registrations.\n"
-                f"Error: `{_escape_md(str(e)[:180])}`"
+                "Error: `INC-REGSCAN`"
             ),
             cooldown_seconds=ALERT_COOLDOWN_SECONDS,
         )

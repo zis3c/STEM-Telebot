@@ -12,9 +12,16 @@ import asyncio
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import os
+from security_utils import RATE_LIMITER, log_security_event
 
 logger = logging.getLogger(__name__)
 KL_TZ = ZoneInfo("Asia/Kuala_Lumpur")
+GLOBAL_RATE_WINDOW_SEC = int(os.getenv("GLOBAL_RATE_WINDOW_SEC", "60"))
+GLOBAL_RATE_MAX_REQ = int(os.getenv("GLOBAL_RATE_MAX_REQ", "25"))
+MAX_INPUT_LEN_SEARCH = int(os.getenv("MAX_INPUT_LEN_SEARCH", "80"))
+MAX_INPUT_LEN_BROADCAST = int(os.getenv("MAX_INPUT_LEN_BROADCAST", "2000"))
+BROADCAST_MAX_RECIPIENTS = int(os.getenv("BROADCAST_MAX_RECIPIENTS", "5000"))
+BROADCAST_MSGS_PER_SEC = float(os.getenv("BROADCAST_MSGS_PER_SEC", "12"))
 
 # Helper to get lang (Admins might use local too)
 def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
@@ -86,6 +93,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     user_id = update.effective_user.id
     if not db.is_admin(user_id):
+        log_security_event("AUTHZ_DENY", f"surface=admin_start uid={user_id}")
         # Security: Silent fail for unauthorized users
         return ConversationHandler.END
     
@@ -468,6 +476,19 @@ async def receive_search_mode(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def search_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     query = update.message.text.strip()
+    if len(query) > MAX_INPUT_LEN_SEARCH:
+        log_security_event("INPUT_REJECT", f"field=admin_search len={len(query)} uid={update.effective_user.id}")
+        await update.message.reply_text(strings.get('ERR_DB_CONNECTION', lang))
+        return states.ADMIN_SEARCH_QUERY
+    ok, retry_after = RATE_LIMITER.check(
+        f"admin_search:{update.effective_user.id}",
+        GLOBAL_RATE_WINDOW_SEC,
+        GLOBAL_RATE_MAX_REQ,
+    )
+    if not ok:
+        log_security_event("RATE_LIMIT_HIT", f"scope=admin_search uid={update.effective_user.id}")
+        await update.message.reply_text(f"Too many requests. Try again in {retry_after}s.")
+        return states.ADMIN_MENU
     mode = context.user_data.get('search_mode', 'simple')
     
     if query in strings.get_all('BTN_CANCEL') or query == "CANCEL": 
@@ -595,6 +616,10 @@ async def del_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def del_matric(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     text = update.message.text.strip().upper()
+    if len(text) > 24:
+        log_security_event("INPUT_REJECT", f"field=admin_delete_matric len={len(text)} uid={update.effective_user.id}")
+        await update.message.reply_text(strings.get('ADMIN_DEL_NOT_FOUND', lang), parse_mode="Markdown")
+        return states.ADMIN_MANAGE
     if text in strings.get_all('BTN_CANCEL') or text == "CANCEL": return await back_to_manage(update, context)
     
     loading = await update.message.reply_text(strings.get('ADMIN_SEARCHING', lang), parse_mode="Markdown")
@@ -631,6 +656,10 @@ async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def broadcast_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     text = update.message.text
+    if len(text) > MAX_INPUT_LEN_BROADCAST:
+        log_security_event("INPUT_REJECT", f"field=broadcast len={len(text)} uid={update.effective_user.id}")
+        await update.message.reply_text(strings.get('ERR_DB_CONNECTION', lang), parse_mode="Markdown")
+        return states.ADMIN_MENU
     
     if text in strings.get_all('BTN_CANCEL') or text == "CANCEL": 
         return await back(update, context)
@@ -662,10 +691,22 @@ async def broadcast_send(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     msg = context.user_data.get('broadcast_msg')
     if not msg: return await back(update, context)
+    ok, retry_after = RATE_LIMITER.check(
+        f"broadcast_send:{update.effective_user.id}",
+        GLOBAL_RATE_WINDOW_SEC,
+        max(1, GLOBAL_RATE_MAX_REQ // 2),
+    )
+    if not ok:
+        log_security_event("RATE_LIMIT_HIT", f"scope=broadcast_send uid={update.effective_user.id}")
+        await update.message.reply_text(f"Too many requests. Try again in {retry_after}s.")
+        return states.ADMIN_MENU
 
     status_msg = await update.message.reply_text(strings.get('ADMIN_BROADCAST_START', lang))
     
     users = await run_db_call(db.get_all_users)
+    if len(users) > BROADCAST_MAX_RECIPIENTS:
+        log_security_event("INPUT_REJECT", f"field=broadcast_audience size={len(users)} uid={update.effective_user.id}")
+        users = users[:BROADCAST_MAX_RECIPIENTS]
     success = 0
     failed = 0
     
@@ -677,6 +718,8 @@ async def broadcast_send(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             success += 1
         except Exception:
             failed += 1
+        if BROADCAST_MSGS_PER_SEC > 0:
+            await asyncio.sleep(1.0 / BROADCAST_MSGS_PER_SEC)
             
     await status_msg.edit_text(
         strings.get('ADMIN_BROADCAST_DONE', lang).format(success=success, failed=failed), 

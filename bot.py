@@ -28,12 +28,26 @@ import superadmin
 import stats_web
 import demographic_stats_template
 import membership_card_template
+from security_utils import (
+    DEFAULT_TELEGRAM_IP_RANGES,
+    SECURITY_METRICS,
+    env_bool,
+    extract_client_ip,
+    ip_allowed,
+    log_security_event,
+    parse_networks,
+    sanitize_sensitive_text,
+)
 
 # --- CONFIGURATION ---
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 PORT = int(os.getenv("PORT", 10000))
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
+WEBHOOK_IP_VALIDATE = env_bool("TELEGRAM_WEBHOOK_IP_VALIDATE", True)
+TRUST_PROXY_HOPS = int(os.getenv("TRUST_PROXY_HOPS", "1"))
+TELEGRAM_IP_RANGES = os.getenv("TELEGRAM_IP_RANGES", DEFAULT_TELEGRAM_IP_RANGES[0]).strip()
+ALLOWED_TELEGRAM_NETWORKS = parse_networks(TELEGRAM_IP_RANGES)
 
 # Logging
 logging.basicConfig(
@@ -183,7 +197,7 @@ async def maintenance_loop(application):
                         "webhook_health_check_error",
                         (
                             "*Webhook Health Check Failed*\n"
-                            f"Error: `{str(e)[:180]}`"
+                            "Error: `INC-WHCHK`"
                         ),
                         cooldown_seconds=900,
                     )
@@ -205,7 +219,7 @@ async def maintenance_loop(application):
                     "sheets_connectivity_check_error",
                     (
                         "*Sheets/API Check Failed*\n"
-                        f"Error: `{str(e)[:180]}`"
+                        "Error: `INC-SHEET`"
                     ),
                     cooldown_seconds=900,
                 )
@@ -467,10 +481,21 @@ async def main():
             return web.Response(status=503, text="Starting")
 
         try:
+            remote_ip = request.remote or ""
+            xff = request.headers.get("X-Forwarded-For", "")
+            client_ip = extract_client_ip(remote_ip, xff, TRUST_PROXY_HOPS)
+            if WEBHOOK_IP_VALIDATE and ALLOWED_TELEGRAM_NETWORKS:
+                if not ip_allowed(client_ip or "", ALLOWED_TELEGRAM_NETWORKS):
+                    log_security_event(
+                        "WEBHOOK_REJECT",
+                        f"reason=ip_check ip={client_ip} remote={remote_ip}",
+                    )
+                    return web.Response(status=403, text="Forbidden")
+
             if WEBHOOK_SECRET:
                 recv_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
                 if not hmac.compare_digest(recv_secret, WEBHOOK_SECRET):
-                    logger.warning("Rejected webhook request with invalid secret token.")
+                    log_security_event("WEBHOOK_REJECT", "reason=bad_secret")
                     return web.Response(status=403, text="Forbidden")
 
             update_data = await request.json()
@@ -582,6 +607,19 @@ async def main():
     app.router.add_get("/health", health)
     app.router.add_get("/stats/demographic/{token}", demographic_report)
     app.router.add_get("/profile/membership/{token}", membership_profile_report)
+
+    async def security_metrics_summary(_):
+        summary = SECURITY_METRICS.snapshot()
+        if summary:
+            logger.info("Security metrics snapshot: %s", sanitize_sensitive_text(summary))
+
+    if application.job_queue:
+        application.job_queue.run_repeating(
+            security_metrics_summary,
+            interval=900,
+            first=120,
+            name="security_metrics_summary",
+        )
 
     runner = web.AppRunner(app)
     await runner.setup()

@@ -8,8 +8,17 @@ import psutil
 import time
 import logging
 import asyncio
+from security_utils import log_security_event
 
 logger = logging.getLogger(__name__)
+
+
+async def _require_superadmin(update: Update) -> bool:
+    uid = update.effective_user.id if update.effective_user else 0
+    if not db.is_superadmin(uid):
+        log_security_event("AUTHZ_DENY", f"surface=superadmin uid={uid}")
+        return False
+    return True
 
 # --- HELPERS ---
 def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
@@ -62,12 +71,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 # --- FEATURES ---
 async def refresh_config(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_superadmin(update):
+        return ConversationHandler.END
     await run_db_call(db.refresh_system_config, force=True)
     lang = get_user_lang(context)
     await update.message.reply_text(strings.get('MSG_CONFIG_REFRESHED', lang), parse_mode="Markdown")
     return states.SUPER_MENU
 
 async def check_health(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_superadmin(update):
+        return ConversationHandler.END
     cpu = psutil.cpu_percent()
     ram = psutil.virtual_memory().percent
     uptime = time.time() - psutil.boot_time()
@@ -86,6 +99,8 @@ async def check_health(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     return states.SUPER_MENU
 
 async def toggle_maintenance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_superadmin(update):
+        return ConversationHandler.END
     new_state = not db.maintenance_mode
     if await run_db_call(db.set_maintenance, new_state):
         status = "ENABLED" if new_state else "DISABLED"
@@ -95,6 +110,8 @@ async def toggle_maintenance(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return states.SUPER_MENU
 
 async def view_logs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_superadmin(update):
+        return ConversationHandler.END
     try:
         with open(ACTIVITY_LOG_PATH, "rb") as log_file:
             await update.message.reply_document(
@@ -119,6 +136,8 @@ def get_manage_admins_menu(lang='EN'):
 
 # --- ADMIN MANAGEMENT ---
 async def manage_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_superadmin(update):
+        return ConversationHandler.END
     lang = get_user_lang(context)
     await update.message.reply_text(
         strings.get('BTN_SA_ADMINS', lang), # Use button label as title
@@ -128,6 +147,8 @@ async def manage_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 # --- SUBMENU ACTIONS ---
 async def list_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_superadmin(update):
+        return ConversationHandler.END
     lang = get_user_lang(context)
     admins = db.cached_sheet_admins
     
@@ -140,6 +161,8 @@ async def list_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     return states.SUPER_ADMIN_MANAGE
 
 async def add_admin_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_superadmin(update):
+        return ConversationHandler.END
     lang = get_user_lang(context)
     await update.message.reply_text(
         strings.get('PROMPT_SA_ADD', lang),
@@ -149,6 +172,8 @@ async def add_admin_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     return states.SUPER_ADD_ID
 
 async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_superadmin(update):
+        return ConversationHandler.END
     lang = get_user_lang(context)
     text = update.message.text.strip()
     
@@ -188,6 +213,8 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return states.SUPER_ADMIN_MANAGE
 
 async def del_admin_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_superadmin(update):
+        return ConversationHandler.END
     lang = get_user_lang(context)
     await update.message.reply_text(
         strings.get('PROMPT_SA_DEL', lang),
@@ -197,6 +224,8 @@ async def del_admin_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     return states.SUPER_DEL_ID
 
 async def del_admin_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_superadmin(update):
+        return ConversationHandler.END
     lang = get_user_lang(context)
     text = update.message.text.strip()
     

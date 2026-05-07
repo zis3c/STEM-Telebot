@@ -72,6 +72,10 @@ A high-performance, bilingual Telegram bot built for the STEM USAS student organ
 - `TELEGRAM_TOKEN` - Bot token from [@BotFather](https://t.me/BotFather)
 - `PORT` - Local health endpoint port (default `10000`)
 - `WEBHOOK_URL` - Optional (leave empty for polling mode)
+- `TELEGRAM_WEBHOOK_SECRET` - Required when `WEBHOOK_URL` is enabled
+- `TELEGRAM_WEBHOOK_IP_VALIDATE` - Validate source IP for webhook (`true`/`false`, default `true`)
+- `TRUST_PROXY_HOPS` - Trusted reverse-proxy hop count for `X-Forwarded-For` parsing (default `1`)
+- `TELEGRAM_IP_RANGES` - Comma-separated CIDR allowlist for Telegram webhook IPs
 
 **Google Sheets:**
 - `SHEET_ID` - The unique ID of the STEM Google Spreadsheet
@@ -80,6 +84,15 @@ A high-performance, bilingual Telegram bot built for the STEM USAS student organ
 **Access Control:**
 - `SUPERADMIN_IDS` - Comma-separated Telegram IDs for Superadmins
 - `ADMIN_IDS` - Comma-separated Telegram IDs for Admins
+
+**Security / Abuse Controls:**
+- `GLOBAL_RATE_WINDOW_SEC` - Sliding window duration for anti-flood controls (default `60`)
+- `GLOBAL_RATE_MAX_REQ` - Max requests per window for protected flows (default `25`)
+- `MAX_INPUT_LEN_MATRIC` - Max matric input length (default `24`)
+- `MAX_INPUT_LEN_SEARCH` - Max admin search query length (default `80`)
+- `MAX_INPUT_LEN_BROADCAST` - Max broadcast message length (default `2000`)
+- `BROADCAST_MAX_RECIPIENTS` - Hard cap recipients per broadcast run (default `5000`)
+- `BROADCAST_MSGS_PER_SEC` - Broadcast send throttle in messages/sec (default `12`)
 
 ## Deploy to DigitalOcean (Recommended)
 
