@@ -36,6 +36,7 @@ _VERIF_MAX_MATRIC_ATTEMPTS = 12
 _verif_user_state = {}
 _verif_matric_state = {}
 _alert_last_sent = {}
+_pending_alert_cache = {}
 
 ALERT_COOLDOWN_SECONDS = int(os.getenv("ALERT_COOLDOWN_SECONDS", "900"))
 ALERT_QUEUE_COOLDOWN_SECONDS = int(os.getenv("ALERT_QUEUE_COOLDOWN_SECONDS", "1800"))
@@ -861,6 +862,11 @@ async def check_registrations(context: ContextTypes.DEFAULT_TYPE):
 
             safe_name = _escape_md(name)
             safe_matric = _escape_md(matric)
+            cache_key = f"{row_idx}:{safe_matric}"
+            now_ts = time.time()
+            last_ts = _pending_alert_cache.get(cache_key, 0)
+            if (now_ts - last_ts) < 6 * 60 * 60:
+                continue
             
             # Handle Receipt URL (often contains underscores)
             receipt_display = _receipt_md_value(resit_url)
@@ -885,6 +891,7 @@ async def check_registrations(context: ContextTypes.DEFAULT_TYPE):
                     )
                 except Exception as e:
                     logger.error(f"Failed to notify admin {admin_id}: {e}")
+            _pending_alert_cache[cache_key] = now_ts
             
             # Mark pending so the bot does not notify repeatedly.
             await run_db_call(db.update_status, row_idx, "Pending")
@@ -1018,10 +1025,28 @@ async def review_do_accept_callback(update: Update, context: ContextTypes.DEFAUL
             f"Matric: {matric} | Row: {row_idx}",
             role="ADMIN"
         )
+        actor_name = _escape_md(query.from_user.first_name or "Admin")
         await query.edit_message_text(
-            f"Accepted: *{_escape_md(matric)}*\nMember kept in database.",
+            (
+                f"✅ *Approved*\n"
+                f"Matric: `{_escape_md(matric)}`\n"
+                f"By: *{actor_name}*"
+            ),
             parse_mode="Markdown"
         )
+        admins = await run_db_call(db.get_all_admin_ids)
+        notice = (
+            f"✅ *Already Approved*\n"
+            f"Matric: `{_escape_md(matric)}`\n"
+            f"By: *{actor_name}*"
+        )
+        for admin_id in admins:
+            if admin_id == query.from_user.id:
+                continue
+            try:
+                await context.bot.send_message(chat_id=admin_id, text=notice, parse_mode="Markdown")
+            except Exception:
+                pass
     else:
         err = _escape_md(result.get("error", "unknown"))
         await query.edit_message_text(
@@ -1052,10 +1077,29 @@ async def review_do_reject_callback(update: Update, context: ContextTypes.DEFAUL
             f"Matric: {matric} | Row: {row_idx} | Action: Removed",
             role="ADMIN"
         )
+        actor_name = _escape_md(query.from_user.first_name or "Admin")
         await query.edit_message_text(
-            f"Rejected: *{_escape_md(matric)}*\nRecord removed from database.",
+            (
+                f"🚫 *Rejected*\n"
+                f"Matric: `{_escape_md(matric)}`\n"
+                f"By: *{actor_name}*\n"
+                f"Record removed from database."
+            ),
             parse_mode="Markdown"
         )
+        admins = await run_db_call(db.get_all_admin_ids)
+        notice = (
+            f"🚫 *Already Rejected*\n"
+            f"Matric: `{_escape_md(matric)}`\n"
+            f"By: *{actor_name}*"
+        )
+        for admin_id in admins:
+            if admin_id == query.from_user.id:
+                continue
+            try:
+                await context.bot.send_message(chat_id=admin_id, text=notice, parse_mode="Markdown")
+            except Exception:
+                pass
     else:
         err = _escape_md(result.get("error", "unknown"))
         await query.edit_message_text(
@@ -1199,6 +1243,10 @@ async def review_detail_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     proof_display = _safe_md_link(proof_url, "Proof PDF")
     receipt_display = _safe_md_link(receipt_url, "Download PDF")
+    status_norm = status.lower()
+    id_line = "" if "pending" in status_norm else f"🔑 ID: {_escape_md(membership_id)}\n"
+    invoice_line = "" if "pending" in status_norm else f"🧾 Invoice: {_escape_md(invoice_no)}\n"
+    receipt_line = "" if "pending" in status_norm else f"📎 Receipt: {receipt_display}\n"
 
     details_text = (
         f"👤 {_escape_md(name)}\n"
@@ -1212,10 +1260,10 @@ async def review_detail_callback(update: Update, context: ContextTypes.DEFAULT_T
         f"🏠 {_escape_md(address)}\n"
         f"📅 Entry: {_escape_md(entry_display)}\n"
         f"⏱️ Min: {_escape_md(minute_no)}\n"
-        f"🔑 ID: {_escape_md(membership_id)}\n"
+        f"{id_line}"
         f"📄 Proof: {proof_display}\n"
-        f"🧾 Invoice: {_escape_md(invoice_no)}\n"
-        f"📎 Receipt: {receipt_display}\n"
+        f"{invoice_line}"
+        f"{receipt_line}"
         f"✅ Status: {_escape_md(status)}"
     )
 

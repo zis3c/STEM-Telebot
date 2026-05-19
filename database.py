@@ -602,9 +602,8 @@ class Database:
                 status = row[17].strip() if len(row) > 17 else ""
                 status_norm = status.lower()
 
-                # New flow sets "Pending Admin Approval" on submit.
-                # Treat it as unprocessed alert target once, then bot rewrites to "Pending".
-                if receipt and (not status or status_norm == "pending admin approval"):
+                # Treat fresh queue statuses as pending candidates.
+                if receipt and (not status or status_norm == "pending admin approval" or status_norm == "pending"):
                     # Valid registration needing approval
                     unprocessed.append({
                         'row': i,

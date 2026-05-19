@@ -344,10 +344,7 @@ async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE
                     f"\U0001F3E0 {safe_get(12)}\n"
                     f"\U0001F4C5 Entry: {safe_get(13)}\n"
                     f"\u23F1\uFE0F Min: {safe_get(14)}\n"
-                    f"\U0001F511 ID: `{safe_get(15)}`\n"
                     f"\U0001F4C4 Proof: {proof_display}\n"
-                    f"\U0001F9FE Invoice: `{safe_get(19)}`\n"
-                    f"\U0001F4CE Receipt: {receipt_display}\n"
                     f"\u2705 Status: {safe_get(17)}"
                 )
             else:

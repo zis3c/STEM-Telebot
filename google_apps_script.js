@@ -268,7 +268,7 @@ function processRowOnSubmit(sheet, rowIdx) {
         sheet.getRange(rowIdx, COL_DATE_ENTRY).setValue(dateEntry);
 
         // Stop auto-send on submit. Wait for admin approval path.
-        sheet.getRange(rowIdx, COL_STATUS).setValue("Pending Admin Approval");
+        sheet.getRange(rowIdx, COL_STATUS).setValue("Pending");
 
         // --- FORMATTING (User Request) ---
         // Right Align, Inter Font, Size 10, All Borders
