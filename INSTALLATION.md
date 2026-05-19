@@ -1,264 +1,259 @@
-# 🛠️ Installation & Setup Guide
+﻿# STEM Telebot - Installation and Setup Guide
 
-This guide provides a step-by-step tutorial to set up the **Eligible STEM Bot** locally or on a server.
+This guide explains how to set up the project end-to-end so new contributors can run it locally or deploy it on a server.
 
----
+## 1. Prerequisites
 
-## 📋 Prerequisites
+- Git
+- Python 3.10+
+- A Telegram account (for BotFather and admin testing)
+- A Google account (for Google Sheets + Apps Script)
+- A Linux VPS (optional, for production)
 
-Before starting, ensure you have:
-1.  **Git** installed ([Download](https://git-scm.com/downloads)).
-2.  **Python 3.9** or higher installed ([Download](https://www.python.org/downloads/)).
-3.  A **Google Account** (for Google Sheets/Cloud).
-4.  A **Telegram Account**.
-
----
-
-## 🚀 Step 1: Clone the Repository
-
-Open your terminal or command prompt and run:
+## 2. Clone the Project
 
 ```bash
-git clone https://github.com/zis3c/stem-bot.git
-cd stem-bot
+git clone https://github.com/zis3c/STEM-Telebot.git
+cd STEM-Telebot
 ```
 
----
+## 3. Create Virtual Environment and Install Dependencies
 
-## 🐍 Step 2: Set Up Python Environment
+Windows (PowerShell):
 
-It is recommended to use a virtual environment to avoid conflicts.
-
-**Windows:**
 ```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-**Mac/Linux:**
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-Install the required libraries:
-```bash
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
----
+Linux/macOS:
 
-## 🤖 Step 3: Create Telegram Bot
-
-1.  Open Telegram and search for **[@BotFather](https://t.me/BotFather)**.
-2.  Send `/newbot`.
-3.  Follow the prompts to name your bot (e.g., `MySTEMBot`) and give it a username (e.g., `MySTEM_bot`).
-4.  **Copy the HTTP API Token**. You will need this for the `.env` file.
-
----
-
-## ☁️ Step 4: Google Cloud Setup (Sheets API)
-
-This bot uses Google Sheets as a database. You need a Service Account credentials file.
-
-1.  Go to the [Google Cloud Console](https://console.cloud.google.com/).
-2.  **Create a New Project** (e.g., "STEM Bot").
-3.  **Enable APIs**:
-    *   Go to **APIs & Services > Library**.
-    *   Search for **"Google Sheets API"** -> Enable.
-    *   Search for **"Google Drive API"** -> Enable.
-4.  **Create Service Account**:
-    *   Go to **APIs & Services > Credentials**.
-    *   Click **Create Credentials > Service Account**.
-    *   Name it (e.g., "bot-service"). Click **Create & Continue**.
-    *   Role: **Editor** (Basic > Editor). Click **Done**.
-5.  **Generate Keys**:
-    *   Click on the email of the service account you just created (e.g., `bot-service@project-id.iam.gserviceaccount.com`).
-    *   Go to the **Keys** tab.
-    *   Click **Add Key > Create new key**.
-    *   Select **JSON**.
-    *   A file will download (e.g., `project-id-12345.json`). **Keep this safe!**
-
----
-
-## 📊 Step 5: Configure Google Sheets
-
-1.  **Create a New Google Sheet**.
-2.  **Share the Sheet**:
-    *   Open the JSON key file you downloaded in Step 4.
-    *   Find the `"client_email"` field. Copy the email address.
-    *   Go to your Google Sheet > Click **Share** > Paste the email > **Editor** access > Send.
-3.  **Get Sheet ID**:
-    *   Look at the URL of your spreadsheet:
-        `https://docs.google.com/spreadsheets/d/1aBcD...xYz/edit`
-    *   The ID is the long string between `/d/` and `/edit`. Copy this.
-
-4.  **Create Required Tabs**:
-    *   **Tab 1 Name**: `Registrations`
-    *   **Structure for `Registrations` Sheet** (Important!):
-        Ensure your sheet has the following columns (Order is critical):
-
-| Col | Field |
-| :--- | :--- |
-| **A** | Timestamp |
-| **B** | Email Address |
-| **C** | Name |
-| **D** | Matrics Number |
-| **E** | Courses |
-| **F** | Semester |
-| **G** | Phone Number |
-| **H** | Personal Email |
-| **I** | USAS Email |
-| **J** | IC Number |
-| **K** | Birthday |
-| **L** | Birth Place |
-| **M** | Address |
-| **N** | Date of Entry |
-| **O** | Minute Number |
-| **P** | Membership Number |
-| **Q** | Receipt Proof |
-| **R** | Status |
-| **S** | Payment Receipt |
-| **T** | Invoice No |
-| **U** | Statistic |
-    *   **Tab 2 Name**: `system_admins`
-        *   Headers: `User ID`, `Name`, `Added By`
-    *   **Tab 3 Name**: `system_config`
-        *   Headers: `Key`, `Value`
-        *   Add a row: `maintenance_mode` | `False`
-
-    *   "Run" > "setupTrigger".
-    *   Grant permissions if requested.
-
-    > **Note**: This script handles the `Membership ID` generation and `Date of Entry` formatting automatically.
-
----
-
-## 📜 Step 5b: Google Apps Script (Automation)
-
-The bot relies on a script running inside the Google Sheet to generate IDs and format dates.
-
-1.  **Open Script Editor**:
-    *   In your Google Sheet, go to **Extensions** > **Apps Script**.
-2.  **Paste Code**:
-    *   Delete any existing code in `Code.gs`.
-    *   Open `google_apps_script.js` from this repository.
-    *   Copy the entire content and paste it into the script editor.
-3.  **Save**:
-    *   Press `Ctrl+S` (or `Cmd+S`) to save the project.
-4.  **Setup Trigger**:
-    *   In the function dropdown (top bar), select `setupTrigger`.
-    *   Click **Run**.
-    *   **Grant Permissions**: Google will ask for permission. Click "Review Permissions" > Choose Account > "Advanced" > "Go to (Project Name) (unsafe)" > "Allow".
-5.  **Verify**:
-    *   Go to the **Triggers** icon (alarm clock) in the left sidebar.
-    *   You should see a trigger for `onFormSubmit`.
-
----
-
-## 📅 Step 5c: Monthly Statistics (Optional)
-
-To enable the automatic monthly separator row (e.g., `--- STATISTIK DISEMBER ---`):
-
-1.  In Apps Script, click **Triggers** (alarm clock).
-2.  Click **Add Trigger** (blue button).
-3.  Configure:
-    *   **Function**: `generateMonthlyStats`
-    *   **Deployment**: `Head`
-    *   **Event Source**: `Time-driven`
-    *   **Type**: `Month timer`
-    *   **Select**: `1st` (Day of month) @ `Midnight`.
-4.  Click **Save**.
-
----
-
-## ⚙️ Step 6: Environment Variables
-
-Create a file named `.env` in the `stem-bot` folder.
-
-**Option A: Paste JSON Content (Easier for Cloud)**
-Open your downloaded JSON key file, copy the *entire content*, and verify it is a single line (or handles escaping). However, for local consistency, we often use the file path.
-
-**Recommended .env Format:**
-
-```ini
-TELEGRAM_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
-SHEET_ID=1aBcD...xYz  # Your Sheet ID
-GOOGLE_CREDENTIALS='{ "type": "service_account", ... }' 
-# Paste the FULL JSON content inside single quotes using one line if possible.
-# Alternatively, if running locally, you can modify database.py to read 'service_account.json'.
-SUPERADMIN_IDS=123456789
-ADMIN_IDS=987654321
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-> **Tip**: If pasting JSON into `.env` is difficult, rename your downloaded key file to `service_account.json` and place it in the project folder. The bot is configured to look for it if `GOOGLE_CREDENTIALS` is missing.
+## 4. Create Telegram Bot
 
----
+1. Open [@BotFather](https://t.me/BotFather)
+2. Run `/newbot`
+3. Save the bot token
 
-## ▶️ Step 7: Run the Bot
+You will use this value as `TELEGRAM_TOKEN`.
+
+## 5. Set Up Google Sheet Backend
+
+1. Create a Google Sheet.
+2. Create required tabs:
+
+### `STEM DB` (main data tab)
+
+Column order must match the bot and Apps Script:
+
+| Col | Field |
+| --- | --- |
+| A | Timestamp |
+| B | Personal Email |
+| C | Name |
+| D | Matric |
+| E | Course |
+| F | Semester |
+| G | Phone Number |
+| H | Alternate Email |
+| I | USAS Email |
+| J | IC Number |
+| K | Birthday |
+| L | Birth Place |
+| M | Address |
+| N | Date of Entry |
+| O | Minute Number |
+| P | Membership Number |
+| Q | Receipt Proof |
+| R | Status |
+| S | Payment Receipt URL |
+| T | Invoice No |
+| U | Statistic |
+
+### `system_admins`
+
+Headers:
+
+- `User ID`
+- `Name`
+- `Added By`
+
+### `system_config`
+
+Headers:
+
+- `Key`
+- `Value`
+
+Initial row:
+
+- `maintenance_mode` | `False`
+
+## 6. Google Cloud Service Account
+
+1. Go to Google Cloud Console.
+2. Create/select a project.
+3. Enable APIs:
+- Google Sheets API
+- Google Drive API
+4. Create a Service Account.
+5. Create and download JSON key.
+6. Share the Google Sheet with the service account `client_email` as Editor.
+
+Save key file as:
+
+```text
+service_account.json
+```
+
+Place it in project root, or provide JSON via `GOOGLE_CREDENTIALS` env var.
+
+## 7. Environment Variables
+
+Copy `.env.example` to `.env` and set values.
+
+Required:
+
+- `TELEGRAM_TOKEN`
+- `SHEET_ID`
+- `SUPERADMIN_IDS`
+- `ADMIN_IDS`
+
+Optional/recommended:
+
+- `WEBHOOK_URL` (set only if running Telegram webhook mode)
+- `TELEGRAM_WEBHOOK_SECRET`
+- `GOOGLE_CREDENTIALS` (if not using local `service_account.json`)
+- rate-limit and security env values from `README.md`
+
+## 8. Configure Google Apps Script (Required for approval/reject flow)
+
+The approval/reject + receipt pipeline is controlled by Apps Script.
+
+1. Open your Google Sheet.
+2. Go to `Extensions > Apps Script`.
+3. Replace existing code with contents of `google_apps_script.js`.
+4. Save the script.
+5. Run `setupSecrets` once and set real values in Script Properties:
+- `RECEIPT_FOLDER_ID`
+- `LOGO_FILE_ID`
+- `ADMIN_WEBHOOK_TOKEN`
+6. Run `setupTrigger` once to create `onFormSubmit` trigger.
+7. Deploy Apps Script as Web App:
+- Execute as: `Me`
+- Who has access: `Anyone` (or appropriate policy that your bot server can call)
+8. Copy Web App URL (ends with `/exec`).
+
+## 9. Connect Bot Server to Apps Script Webhook
+
+In server environment (`/etc/stem-telebot/bot.env` in production), set:
+
+- `APPS_SCRIPT_WEBHOOK_URL=<your_apps_script_exec_url>`
+- `APPS_SCRIPT_WEBHOOK_TOKEN=<same ADMIN_WEBHOOK_TOKEN from Script Properties>`
+
+This is used by the bot to trigger:
+
+- Approve action -> Apps Script `approveStudentAndSendReceipt`
+- Reject action -> Apps Script `rejectStudentAndDeleteRow`
+
+## 10. Run Locally
 
 ```bash
 python bot.py
 ```
 
-If successful, you will see `Bot is polling...` in the console.
+If startup is successful, the bot begins polling (unless webhook mode is configured).
 
----
+## 11. Deploy to Linux VPS with systemd
 
-## 🌐 Step 8: Deployment (DigitalOcean Droplet)
+Example path:
 
-1.  SSH into your droplet and install runtime packages:
-    ```bash
-    sudo apt update
-    sudo apt install -y python3 python3-venv python3-pip git
-    ```
-2.  Clone the repository:
-    ```bash
-    sudo mkdir -p /opt/stem-telebot
-    sudo chown "$USER":"$USER" /opt/stem-telebot
-    git clone --depth 1 --branch main https://github.com/zis3c/STEM-Telebot /opt/stem-telebot
-    cd /opt/stem-telebot
-    ```
-3.  Create and populate environment values:
-    - Create `/etc/stem-telebot/bot.env` with `TELEGRAM_TOKEN`, `SHEET_ID`, `SUPERADMIN_IDS`, `ADMIN_IDS`.
-    - Optional webhook mode: set `WEBHOOK_URL`; keep it empty for polling mode.
-4.  Put Google credentials at `/opt/stem-telebot/service_account.json` and lock permissions:
-    ```bash
-    sudo chown deploy:deploy /opt/stem-telebot/service_account.json
-    sudo chmod 600 /opt/stem-telebot/service_account.json
-    ```
-5.  Create and start the `systemd` service:
-    ```bash
-    sudo systemctl daemon-reload
-    sudo systemctl enable --now stem-telebot
-    ```
+```text
+/opt/stem-telebot
+```
 
-**Done! Your bot is live on DigitalOcean.**
+Install and run:
 
----
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip git
+sudo mkdir -p /opt/stem-telebot
+sudo chown "$USER":"$USER" /opt/stem-telebot
+git clone --depth 1 --branch main https://github.com/zis3c/STEM-Telebot /opt/stem-telebot
+cd /opt/stem-telebot
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-## Domain for Web Templates
+Create env file:
 
-Membership and demographic web pages are served by the bot itself:
+```text
+/etc/stem-telebot/bot.env
+```
 
-- `/profile/membership/<token>`
-- `/stats/demographic/<token>`
+Minimum production keys:
 
-To use these links publicly, you need:
+- `TELEGRAM_TOKEN`
+- `SHEET_ID`
+- `SUPERADMIN_IDS`
+- `ADMIN_IDS`
+- `APPS_SCRIPT_WEBHOOK_URL`
+- `APPS_SCRIPT_WEBHOOK_TOKEN`
 
-1. A domain/subdomain (for example `bot.yourdomain.com`) pointing to your droplet IP via DNS `A` record.
-2. HTTPS enabled on that domain (Telegram webhook requires valid SSL).
-3. `WEBHOOK_URL` set to your public HTTPS base URL (example: `https://bot.yourdomain.com`).
+Start service:
 
-If `WEBHOOK_URL` is empty (polling mode), bot features still work, but public web report links will not be reachable from the internet unless you expose the server separately.
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now stem-telebot
+sudo systemctl status stem-telebot
+```
 
----
+View logs:
 
-## Web Report Templates (Quick Reference)
+```bash
+journalctl -u stem-telebot -n 100 --no-pager
+```
 
-The bot now uses separate Python template modules for web report UIs:
+## 12. Verify End-to-End Flow
 
-- membership_card_template.py for membership profile card pages
-- demographic_stats_template.py for demographic dashboard pages
+1. Submit a new form row in `STEM DB`.
+2. Confirm row status becomes `Pending`.
+3. Check admin bot receives pending notification.
+4. Press Approve in bot:
+- Sheet row becomes `Approved`
+- Membership ID/invoice handled by Apps Script
+- Receipt email is sent by Apps Script
+5. Press Reject in bot:
+- Row is deleted from sheet by Apps Script
+- Admin sees clear reject confirmation text
 
-Edit these files when changing web UI design instead of placing long HTML blocks directly in `bot.py`.
+## 13. Common Issues
+
+- `401 Unauthorized` for Apps Script webhook:
+- Check `APPS_SCRIPT_WEBHOOK_TOKEN` exactly matches `ADMIN_WEBHOOK_TOKEN`.
+- Make sure Web App URL is `/exec`, not `/dev`.
+
+- Admin button says approved/rejected but sheet unchanged:
+- Verify `APPS_SCRIPT_WEBHOOK_URL` points to latest deployed Apps Script.
+- Redeploy Web App after editing script.
+
+- Google Sheets permission errors:
+- Ensure service account has Editor access to the sheet.
+
+- Bot starts but no pending alerts:
+- Confirm main sheet tab name is exactly `STEM DB`.
+- Confirm status column is `R` and new rows become `Pending`.
+
+## 14. Related Docs
+
+- `README.md`
+- `AUTO_DEPLOY.md`
+- `CONTRIBUTING.md`
+- `google_apps_script.js`
