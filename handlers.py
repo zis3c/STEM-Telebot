@@ -1005,6 +1005,11 @@ async def review_do_accept_callback(update: Update, context: ContextTypes.DEFAUL
         await query.edit_message_text("Invalid action payload.")
         return
 
+    await query.edit_message_text(
+        f"Processing approval for *{_escape_md(matric)}*...",
+        parse_mode="Markdown"
+    )
+
     result = await run_db_call(_post_apps_script_action, "approve", row_idx)
     if result.get("ok"):
         db.log_action(

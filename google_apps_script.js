@@ -298,7 +298,8 @@ function approveStudentAndSendReceipt(rowIdx) {
     var lock = LockService.getDocumentLock();
     lock.waitLock(30000);
     try {
-        var values = sheet.getRange(row, 1, 1, 21).getValues()[0];
+        var rowRange = sheet.getRange(row, 1, 1, 21);
+        var values = rowRange.getValues()[0];
         var timestamp = values[0];
         var name = sanitizeName(values[2]);
         var matric = sanitizeMatric(values[3]);
@@ -309,40 +310,45 @@ function approveStudentAndSendReceipt(rowIdx) {
         var receiptUrl = sanitizeDriveUrl(values[COL_RECEIPT_URL - 1]);
 
         if (!timestamp || !isSafeName(name) || !isSafeMatric(matric) || !isSafeEmail(personalEmail)) {
-            sheet.getRange(row, COL_STATUS).setValue("Rejected - Invalid Input");
+            values[COL_STATUS - 1] = "Rejected - Invalid Input";
+            rowRange.setValues([values]);
             return { ok: false, error: "Invalid student data" };
         }
 
         if (!memberId) {
             memberId = generateMembershipId(sheet, new Date(timestamp), row);
-            sheet.getRange(row, COL_MEMBERSHIP).setValue(memberId);
+            values[COL_MEMBERSHIP - 1] = memberId;
         }
         if (!invoiceNo) {
             invoiceNo = "INV-" + Math.floor(100000 + Math.random() * 900000);
-            sheet.getRange(row, COL_INVOICE_NO).setValue(invoiceNo);
+            values[COL_INVOICE_NO - 1] = invoiceNo;
         }
         if (!dateEntry) {
             dateEntry = Utilities.formatDate(new Date(timestamp), Session.getScriptTimeZone(), "dd/MM/yy");
-            sheet.getRange(row, COL_DATE_ENTRY).setValue(dateEntry);
+            values[COL_DATE_ENTRY - 1] = dateEntry;
         }
 
         if (receiptUrl) {
-            sheet.getRange(row, COL_STATUS).setValue("Approved - Receipt Sent");
+            values[COL_STATUS - 1] = "Approved";
+            rowRange.setValues([values]);
             return { ok: true, row: row, message: "Receipt already exists" };
         }
 
-        sheet.getRange(row, COL_RECEIPT_URL).setValue("SENDING_" + new Date().toISOString());
-        SpreadsheetApp.flush();
+        values[COL_RECEIPT_URL - 1] = "SENDING_" + new Date().toISOString();
+        values[COL_STATUS - 1] = "Pending Email Dispatch";
+        rowRange.setValues([values]);
 
         var newReceiptUrl = sendReceiptEmail(personalEmail, name, matric, memberId, dateEntry, invoiceNo);
         if (!newReceiptUrl) {
-            sheet.getRange(row, COL_RECEIPT_URL).setValue("");
-            sheet.getRange(row, COL_STATUS).setValue("Approved - Send Failed");
+            values[COL_RECEIPT_URL - 1] = "";
+            values[COL_STATUS - 1] = "Approved";
+            rowRange.setValues([values]);
             return { ok: false, error: "Receipt send failed" };
         }
 
-        sheet.getRange(row, COL_RECEIPT_URL).setValue(newReceiptUrl);
-        sheet.getRange(row, COL_STATUS).setValue("Approved - Receipt Sent");
+        values[COL_RECEIPT_URL - 1] = newReceiptUrl;
+        values[COL_STATUS - 1] = "Approved";
+        rowRange.setValues([values]);
         return { ok: true, row: row, receiptUrl: newReceiptUrl };
     } finally {
         lock.releaseLock();

@@ -600,8 +600,11 @@ class Database:
                 receipt = row[16].strip()
                 # Status is Col R (index 17).
                 status = row[17].strip() if len(row) > 17 else ""
-                
-                if receipt and not status:
+                status_norm = status.lower()
+
+                # New flow sets "Pending Admin Approval" on submit.
+                # Treat it as unprocessed alert target once, then bot rewrites to "Pending".
+                if receipt and (not status or status_norm == "pending admin approval"):
                     # Valid registration needing approval
                     unprocessed.append({
                         'row': i,
