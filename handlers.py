@@ -11,6 +11,9 @@ import re
 import asyncio
 import os
 import time
+import json
+import urllib.request
+import urllib.error
 from datetime import datetime, timedelta
 from io import BytesIO
 from zoneinfo import ZoneInfo
@@ -43,6 +46,8 @@ GLOBAL_RATE_MAX_REQ = int(os.getenv("GLOBAL_RATE_MAX_REQ", "25"))
 MAX_INPUT_LEN_MATRIC = int(os.getenv("MAX_INPUT_LEN_MATRIC", "24"))
 MAX_INPUT_LEN_SEARCH = int(os.getenv("MAX_INPUT_LEN_SEARCH", "80"))
 MAX_INPUT_LEN_BROADCAST = int(os.getenv("MAX_INPUT_LEN_BROADCAST", "2000"))
+APPS_SCRIPT_WEBHOOK_URL = os.getenv("APPS_SCRIPT_WEBHOOK_URL", "").strip()
+APPS_SCRIPT_ADMIN_TOKEN = os.getenv("APPS_SCRIPT_ADMIN_TOKEN", "").strip()
 
 
 def _global_rate_guard(user_id: int, scope: str):
@@ -51,6 +56,36 @@ def _global_rate_guard(user_id: int, scope: str):
     if not ok:
         log_security_event("RATE_LIMIT_HIT", f"scope={scope} uid={user_id} retry={retry}")
     return ok, retry
+
+
+def _post_apps_script_action(action: str, row_idx: int):
+    if not APPS_SCRIPT_WEBHOOK_URL or not APPS_SCRIPT_ADMIN_TOKEN:
+        return {"ok": False, "error": "apps_script_not_configured"}
+
+    payload = {
+        "token": APPS_SCRIPT_ADMIN_TOKEN,
+        "action": action,
+        "row": int(row_idx),
+    }
+    req = urllib.request.Request(
+        APPS_SCRIPT_WEBHOOK_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read().decode("utf-8")
+            return json.loads(raw or "{}")
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8")
+        except Exception:
+            body = str(e)
+        return {"ok": False, "error": f"http_{e.code}", "details": body}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 async def _delete_message_job(context: ContextTypes.DEFAULT_TYPE):
@@ -970,8 +1005,8 @@ async def review_do_accept_callback(update: Update, context: ContextTypes.DEFAUL
         await query.edit_message_text("Invalid action payload.")
         return
 
-    ok = await run_db_call(db.update_status_by_row_or_matric, row_idx, matric, "Approved")
-    if ok:
+    result = await run_db_call(_post_apps_script_action, "approve", row_idx)
+    if result.get("ok"):
         db.log_action(
             f"{query.from_user.first_name} ({query.from_user.id})",
             "ACCEPT_MEMBER",
@@ -983,8 +1018,9 @@ async def review_do_accept_callback(update: Update, context: ContextTypes.DEFAUL
             parse_mode="Markdown"
         )
     else:
+        err = _escape_md(result.get("error", "unknown"))
         await query.edit_message_text(
-            f"Could not accept `{_escape_md(matric)}`\nRecord may have moved or been removed.",
+            f"Could not accept `{_escape_md(matric)}`\nError: `{err}`",
             parse_mode="Markdown"
         )
 
@@ -1003,8 +1039,8 @@ async def review_do_reject_callback(update: Update, context: ContextTypes.DEFAUL
         await query.edit_message_text("Invalid action payload.")
         return
 
-    ok = await run_db_call(db.delete_registration_by_row_or_matric, row_idx, matric)
-    if ok:
+    result = await run_db_call(_post_apps_script_action, "reject", row_idx)
+    if result.get("ok"):
         db.log_action(
             f"{query.from_user.first_name} ({query.from_user.id})",
             "REJECT_MEMBER",
@@ -1016,8 +1052,9 @@ async def review_do_reject_callback(update: Update, context: ContextTypes.DEFAUL
             parse_mode="Markdown"
         )
     else:
+        err = _escape_md(result.get("error", "unknown"))
         await query.edit_message_text(
-            f"Could not reject `{_escape_md(matric)}`\nRecord may have moved or been removed.",
+            f"Could not reject `{_escape_md(matric)}`\nError: `{err}`",
             parse_mode="Markdown"
         )
 

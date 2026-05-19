@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Google Apps Script for STEM Bot Automation
  * 
  * INSTRUCTIONS:
@@ -30,6 +30,7 @@ var COL_INVOICE_NO = 20;    // T (Invoice No)
 var FEE_AMOUNT = "RM10.00"; // Fixed Fee
 var EMAIL_ATTACH_PDF = true; // Send PDF as attachment
 var EMAIL_INCLUDE_DRIVE_LINK = false; // Include Drive button in email body
+var ADMIN_WEBHOOK_TOKEN = PropertiesService.getScriptProperties().getProperty("ADMIN_WEBHOOK_TOKEN");
 
 // Secrets managed via Script Properties (File > Project Properties > Script Properties)
 // Or run the 'setupSecrets' function once below.
@@ -99,9 +100,10 @@ function setupSecrets() {
     var props = PropertiesService.getScriptProperties();
     props.setProperties({
         "RECEIPT_FOLDER_ID": "PASTE_YOUR_FOLDER_ID_HERE",
-        "LOGO_FILE_ID": "PASTE_YOUR_LOGO_ID_HERE"
+        "LOGO_FILE_ID": "PASTE_YOUR_LOGO_ID_HERE",
+        "ADMIN_WEBHOOK_TOKEN": "PASTE_RANDOM_LONG_SECRET_HERE"
     });
-    Logger.log("✅ Secrets saved successfully! You can now remove them from this function.");
+    Logger.log("Secrets saved successfully! You can now remove them from this function.");
 }
 
 /**
@@ -114,12 +116,12 @@ function debugConfiguration() {
     var logoId = props.getProperty("LOGO_FILE_ID");
 
     Logger.log("--- CONFIG CHECK ---");
-    Logger.log("Folder ID: " + (folderId ? "✅ Found (" + folderId + ")" : "❌ MISSING"));
-    Logger.log("Logo ID:   " + (logoId ? "✅ Found (" + logoId + ")" : "❌ MISSING"));
+    Logger.log("Folder ID: " + (folderId ? "âœ… Found (" + folderId + ")" : "âŒ MISSING"));
+    Logger.log("Logo ID:   " + (logoId ? "âœ… Found (" + logoId + ")" : "âŒ MISSING"));
 
     if (logoId) {
         var b64 = getEncodedLogo(logoId);
-        Logger.log("Logo Fetch Test: " + (b64 ? "✅ Success (Length: " + b64.length + ")" : "❌ Failed to fetch/encode"));
+        Logger.log("Logo Fetch Test: " + (b64 ? "âœ… Success (Length: " + b64.length + ")" : "âŒ Failed to fetch/encode"));
     }
     Logger.log("--------------------");
 }
@@ -129,17 +131,17 @@ function debugConfiguration() {
  */
 function getEncodedLogo(fileId) {
     if (!fileId || fileId === "PASTE_YOUR_LOGO_ID_HERE") {
-        Logger.log("⚠️ Logo File ID is missing or placeholder.");
+        Logger.log("âš ï¸ Logo File ID is missing or placeholder.");
         return null;
     }
     try {
         var file = DriveApp.getFileById(fileId);
         var blob = file.getBlob();
         var b64 = Utilities.base64Encode(blob.getBytes());
-        Logger.log("✅ Logo encoded successfully. Size: " + b64.length);
+        Logger.log("âœ… Logo encoded successfully. Size: " + b64.length);
         return "data:" + blob.getContentType() + ";base64," + b64;
     } catch (e) {
-        Logger.log("⚠️ Could not fetch logo: " + e.toString());
+        Logger.log("âš ï¸ Could not fetch logo: " + e.toString());
         return null;
     }
 }
@@ -150,7 +152,7 @@ function getEncodedLogo(fileId) {
  */
 function onFormSubmit(e) {
     if (!e) {
-        Logger.log("⚠️ You are running this manually. 'e' is undefined. Running testLastRow() instead.");
+        Logger.log("âš ï¸ You are running this manually. 'e' is undefined. Running testLastRow() instead.");
         testLastRow();
         return;
     }
@@ -159,12 +161,12 @@ function onFormSubmit(e) {
     var sheet = e.range.getSheet();
     var row = e.range.getRow();
     if (sheet.getName() !== SHEET_NAME) {
-        Logger.log("âš ï¸ Ignored submit from unexpected sheet: " + sheet.getName());
+        Logger.log("Ã¢Å¡Â Ã¯Â¸Â Ignored submit from unexpected sheet: " + sheet.getName());
         return;
     }
 
     Logger.log("Form Submitted on Sheet: " + sheet.getName() + ", Row: " + row);
-    processRow(sheet, row);
+    processRowOnSubmit(sheet, row);
 }
 
 /**
@@ -173,13 +175,13 @@ function onFormSubmit(e) {
 function testLastRow() {
     var sheet = getTargetSheet();
     if (!sheet) {
-        Logger.log("❌ CRITICAL: Could not find any sheet.");
+        Logger.log("âŒ CRITICAL: Could not find any sheet.");
         return;
     }
 
     var lastRow = sheet.getLastRow();
     Logger.log("Testing Last Row: " + lastRow + " on sheet '" + sheet.getName() + "'");
-    processRow(sheet, lastRow);
+    processRowOnSubmit(sheet, lastRow);
 }
 
 /**
@@ -194,7 +196,7 @@ function testSimpleEmail() {
     var date = "31/12/25";
     var invoiceNo = "INV-TEST999";
 
-    Logger.log("🧪 Running Simple Email Test...");
+    Logger.log("ðŸ§ª Running Simple Email Test...");
     sendReceiptEmail(email, name, matric, memberId, date, invoiceNo);
 }
 
@@ -207,7 +209,7 @@ function getTargetSheet() {
     if (!sheet) {
         // Fallback: Get the first sheet (usually 'Form Responses 1')
         sheet = ss.getSheets()[0];
-        Logger.log("⚠️ Sheet '" + SHEET_NAME + "' not found. Fallback to first sheet: '" + sheet.getName() + "'");
+        Logger.log("âš ï¸ Sheet '" + SHEET_NAME + "' not found. Fallback to first sheet: '" + sheet.getName() + "'");
     }
     return sheet;
 }
@@ -215,7 +217,7 @@ function getTargetSheet() {
 /**
  * Main Logic to populate columns and Send Email
  */
-function processRow(sheet, rowIdx) {
+function processRowOnSubmit(sheet, rowIdx) {
     // Prevent duplicate sends when two triggers process the same row at the same time.
     var lock = LockService.getDocumentLock();
     lock.waitLock(30000);
@@ -229,7 +231,7 @@ function processRow(sheet, rowIdx) {
         // 1. Get Timestamp (Col A) - Index 0
         var timestamp = values[0];
         if (!timestamp || timestamp === "") {
-            Logger.log("⚠️ Row " + rowIdx + " SKIPPED. Reason: Timestamp (Col A) is empty.");
+            Logger.log("âš ï¸ Row " + rowIdx + " SKIPPED. Reason: Timestamp (Col A) is empty.");
             return;
         }
 
@@ -255,17 +257,8 @@ function processRow(sheet, rowIdx) {
         // 3b. Build derived USAS email from validated matric only.
         var usasEmail = matric + "@student.usas.edu.my";
 
-        // 4. Automate Membership Number (Col P) - Index 15
-        var memberId = generateMembershipId(sheet, dateObj, rowIdx);
-
-        // 5. Automate Invoice Number (Col U) - Index 20
-        var invoiceNo = sanitizeInvoice(values[COL_INVOICE_NO - 1]);
-        if (!invoiceNo) {
-            invoiceNo = "INV-" + Math.floor(100000 + Math.random() * 900000); // Generate new
-        }
-
         // --- WRITE UPDATES ---
-        // Update Name (3), Matric (4), Email (9), Date (14), MemID (16), Invoice (21)
+        // Update Name (3), Matric (4), Email (9), Date (14)
 
         // Capitalize Name & Matric in place if needed
         if (name !== nameRaw) sheet.getRange(rowIdx, 3).setValue(name);
@@ -273,46 +266,9 @@ function processRow(sheet, rowIdx) {
 
         sheet.getRange(rowIdx, COL_USAS_EMAIL).setValue(usasEmail);
         sheet.getRange(rowIdx, COL_DATE_ENTRY).setValue(dateEntry);
-        sheet.getRange(rowIdx, COL_INVOICE_NO).setValue(invoiceNo); // Save Invoice
 
-        // Only write ID if it doesn't exist (prevent overwriting if re-run)
-        var currentId = values[15]; // Index 15 is Col P
-
-        // Force write if it's empty
-        if (!currentId || currentId === "") {
-            sheet.getRange(rowIdx, COL_MEMBERSHIP).setValue(memberId);
-            currentId = memberId; // Update so we can use it below
-        }
-
-        // --- CHECK RECEIPT URL (Col S - Index 18) ---
-        // Re-read this cell right before sending to avoid stale data in race conditions.
-        var currentReceiptUrl = sheet.getRange(rowIdx, COL_RECEIPT_URL).getValue();
-
-        // If Receipt URL is missing, generate it & send email (Even if ID existed)
-        if (!currentReceiptUrl || currentReceiptUrl === "") {
-            if (isSafeEmail(personalEmail)) {
-                var sendingMarker = "SENDING_" + new Date().toISOString();
-                // Mark immediately to block any concurrent/duplicate execution path.
-                sheet.getRange(rowIdx, COL_RECEIPT_URL).setValue(sendingMarker);
-                SpreadsheetApp.flush();
-
-                Logger.log("📧 Generating Receipt for: " + name);
-                var receiptUrl = sendReceiptEmail(personalEmail, name, matric, currentId, dateEntry, invoiceNo);
-
-                // Save Receipt URL to Col S in DB
-                if (receiptUrl) {
-                    sheet.getRange(rowIdx, COL_RECEIPT_URL).setValue(receiptUrl);
-                } else {
-                    // Clear marker so a future retry can occur.
-                    sheet.getRange(rowIdx, COL_RECEIPT_URL).setValue("");
-                }
-            } else {
-                Logger.log("⚠️ No valid email found for receipt: " + personalEmail);
-                sheet.getRange(rowIdx, COL_STATUS).setValue("Pending - Invalid Email");
-            }
-        } else {
-            Logger.log("✅ Already has receipt. Skipping email.");
-        }
+        // Stop auto-send on submit. Wait for admin approval path.
+        sheet.getRange(rowIdx, COL_STATUS).setValue("Pending Admin Approval");
 
         // --- FORMATTING (User Request) ---
         // Right Align, Inter Font, Size 10, All Borders
@@ -327,6 +283,130 @@ function processRow(sheet, rowIdx) {
         lock.releaseLock();
     }
 }
+
+/**
+ * Admin approval path only.
+ * Call when Telegram admin accepts student.
+ */
+function approveStudentAndSendReceipt(rowIdx) {
+    var sheet = getTargetSheet();
+    if (!sheet) return { ok: false, error: "Sheet not found" };
+
+    var row = parseInt(rowIdx, 10);
+    if (!row || row < 2) return { ok: false, error: "Invalid row index" };
+
+    var lock = LockService.getDocumentLock();
+    lock.waitLock(30000);
+    try {
+        var values = sheet.getRange(row, 1, 1, 21).getValues()[0];
+        var timestamp = values[0];
+        var name = sanitizeName(values[2]);
+        var matric = sanitizeMatric(values[3]);
+        var personalEmail = sanitizeText(values[COL_PERSONAL_EMAIL - 1], 254);
+        var memberId = sanitizeText(values[COL_MEMBERSHIP - 1], 32);
+        var invoiceNo = sanitizeInvoice(values[COL_INVOICE_NO - 1]);
+        var dateEntry = sanitizeText(values[COL_DATE_ENTRY - 1], 20);
+        var receiptUrl = sanitizeDriveUrl(values[COL_RECEIPT_URL - 1]);
+
+        if (!timestamp || !isSafeName(name) || !isSafeMatric(matric) || !isSafeEmail(personalEmail)) {
+            sheet.getRange(row, COL_STATUS).setValue("Rejected - Invalid Input");
+            return { ok: false, error: "Invalid student data" };
+        }
+
+        if (!memberId) {
+            memberId = generateMembershipId(sheet, new Date(timestamp), row);
+            sheet.getRange(row, COL_MEMBERSHIP).setValue(memberId);
+        }
+        if (!invoiceNo) {
+            invoiceNo = "INV-" + Math.floor(100000 + Math.random() * 900000);
+            sheet.getRange(row, COL_INVOICE_NO).setValue(invoiceNo);
+        }
+        if (!dateEntry) {
+            dateEntry = Utilities.formatDate(new Date(timestamp), Session.getScriptTimeZone(), "dd/MM/yy");
+            sheet.getRange(row, COL_DATE_ENTRY).setValue(dateEntry);
+        }
+
+        if (receiptUrl) {
+            sheet.getRange(row, COL_STATUS).setValue("Approved - Receipt Sent");
+            return { ok: true, row: row, message: "Receipt already exists" };
+        }
+
+        sheet.getRange(row, COL_RECEIPT_URL).setValue("SENDING_" + new Date().toISOString());
+        SpreadsheetApp.flush();
+
+        var newReceiptUrl = sendReceiptEmail(personalEmail, name, matric, memberId, dateEntry, invoiceNo);
+        if (!newReceiptUrl) {
+            sheet.getRange(row, COL_RECEIPT_URL).setValue("");
+            sheet.getRange(row, COL_STATUS).setValue("Approved - Send Failed");
+            return { ok: false, error: "Receipt send failed" };
+        }
+
+        sheet.getRange(row, COL_RECEIPT_URL).setValue(newReceiptUrl);
+        sheet.getRange(row, COL_STATUS).setValue("Approved - Receipt Sent");
+        return { ok: true, row: row, receiptUrl: newReceiptUrl };
+    } finally {
+        lock.releaseLock();
+    }
+}
+
+/**
+ * Admin reject path.
+ * Deletes row from sheet so rejected student has no DB record and no invoice.
+ */
+function rejectStudentAndDeleteRow(rowIdx) {
+    var sheet = getTargetSheet();
+    if (!sheet) return { ok: false, error: "Sheet not found" };
+
+    var row = parseInt(rowIdx, 10);
+    if (!row || row < 2) return { ok: false, error: "Invalid row index" };
+
+    var lock = LockService.getDocumentLock();
+    lock.waitLock(30000);
+    try {
+        var lastRow = sheet.getLastRow();
+        if (row > lastRow) return { ok: false, error: "Row not found" };
+        sheet.deleteRow(row);
+        return { ok: true, row: row, message: "Rejected and deleted" };
+    } finally {
+        lock.releaseLock();
+    }
+}
+
+/**
+ * Webhook endpoint for Telegram/admin system.
+ * Payload: {"token":"<ADMIN_WEBHOOK_TOKEN>","action":"approve","row":12}
+ */
+function doPost(e) {
+    try {
+        var body = JSON.parse(e.postData.contents || "{}");
+        if (!ADMIN_WEBHOOK_TOKEN || body.token !== ADMIN_WEBHOOK_TOKEN) {
+            return ContentService
+                .createTextOutput(JSON.stringify({ ok: false, error: "Unauthorized" }))
+                .setMimeType(ContentService.MimeType.JSON);
+        }
+        if (body.action === "approve") {
+            var result = approveStudentAndSendReceipt(body.row);
+            return ContentService
+                .createTextOutput(JSON.stringify(result))
+                .setMimeType(ContentService.MimeType.JSON);
+        }
+        if (body.action === "reject") {
+            var rejectResult = rejectStudentAndDeleteRow(body.row);
+            return ContentService
+                .createTextOutput(JSON.stringify(rejectResult))
+                .setMimeType(ContentService.MimeType.JSON);
+        }
+        if (body.action !== "approve" && body.action !== "reject") {
+            return ContentService
+                .createTextOutput(JSON.stringify({ ok: false, error: "Unknown action" }))
+                .setMimeType(ContentService.MimeType.JSON);
+        }
+    } catch (err) {
+        return ContentService
+            .createTextOutput(JSON.stringify({ ok: false, error: String(err) }))
+            .setMimeType(ContentService.MimeType.JSON);
+    }
+}
 /**
  * Generates and Sends the HTML Receipt Email with PDF Attachment + Download Link
  * Returns the download URL
@@ -334,7 +414,7 @@ function processRow(sheet, rowIdx) {
 function sendReceiptEmail(email, name, matric, memberId, date, invoiceNo) {
     try {
         if (!isSafeEmail(email) || !isSafeMatric(matric) || !isSafeName(name)) {
-            Logger.log("❌ Refused receipt send due to invalid/suspicious fields.");
+            Logger.log("âŒ Refused receipt send due to invalid/suspicious fields.");
             return null;
         }
 
@@ -359,12 +439,12 @@ function sendReceiptEmail(email, name, matric, memberId, date, invoiceNo) {
             if (RECEIPT_FOLDER_ID && RECEIPT_FOLDER_ID !== "PASTE_YOUR_FOLDER_ID_HERE") {
                 var folder = DriveApp.getFolderById(RECEIPT_FOLDER_ID);
                 file = folder.createFile(pdfBlob);
-                Logger.log("📂 Saved to Folder: " + folder.getName());
+                Logger.log("ðŸ“‚ Saved to Folder: " + folder.getName());
             } else {
                 throw new Error("Folder ID not set.");
             }
         } catch (e) {
-            Logger.log("⚠️ Saving to Root (Folder ID missing/invalid).");
+            Logger.log("âš ï¸ Saving to Root (Folder ID missing/invalid).");
             file = DriveApp.createFile(pdfBlob);
         }
 
@@ -389,10 +469,10 @@ function sendReceiptEmail(email, name, matric, memberId, date, invoiceNo) {
         // Optional: Clean up file from Drive if you don't want to save a copy
         // file.setTrashed(true); // Uncomment to delete after sending
 
-        Logger.log("✅ Receipt sent to: " + email);
+        Logger.log("âœ… Receipt sent to: " + email);
         return downloadUrl; // Return URL to save to Sheet
     } catch (e) {
-        Logger.log("❌ Failed to send email: " + e.toString());
+        Logger.log("âŒ Failed to send email: " + e.toString());
         return null;
     }
 }
@@ -408,7 +488,7 @@ function getEncodedLogo(fileId) {
         var b64 = Utilities.base64Encode(blob.getBytes());
         return "data:" + blob.getContentType() + ";base64," + b64;
     } catch (e) {
-        Logger.log("⚠️ Could not fetch logo: " + e.toString());
+        Logger.log("âš ï¸ Could not fetch logo: " + e.toString());
         return null;
     }
 }
@@ -648,15 +728,15 @@ function createPdfHtml(name, matric, memberId, date, invoiceNo, receiptNo, logoB
          <!-- Bottom Section: Privileges Box -->
         <div class="terms-box">
             <b style="color: #1d1d1f; text-transform: uppercase;">Membership Privileges</b><br>
-            • Priority Event Access guarantees early registration and secured spots for all STEM USAS workshops and events.<br>
-            • AGM Voting Rights grant the power to elect leadership and influence association policies.<br>
-            • Exclusive Perks include access to limited-edition merchandise and special discounts on paid programs.<br>
+            â€¢ Priority Event Access guarantees early registration and secured spots for all STEM USAS workshops and events.<br>
+            â€¢ AGM Voting Rights grant the power to elect leadership and influence association policies.<br>
+            â€¢ Exclusive Perks include access to limited-edition merchandise and special discounts on paid programs.<br>
         </div>
 
         <div class="terms-box" style="margin-top: 15px;">
             <b style="color: #1d1d1f; text-transform: uppercase;">Check Your Status</b><br>
             Join our Official Telegram Bot to verify your eligibility and access your digital ID card.<br>
-            🔗 <b>Link:</b> <a href="https://t.me/stemusasbot" style="color: #012951; text-decoration: none;">https://t.me/stemusasbot</a>
+            ðŸ”— <b>Link:</b> <a href="https://t.me/stemusasbot" style="color: #012951; text-decoration: none;">https://t.me/stemusasbot</a>
         </div>
 
         <div class="terms-box" style="margin-top: 15px; border-left: 4px solid #f7c525;">
@@ -666,7 +746,7 @@ function createPdfHtml(name, matric, memberId, date, invoiceNo, receiptNo, logoB
         </div>
 
         <div class="footer">
-            STEM USAS • zis3c • Computer Generated Receipt
+            STEM USAS â€¢ zis3c â€¢ Computer Generated Receipt
             <div style="margin-top: 15px; font-size: 9px; color: #aaa; line-height: 1.4; border-top: 1px solid #eee; padding-top: 10px;">
                 <b>IMPORTANT:</b> Keep for records. Fraud/Falsification is a serious offense leading to disqualification and reporting to Student Affairs (HEP).
             </div>
@@ -687,12 +767,12 @@ function broadcastAllRows() {
     var lastRow = sheet.getLastRow();
     // Start from Row 2 (Skip Header)
     for (var i = 2; i <= lastRow; i++) {
-        Logger.log("🔄 Processing Row " + i + " of " + lastRow);
-        processRow(sheet, i);
+        Logger.log("ðŸ”„ Processing Row " + i + " of " + lastRow);
+        processRowOnSubmit(sheet, i);
         // Small delay to prevent hitting Google rate limits (MailApp: ~100/day for free Gmail)
         Utilities.sleep(1000);
     }
-    Logger.log("✅ Broadcast Complete!");
+    Logger.log("âœ… Broadcast Complete!");
 }
 
 /**
