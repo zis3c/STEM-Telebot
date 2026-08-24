@@ -256,6 +256,7 @@ class Database:
             ws = self.get_sheet("Registrations")
             if not ws: return
             
+
             # Fetch ALL values in one go (1 API Call)
             all_rows = ws.get_all_values()
             
@@ -270,7 +271,9 @@ class Database:
                 if len(row) > 3:
                     mat = str(row[3]).strip().upper()
                     if mat:
-                        cache[mat] = (row, i) # Store (Data, RowIndex)
+                        if mat not in cache:
+                            cache[mat] = []
+                        cache[mat].append((row, i)) # Store list of (Data, RowIndex)
             
             self.student_cache = cache
             self.last_student_refresh = time.time()
