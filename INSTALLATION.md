@@ -102,8 +102,8 @@ Initial row:
 1. Go to Google Cloud Console.
 2. Create/select a project.
 3. Enable APIs:
-- Google Sheets API
-- Google Drive API
+   - Google Sheets API
+   - Google Drive API
 4. Create a Service Account.
 5. Create and download JSON key.
 6. Share the Google Sheet with the service account `client_email` as Editor.
@@ -144,13 +144,13 @@ The approval/reject + receipt pipeline is controlled by Apps Script.
 3. Replace existing code with contents of `google_apps_script.js`.
 4. Save the script.
 5. Run `setupSecrets` once and set real values in Script Properties:
-- `RECEIPT_FOLDER_ID`
-- `LOGO_FILE_ID`
-- `ADMIN_WEBHOOK_TOKEN`
+   - `RECEIPT_FOLDER_ID`
+   - `LOGO_FILE_ID`
+   - `ADMIN_WEBHOOK_TOKEN`
 6. Run `setupTrigger` once to create `onFormSubmit` trigger.
 7. Deploy Apps Script as Web App:
-- Execute as: `Me`
-- Who has access: `Anyone` (or appropriate policy that your bot server can call)
+   - Execute as: `Me`
+   - Who has access: `Anyone` (or appropriate policy that your bot server can call)
 8. Copy Web App URL (ends with `/exec`).
 
 ## 9. Connect Bot Server to Apps Script Webhook
@@ -231,12 +231,12 @@ journalctl -u stem-telebot -n 100 --no-pager
 2. Confirm row status becomes `Pending`.
 3. Check admin bot receives pending notification.
 4. Press Approve in bot:
-- Sheet row becomes `Approved`
-- Membership ID/invoice handled by Apps Script
-- Receipt email is sent by Apps Script
+   - Sheet row becomes `Approved`
+   - Membership ID/invoice handled by Apps Script
+   - Receipt email is sent by Apps Script
 5. Press Reject in bot:
-- Row is deleted from sheet by Apps Script
-- Admin sees clear reject confirmation text
+   - Row is deleted from sheet by Apps Script
+   - Admin sees clear reject confirmation text
 
 ## 13. Common Issues
 

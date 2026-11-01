@@ -38,12 +38,14 @@ A high-performance, bilingual Telegram bot built for the STEM USAS student organ
 ## Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/zis3c/STEM-Telebot.git
    cd STEM-Telebot
    ```
 
 2. **Create and activate virtual environment**
+
    ```bash
    python -m venv .venv
    # Windows PowerShell
@@ -53,11 +55,13 @@ A high-performance, bilingual Telegram bot built for the STEM USAS student organ
    ```
 
 3. **Install dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 4. **Configure environment**
+
    ```bash
    copy .env.example .env   # Windows
    # cp .env.example .env   # Linux/macOS
@@ -68,6 +72,7 @@ A high-performance, bilingual Telegram bot built for the STEM USAS student organ
    - Share your Google Sheet with the Service Account email.
 
 6. **Run bot**
+
    ```bash
    python bot.py
    ```
@@ -75,6 +80,7 @@ A high-performance, bilingual Telegram bot built for the STEM USAS student organ
 ## Environment Variables
 
 **Core:**
+
 - `TELEGRAM_TOKEN` - Bot token from [@BotFather](https://t.me/BotFather)
 - `PORT` - Local health endpoint port (default `10000`)
 - `WEBHOOK_URL` - Optional (leave empty for polling mode)
@@ -85,15 +91,18 @@ A high-performance, bilingual Telegram bot built for the STEM USAS student organ
 - `TELEGRAM_IP_RANGES` - Comma-separated CIDR allowlist for Telegram webhook IPs
 
 **Google Sheets:**
+
 - `SHEET_ID` - The unique ID of the STEM Google Spreadsheet
 - `GOOGLE_CREDENTIALS` - (Optional) JSON string of your service account key
 - `REGISTRATIONS_SHEET_NAME` - Main sheet tab name for registrations data, default `STEM DB`
 
 **Access Control:**
+
 - `SUPERADMIN_IDS` - Comma-separated Telegram IDs for Superadmins
 - `ADMIN_IDS` - Comma-separated Telegram IDs for Admins
 
 **Security / Abuse Controls:**
+
 - `GLOBAL_RATE_WINDOW_SEC` - Sliding window duration for anti-flood controls (default `60`)
 - `GLOBAL_RATE_MAX_REQ` - Max requests per window for protected flows (default `25`)
 - `MAX_INPUT_LEN_MATRIC` - Max matric input length (default `24`)
@@ -110,6 +119,7 @@ This project is optimized for deployment on a Tencent Lighthouse using `systemd`
 2. Configure `.env` and `service_account.json`.
 3. Create a systemd service (e.g., `/etc/systemd/system/stem-telebot.service`).
 4. Enable and start:
+
    ```bash
    sudo systemctl daemon-reload
    sudo systemctl enable --now stem-telebot
@@ -119,6 +129,7 @@ This project is optimized for deployment on a Tencent Lighthouse using `systemd`
 
 Push to `main` triggers `.github/workflows/deploy-tencent.yml`.
 Ensure you have set the following GitHub Secrets:
+
 - `TENCENT_HOST`
 - `TENCENT_USER` (e.g., `deploy`)
 - `TENCENT_SSH_KEY`
@@ -162,7 +173,7 @@ STEM-Telebot/
 ## Commands
 
 | Command | Description |
-|:--------|:------------|
+| :-------- | :------------ |
 | `/start` | Open main menu |
 | `/help` | Show usage and info |
 | `/settings` | Open language/settings menu |

@@ -79,6 +79,8 @@ def _post_apps_script_action(action: str, row_idx: int):
         "action": action,
         "row": int(row_idx),
     }
+    if not APPS_SCRIPT_WEBHOOK_URL.startswith("https://"):
+        return {"ok": False, "error": "invalid_webhook_scheme"}
     req = urllib.request.Request(
         APPS_SCRIPT_WEBHOOK_URL,
         data=json.dumps(payload).encode("utf-8"),
@@ -86,7 +88,7 @@ def _post_apps_script_action(action: str, row_idx: int):
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310
             raw = resp.read().decode("utf-8")
             return json.loads(raw or "{}")
     except urllib.error.HTTPError as e:

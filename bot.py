@@ -660,7 +660,7 @@ async def main():
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", PORT)
+    site = web.TCPSite(runner, "0.0.0.0", PORT)  # nosec B104
     await site.start()
     logger.info("HTTP server started on port %s", PORT)
 
