@@ -400,7 +400,6 @@ def _row_is_expired(row_values):
     return is_expired
 
 
-# --- HELPERS ---
 def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
     """Retrieve user language, default to EN."""
     return context.user_data.get('lang', strings.DEFAULT_LANG)
@@ -451,12 +450,12 @@ async def check_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text in strings.get_all('BTN_LANGUAGES'):
         return await languages_menu(update, context)
     if text in strings.get_all('BTN_BACK'):
-        return await start(update, context) # Default back to main, but sub-menus might handle back differently
+        return await start(update, context)
     return None
 
-# --- HANDLERS ---
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data.setdefault('lang', strings.DEFAULT_LANG) # Init lang if missing
+    context.user_data.setdefault('lang', strings.DEFAULT_LANG)
     lang = get_user_lang(context)
     
     user = update.effective_user
@@ -468,19 +467,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         )
         return ConversationHandler.END
     
-    # Maintenance Check
     if db.maintenance_mode and not db.is_admin(user.id):
         await update.message.reply_text("🚧 *System Under Maintenance*\nPlease try again later.", parse_mode="Markdown")
         return ConversationHandler.END
 
-    # Send Welcome Message with Main Menu (Includes Web App registration button)
     await update.message.reply_text(
         strings.get('WELCOME_MSG', lang).format(name=user.first_name), 
         reply_markup=keyboards.get_main_menu(lang), 
         parse_mode="Markdown"
     )
 
-    # Log user for broadcast (Done in background to improve speed)
     try:
         loop = asyncio.get_running_loop()
         loop.run_in_executor(None, db.log_user, user.id, user.first_name)
@@ -491,7 +487,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     await update.message.reply_text(
-        "⚙️ *Settings*", # Header
+        "⚙️ *Settings*",
         parse_mode="Markdown",
         reply_markup=keyboards.get_settings_menu(lang)
     )
@@ -668,10 +664,6 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         )
         return states.ASK_IC
     
-    # Optimized: No "Verifying..." message. Cache is instant. 
-    # Sending/Deleting message takes 2 extra API calls (SLOW).
-    # loading_msg = await update.message.reply_text(strings.get('PROMPT_LOADING', lang), parse_mode="Markdown")
-    
     user_matric = context.user_data['matric']
     user_ic_last4 = text
     ok, retry_after = _global_rate_guard(update.effective_user.id, "verify")
@@ -730,9 +722,7 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 db_status_norm = " ".join(db_status_raw.lower().split())
                 membership_id = str(row_values[15]).strip() if len(row_values) > 15 else ""
 
-                # Accept flow with legacy compatibility:
-                # - old rows can use symbols (✓/✅) or custom words instead of "Approved"
-                # - some rows are effectively approved if Membership ID already exists
+                # Legacy rows may use symbols (✓/✅), custom words, or only have a generated Membership ID.
                 approved_tokens = (
                     "approved", "verified", "verify", "accept", "accepted",
                     "disahkan", "lulus", "aktif", "valid"
@@ -833,13 +823,6 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         logger.error("Verification flow error [%s]: %s", "INC-VERIFY", e)
         verification_ok = False
 
-    # AUTO DELETE LOADING MESSAGE
-    # AUTO DELETE LOADING MESSAGE (Removed for speed cleanup)
-    # try:
-    #     await loading_msg.delete()
-    # except Exception:
-    #     pass 
-
     await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=keyboards.get_main_menu(lang))
     if profile_card_url:
         profile_prompt = (
@@ -895,7 +878,6 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         )
     _mark_verif_attempt(update.effective_user.id, user_matric, verification_ok)
     
-    # Log the result
     log_status = "SUCCESS" if verification_ok else "FAILED_VERIFY"
     db.log_action(
         update.effective_user.first_name,
@@ -906,14 +888,13 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     
     return ConversationHandler.END
 
-# --- LOGGING HANDLER (GROUP -1) ---
+
 async def log_any_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Logs ALL user interactions for anomaly detection."""
     user = update.effective_user
     if not user:
         return
     
-    # Handle non-text messages
     if not update.message or not update.message.text:
         msg_type = "MEDIA/OTHER"
         if update.message:
@@ -930,11 +911,9 @@ async def log_any_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text.strip()
     
-    # Identify Keyboard Clicks
     action = "MSG"
     details = f"Text({len(text)} chars)"
     
-    # All Button Keys from strings.py
     btn_keys = [
         'BTN_CHECK', 'BTN_HELP', 'BTN_SETTINGS', 'BTN_LANGUAGES', 'BTN_BACK', 'BTN_CANCEL', 
         'BTN_TRY_AGAIN', 'BTN_BECOME_MEMBER', 'BTN_LANG_EN', 'BTN_LANG_MS',
@@ -957,7 +936,7 @@ async def log_any_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
         role="USER",
     )
 
-# --- JOB QUEUE & CALLBACKS ---
+
 async def check_pending_now(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Manual trigger to check pending registrations immediately."""
     user_id = update.effective_user.id
@@ -1348,9 +1327,7 @@ async def review_detail_callback(update: Update, context: ContextTypes.DEFAULT_T
         await _mark_stale_review_message(query)
         return
 
-    # Enrich pending-detail output with latest cached row for the same matric,
-    # so fields generated later (USAS email, entry date, ID, invoice, receipt)
-    # still appear when available.
+    # Merge with the latest cached row for the same matric so generated fields (USAS email, ID, invoice, receipt) appear.
     cached_row, _ = await run_db_call(db.find_member, str(matric).strip().upper())
     if cached_row:
         max_len = max(len(row_values), len(cached_row))

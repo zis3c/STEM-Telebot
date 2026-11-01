@@ -1,5 +1,3 @@
-﻿# Localization (i18n)
-
 STRINGS = {
     'EN': {
         'WELCOME_MSG': (

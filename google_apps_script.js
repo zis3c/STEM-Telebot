@@ -11,25 +11,22 @@
  *    - Grant permissions if asked.
  */
 
-// --- CONFIGURATION ---
-var SHEET_NAME = "STEM DB"; // Updated to match user's actual sheet name
+var SHEET_NAME = "STEM DB";
 
-// Column Indices (1-based for getRange, but 0-based for array access usually)
-// A=1, B=2, ...
-// A=1, B=2, ...
-var COL_TIMESTAMP = 1;      // A
-var COL_PERSONAL_EMAIL = 2; // B (User's Personal Email)
-var COL_MATRIC = 4;         // D
-var COL_USAS_EMAIL = 9;     // I
-var COL_DATE_ENTRY = 14;    // N
-var COL_MEMBERSHIP = 16;    // P
-var COL_STATUS = 18;        // R
-var COL_RECEIPT_URL = 19;   // S (Payment Receipt)
-var COL_INVOICE_NO = 20;    // T (Invoice No)
+// 1-based column indices for Sheet.getRange()
+var COL_TIMESTAMP = 1;
+var COL_PERSONAL_EMAIL = 2;
+var COL_MATRIC = 4;
+var COL_USAS_EMAIL = 9;
+var COL_DATE_ENTRY = 14;
+var COL_MEMBERSHIP = 16;
+var COL_STATUS = 18;
+var COL_RECEIPT_URL = 19;
+var COL_INVOICE_NO = 20;
 
-var FEE_AMOUNT = "RM10.00"; // Fixed Fee
-var EMAIL_ATTACH_PDF = true; // Send PDF as attachment
-var EMAIL_INCLUDE_DRIVE_LINK = false; // Include Drive button in email body
+var FEE_AMOUNT = "RM10.00";
+var EMAIL_ATTACH_PDF = true;
+var EMAIL_INCLUDE_DRIVE_LINK = false;
 var ADMIN_WEBHOOK_TOKEN = PropertiesService.getScriptProperties().getProperty("ADMIN_WEBHOOK_TOKEN");
 
 // Secrets managed via Script Properties (File > Project Properties > Script Properties)
@@ -225,10 +222,6 @@ function processRowOnSubmit(sheet, rowIdx) {
         var dataRange = sheet.getRange(rowIdx, 1, 1, 21); // Read cols A to U
         var values = dataRange.getValues()[0];
 
-        // DEBUG LOG
-        // Logger.log("Row " + rowIdx + " Dump: " + JSON.stringify(values));
-
-        // 1. Get Timestamp (Col A) - Index 0
         var timestamp = values[0];
         if (!timestamp || timestamp === "") {
             Logger.log("âš ï¸ Row " + rowIdx + " SKIPPED. Reason: Timestamp (Col A) is empty.");
@@ -236,11 +229,8 @@ function processRowOnSubmit(sheet, rowIdx) {
         }
 
         var dateObj = new Date(timestamp);
-
-        // 2. Automate Date of Entry (Col N) - Index 13
         var dateEntry = Utilities.formatDate(dateObj, Session.getScriptTimeZone(), "dd/MM/yy");
 
-        // 3. Sanitize/validate key user input from Google Form.
         var matricRaw = String(values[3]).trim();
         var matric = sanitizeMatric(matricRaw);
         var nameRaw = String(values[2]).trim();
@@ -254,28 +244,21 @@ function processRowOnSubmit(sheet, rowIdx) {
             return;
         }
 
-        // 3b. Build derived USAS email from validated matric only.
         var usasEmail = matric + "@student.usas.edu.my";
 
-        // --- WRITE UPDATES ---
-        // Update Name (3), Matric (4), Email (9), Date (14)
-
-        // Capitalize Name & Matric in place if needed
         if (name !== nameRaw) sheet.getRange(rowIdx, 3).setValue(name);
         if (matric !== matricRaw) sheet.getRange(rowIdx, COL_MATRIC).setValue(matric);
 
         sheet.getRange(rowIdx, COL_USAS_EMAIL).setValue(usasEmail);
         sheet.getRange(rowIdx, COL_DATE_ENTRY).setValue(dateEntry);
 
-        // Stop auto-send on submit. Wait for admin approval path.
+        // Hold status at Pending until an admin approves via the Telegram webhook.
         sheet.getRange(rowIdx, COL_STATUS).setValue("Pending");
 
-        // --- FORMATTING (User Request) ---
-        // Right Align, Inter Font, Size 10, All Borders
-        var fullRowRange = sheet.getRange(rowIdx, 1, 1, 21); // Columns A to U
+        var fullRowRange = sheet.getRange(rowIdx, 1, 1, 21);
         fullRowRange
             .setHorizontalAlignment("right")
-            .setVerticalAlignment("middle") // Good practice
+            .setVerticalAlignment("middle")
             .setFontFamily("Inter")
             .setFontSize(10)
             .setBorder(true, true, true, true, true, true, "#000000", SpreadsheetApp.BorderStyle.SOLID);
@@ -428,18 +411,14 @@ function sendReceiptEmail(email, name, matric, memberId, date, invoiceNo) {
         invoiceNo = sanitizeInvoice(invoiceNo);
         date = sanitizeText(date, 20);
 
-        var receiptNo = memberId; // Use MemberID for easy tracking
+        var receiptNo = memberId;
         var fileName = "STEM_Receipt_" + memberId + ".pdf";
 
-        // 0. Fetch Logo (if configured)
         var logoBase64 = getEncodedLogo(LOGO_FILE_ID);
-
-        // 1. Generate HTML for PDF Attachment (Table/Formal Style)
         var pdfHtml = createPdfHtml(name, matric, memberId, date, invoiceNo, receiptNo, logoBase64);
         var pdfBlob = Utilities.newBlob(pdfHtml, "text/html", "Receipt-" + memberId + ".html").getAs("application/pdf");
         pdfBlob.setName(fileName);
 
-        // 2. Save PDF to Google Drive & Get Download Link
         var file;
         try {
             if (RECEIPT_FOLDER_ID && RECEIPT_FOLDER_ID !== "PASTE_YOUR_FOLDER_ID_HERE") {
@@ -454,11 +433,9 @@ function sendReceiptEmail(email, name, matric, memberId, date, invoiceNo) {
             file = DriveApp.createFile(pdfBlob);
         }
 
-        // Keep receipt private by default.
         file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.VIEW);
         var downloadUrl = file.getUrl();
 
-        // 3. Generate HTML for Email Body (Card Style)
         var linkForEmail = EMAIL_INCLUDE_DRIVE_LINK ? downloadUrl : "";
         var emailHtml = createEmailHtml(name, matric, memberId, date, invoiceNo, receiptNo, linkForEmail);
 
@@ -471,9 +448,6 @@ function sendReceiptEmail(email, name, matric, memberId, date, invoiceNo) {
             mailOptions.attachments = [pdfBlob];
         }
         MailApp.sendEmail(mailOptions);
-
-        // Optional: Clean up file from Drive if you don't want to save a copy
-        // file.setTrashed(true); // Uncomment to delete after sending
 
         Logger.log("âœ… Receipt sent to: " + email);
         return downloadUrl; // Return URL to save to Sheet
@@ -500,10 +474,7 @@ function getEncodedLogo(fileId) {
 }
 
 /**
- * EMAIL BODY HTML (Card Style)
- */
-/**
- * EMAIL BODY HTML (Card Style)
+ * Builds the HTML email body for the payment receipt.
  */
 function createEmailHtml(name, matric, memberId, date, invoiceNo, receiptNo, downloadUrl) {
     var bgBody = "#f5f5f7";
@@ -785,12 +756,12 @@ function broadcastAllRows() {
  * Generates the Membership ID
  */
 function generateMembershipId(sheet, dateObj, currentRowIdx) {
-    // 1. Calculate Session
     var year = dateObj.getFullYear();
-    var month = dateObj.getMonth(); // 0-11
+    var month = dateObj.getMonth();
     var startYear, endYear;
 
-    if (month >= 8) { // September onwards
+    // Academic session starts in September (month index 8).
+    if (month >= 8) {
         startYear = year;
         endYear = year + 1;
     } else {
@@ -802,12 +773,11 @@ function generateMembershipId(sheet, dateObj, currentRowIdx) {
     var yyEnd = String(endYear).slice(-2);
     var prefix = "STEM(" + yyStart + "/" + yyEnd + ")";
 
-    // 2. Find Max ID with this prefix
     var lastRow = sheet.getLastRow();
     var maxSeq = 0;
 
     if (lastRow > 1) {
-        var ids = sheet.getRange(2, COL_MEMBERSHIP, lastRow - 1, 1).getValues(); // Get all IDs
+        var ids = sheet.getRange(2, COL_MEMBERSHIP, lastRow - 1, 1).getValues();
         for (var i = 0; i < ids.length; i++) {
             if ((i + 2) == currentRowIdx) continue;
 
@@ -820,7 +790,6 @@ function generateMembershipId(sheet, dateObj, currentRowIdx) {
         }
     }
 
-    // 3. Increment
     var newSeq = maxSeq + 1;
     return prefix + String(newSeq).padStart(4, '0');
 }

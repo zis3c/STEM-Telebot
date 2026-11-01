@@ -38,7 +38,6 @@ from security_utils import (
     sanitize_sensitive_text,
 )
 
-# --- CONFIGURATION ---
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 PORT = int(os.getenv("PORT", 10000))
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "").rstrip("/")
@@ -48,7 +47,6 @@ TRUST_PROXY_HOPS = int(os.getenv("TRUST_PROXY_HOPS", "1"))
 TELEGRAM_IP_RANGES = os.getenv("TELEGRAM_IP_RANGES", DEFAULT_TELEGRAM_IP_RANGES[0]).strip()
 ALLOWED_TELEGRAM_NETWORKS = parse_networks(TELEGRAM_IP_RANGES)
 
-# Logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
@@ -65,7 +63,6 @@ SHEETS_HEALTH_FAILURE_THRESHOLD = max(
 )
 
 
-# --- SELF PINGER (KEEP ALIVE) ---
 async def self_pinger():
     """Pings the bot's own URL every 14 minutes to prevent sleep."""
     while True:
@@ -120,7 +117,6 @@ async def configure_runtime(application):
     )
 
 
-# --- MAINTENANCE LOOP (ROBUST SCHEDULING) ---
 async def maintenance_loop(application):
     """Checks every 15 minutes and sends daily logs only after 8:00 AM KL."""
     from database import db
@@ -285,7 +281,6 @@ async def maintenance_loop(application):
         await asyncio.sleep(_seconds_until_next_quarter(now_kl))
 
 
-# --- HELPER FOR FILTERS ---
 def build_filter(key):
     """Builds a Regex filter that matches ANY language variation of a button."""
     options = strings.get_all(key)
@@ -293,14 +288,12 @@ def build_filter(key):
     return filters.Regex(pattern)
 
 
-# --- WEBHOOK & MAIN ---
 async def main():
     if not TOKEN:
         raise RuntimeError("TELEGRAM_TOKEN is missing.")
 
     application = ApplicationBuilder().token(TOKEN).build()
 
-    # Dynamic Filters (Multi-Language)
     filter_check = build_filter("BTN_CHECK")
     filter_help = build_filter("BTN_HELP")
     filter_settings = build_filter("BTN_SETTINGS")
@@ -312,7 +305,6 @@ async def main():
     filter_lang_en = build_filter("BTN_LANG_EN")
     filter_lang_ms = build_filter("BTN_LANG_MS")
 
-    # Admin Filters
     filter_admin_manage = build_filter("BTN_ADMIN_MANAGE")
     filter_admin_del = build_filter("BTN_ADMIN_DEL")
     filter_admin_list = build_filter("BTN_ADMIN_LIST")
@@ -324,20 +316,17 @@ async def main():
     filter_admin_check_pending = build_filter("BTN_ADMIN_CHECK_PENDING")
     filter_admin_exit = build_filter("BTN_ADMIN_EXIT")
 
-    # Superadmin Filters
     filter_sa_maint = build_filter("BTN_SA_MAINTENANCE")
     filter_sa_admins = build_filter("BTN_SA_ADMINS")
     filter_sa_health = build_filter("BTN_SA_HEALTH")
     filter_sa_refresh = build_filter("BTN_SA_REFRESH")
     filter_sa_logs = build_filter("BTN_SA_LOGS")
 
-    # Superadmin Sub-menu Filters
     filter_sa_add = build_filter("BTN_SA_ADD_ADMIN")
     filter_sa_list = build_filter("BTN_SA_LIST_ADMIN")
     filter_sa_del = build_filter("BTN_SA_DEL_ADMIN")
     filter_sa_exit = build_filter("BTN_SA_EXIT")
 
-    # User Config
     user_conv = ConversationHandler(
         entry_points=[
             MessageHandler(filter_check, handlers.check_start),
@@ -403,7 +392,6 @@ async def main():
         allow_reentry=True,
     )
 
-    # Admin Config
     admin_conv = ConversationHandler(
         entry_points=[CommandHandler("admin", admin.start)],
         states={
@@ -447,7 +435,6 @@ async def main():
         fallbacks=[CommandHandler("cancel", admin.exit)],
     )
 
-    # General Handlers
     application.add_handler(super_conv)
     application.add_handler(admin_conv)
     application.add_handler(user_conv)
@@ -501,10 +488,9 @@ async def main():
         CallbackQueryHandler(handlers.review_back_callback, pattern="^review_back:")
     )
 
-    # Global Logger (Group -1) - Runs for EVERYTHING
+    # Group -1 runs before conversation and command handlers so every update is logged.
     application.add_handler(MessageHandler(filters.ALL, handlers.log_any_update), group=-1)
 
-    # Job Queue
     if application.job_queue:
         application.job_queue.run_repeating(
             handlers.check_registrations, interval=60, first=10

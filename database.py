@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import re
-import time  # Imported time
+import time
 import threading
 import gspread
 from google.oauth2.service_account import Credentials
@@ -37,19 +37,16 @@ class Database:
         self.superadmin_ids = self._parse_ids("SUPERADMIN_IDS")
         self.admin_ids = self._parse_ids("ADMIN_IDS")
         
-        # System Caches
         self.cached_sheet_admins = [] 
         self.maintenance_mode = False
         self.last_config_refresh = 0
         
-        # Student Cache
-        self.student_cache = {} # {matric_str: [row_data]}
+        self.student_cache = {}
         self.last_student_refresh = 0
-        self.CACHE_TTL = 600 # 10 Minutes
+        self.CACHE_TTL = 600
         self._student_refresh_lock = threading.Lock()
         self._student_refresh_in_progress = False
         
-        # User Log Cache (to avoid repeated writes)
         self.logged_users_cache = set()
         
         self._init_maint_file()
@@ -64,7 +61,7 @@ class Database:
         """Initializes the local maintenance tracking file if missing."""
         if not os.path.exists(LAST_MAINT_PATH):
             with open(LAST_MAINT_PATH, "w") as f:
-                f.write("2000-01-01") # Old date
+                f.write("2000-01-01")
 
     def get_last_maintenance(self):
         """Returns the last maintenance date from local file."""
@@ -128,7 +125,6 @@ class Database:
             creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
             client = gspread.authorize(creds)
             
-            # Open Sheet
             sh = client.open_by_key(self.sheet_id)
             
             # Main registrations tab is name-based, with legacy fallback to sheet1.
@@ -183,13 +179,11 @@ class Database:
             return
 
         try:
-            # 1. Load Admins
             ws_admins = self.get_sheet("system_admins")
             if ws_admins:
                 records = ws_admins.get_all_records()
                 self.cached_sheet_admins = [int(r['User ID']) for r in records if str(r['User ID']).isdigit()]
             
-            # 2. Load Config
             ws_config = self.get_sheet("system_config")
             if ws_config:
                 records = ws_config.get_all_records()
@@ -207,7 +201,6 @@ class Database:
         return user_id in self.superadmin_ids
 
     def is_admin(self, user_id):
-        # Superadmins + Env Admins + Sheet Admins
         return (user_id in self.superadmin_ids or 
                 user_id in self.admin_ids or 
                 user_id in self.cached_sheet_admins)
@@ -259,23 +252,17 @@ class Database:
                 return
             
 
-            # Fetch ALL values in one go (1 API Call)
             all_rows = ws.get_all_values()
             
-            # Headers are row 0
-            # Data starts row 1
             cache = {}
-            for i, row in enumerate(all_rows[1:], start=2): # Start=2 matches Sheet Row Number
-                # New Mapping:
-                # A(0)=Time, B=Email, C=Name, D(3)=Matric, E=Courses, ... J(9)=IC, ... Q(16)=Receipt, R(17)=Status
-                
-                # Normalize matric (Col 3)
+            for i, row in enumerate(all_rows[1:], start=2):
+                # Sheet columns: A(0)=Time, B=Email, C=Name, D(3)=Matric, E=Courses, J(9)=IC, Q(16)=Receipt, R(17)=Status
                 if len(row) > 3:
                     mat = str(row[3]).strip().upper()
                     if mat:
                         if mat not in cache:
                             cache[mat] = []
-                        cache[mat].append((row, i)) # Store list of (Data, RowIndex)
+                        cache[mat].append((row, i))
             
             self.student_cache = cache
             self.last_student_refresh = time.time()
@@ -510,12 +497,7 @@ class Database:
 
     def get_members(self, limit=50):
         self.refresh_student_cache()
-        # Convert cache dict values to list of ROWS only
-        # cache values are (row, index)
         all_values = [row for row, idx in self.student_cache.values()]
-        # Cache isn't ordered by time necessarily (dict is insertion ordered in Py3.7+ but depends on load)
-        # Actually sheet load order is preserved.
-        # Reverse
         return all_values[::-1][:limit]
 
     def search_members(self, query):
@@ -526,7 +508,7 @@ class Database:
             if len(row) > 9:
                 name = row[2].lower()
                 matric = row[3].lower()
-                ic = str(row[9]).lower() # J is index 9
+                ic = str(row[9]).lower()
                 
                 if query in name or query in matric or query in ic:
                     matches.append(row)
@@ -535,23 +517,20 @@ class Database:
     def delete_member(self, matric):
         sheet = self.get_sheet("Registrations")
         if sheet:
-            # Matric is Col D (4)
             cell = sheet.find(matric, in_column=4)
             if cell:
                 sheet.delete_rows(cell.row)
                 
-                # Update Cache Immediately
                 if matric in self.student_cache:
                     del self.student_cache[matric]
                 
-                # Force full refresh next time to handle duplicates/consistency
+                # Force full refresh next time so row indices stay consistent after deletion.
                 self.last_student_refresh = 0
                     
                 return True, cell.row
             return False, None
         return None, None
 
-    # --- USER TRACKING FOR BROADCAST ---
     def get_users_sheet(self):
         try:
              main_sheet = self.get_sheet("Registrations")
@@ -562,7 +541,6 @@ class Database:
              try:
                  return spreadsheet.worksheet("Users")
              except gspread.WorksheetNotFound:
-                 # Create if missing
                  sheet = spreadsheet.add_worksheet(title="Users", rows=1000, cols=3)
                  sheet.append_row(["User ID", "Name", "Joined Date"])
                  return sheet
@@ -573,19 +551,16 @@ class Database:
     def log_user(self, user_id, name):
         """Logs user to sheet if not already logged this session. Blocking I/O."""
         if user_id in self.logged_users_cache:
-            return # Already logged this run
+            return
             
         try:
-            self.logged_users_cache.add(user_id) # Mark as logged immediately
+            self.logged_users_cache.add(user_id)
             
             sheet = self.get_users_sheet()
             if not sheet:
                 return
 
-            # Check if ID exists in sheet (to be safe across restarts)
-            # Optimization: We just append and rely on "Unique" later or just allow dupe rows for stats.
-            # Checking sheet.find every time is expensive (1 API call).
-            # Let's just append. It's a log.
+            # Append without pre-reading to avoid an extra Sheets API call; get_all_users deduplicates on read.
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             sheet.append_row([str(user_id), name, timestamp])
             
@@ -620,9 +595,6 @@ class Database:
             logger.error(f"Get Users Error: {e}")
             return []
 
-
-
-    # --- ACTION LOGGING (FILE BASED) ---
     def log_action(self, name, action, details, role="ADMIN"):
         """Logs actions to a local file for daily reporting."""
         timestamp = datetime.now(KL_TZ).strftime("%Y-%m-%d %H:%M:%S")
@@ -636,7 +608,6 @@ class Database:
         except Exception as e:
             logger.error(f"Failed to write to log: {e}")
 
-    # --- APPROVAL WORKFLOW ---
     def get_unprocessed_registrations(self):
         """Finds rows where Resit (Col 8) is present but Status (Col 9) is Empty."""
         sheet = self.get_sheet("Registrations")
@@ -834,6 +805,6 @@ class Database:
             logger.error(f"Delete Registration Safe Error: {e}")
             return False
 
-# Singleton instance
+
 db = Database()
 

@@ -32,7 +32,6 @@ def _public_base_url() -> str:
     )
 
 
-# Helper to get lang (Admins might use local too)
 def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
     return context.user_data.get('lang', strings.DEFAULT_LANG)
 
@@ -388,7 +387,8 @@ async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup=keyboards.get_admin_menu(lang)
         )
         return states.ADMIN_MENU
-# --- MANAGE MEMBERS MENU ---
+
+
 async def manage_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     await update.message.reply_text(
@@ -399,11 +399,9 @@ async def manage_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     return states.ADMIN_MANAGE
 
 async def back_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    # Used for "Back" button inside Manage Menu
     return await start(update, context)
 
 async def back_to_manage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    # Used for "Cancel" inside Add/Del/Search flows.
     lang = get_user_lang(context)
     await update.message.reply_text(
         strings.get('BTN_ADMIN_MANAGE', lang),
@@ -411,13 +409,13 @@ async def back_to_manage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
     return states.ADMIN_MANAGE
 
-# --- LIST MEMBERS ---
+
 async def list_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     loading = await update.message.reply_text(strings.get('ADMIN_SEARCHING', lang))
     
     try:
-        members = await run_db_call(db.get_members, limit=30) # Safe limit for message size
+        members = await run_db_call(db.get_members, limit=30)
         
         if not members:
             await loading.edit_text(strings.get('ADMIN_LIST_EMPTY', lang), parse_mode="Markdown")
@@ -425,7 +423,6 @@ async def list_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             items = []
             def esc(t): return str(t).replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
             for i, row in enumerate(members, 1):
-                # row[2]=Name, row[3]=Matric
                 name = row[2] if len(row) > 2 else "Unknown"
                 matric = row[3] if len(row) > 3 else "Unknown"
                 items.append(f"{i}. *{esc(name)}* (`{esc(matric)}`)")
@@ -439,7 +436,7 @@ async def list_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     return states.ADMIN_MANAGE
 
-# --- SEARCH MEMBERS ---
+
 async def search_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     await update.message.reply_text(
@@ -456,15 +453,12 @@ async def receive_search_mode(update: Update, context: ContextTypes.DEFAULT_TYPE
     if text in strings.get_all('BTN_CANCEL') or text == "CANCEL": 
         return await back_to_manage(update, context)
 
-    # Determine mode
     mode = "simple"
     if text in strings.get_all('BTN_SEARCH_DETAIL'):
         mode = "detail"
     elif text in strings.get_all('BTN_SEARCH_SIMPLE'):
         mode = "simple"
     else:
-        # Invalid selection? Just default to simple or ask again.
-        # Let's ask again for robustness
         await update.message.reply_text(
             strings.get('ADMIN_SEARCH_MODE_PROMPT', lang), 
             reply_markup=keyboards.get_search_mode_menu(lang)
@@ -514,18 +508,14 @@ async def search_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             limit = 20 if mode == 'simple' else 5
             
             for i, row in enumerate(results[:limit], 1):
-                # row indexes: A=0, B=1, ...
-                # C=2 (Name), D=3 (Matric), E=4 (Prog), I=8 (USAS Email), J=9 (IC), N=13 (Date), P=15 (ID), Q=16 (Receipt), R=17 (Status)
-                
+                # Sheet columns: C=2(Name), D=3(Matric), E=4(Prog), I=8(USAS Email), J=9(IC), N=13(Entry), P=15(ID), Q=16(Proof), R=17(Status), S=18(Receipt), T=19(Invoice)
                 name = row[2] if len(row) > 2 else "-"
                 matric = row[3] if len(row) > 3 else "-"
                 
                 if mode == 'simple':
                     prog = strings.format_program_short(row[4] if len(row) > 4 else "-")
-                    mem_id = row[15] if len(row) > 15 else "-" # P=15 is Membership ID
+                    mem_id = row[15] if len(row) > 15 else "-"
                     
-                    # Local escape helper (duplicated for scope safety or move it up - moving it up is better but hard with replace tool constraints)
-                    # Use simple replace here since function is defined lower down
                     def esc(t): return str(t).replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[')
 
                     simple_card = (
@@ -545,12 +535,9 @@ async def search_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     def safe_get(idx): return escape_md(row[idx] if len(row) > idx else "-")
                     prog_detail = escape_md(strings.format_program_short(row[4] if len(row) > 4 else "-"))
                     
-                    # Special handler for Receipt URL (Col S - Index 18)
                     raw_receipt = row[18] if len(row) > 18 else "-"
                     receipt_display = f"[Download PDF]({raw_receipt})" if raw_receipt.startswith("http") else escape_md(raw_receipt)
 
-                    # Special handler for Proof URL (Col Q - Index 16)
-                    # Convert drive 'open' links to 'download' links for better UX
                     raw_proof = row[16] if len(row) > 16 else "-"
                     if "drive.google.com" in raw_proof and "id=" in raw_proof:
                         raw_proof = raw_proof.replace("open?", "uc?export=download&")
@@ -558,22 +545,22 @@ async def search_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     proof_display = f"[Proof PDF]({raw_proof})" if raw_proof.startswith("http") else escape_md(raw_proof)
 
                     detail_card = (
-                        f"👤 *{safe_get(2)}*\n" # C Name
-                        f"🆔 `{safe_get(3)}`\n" # D Matric
-                        f"🎓 Prog: {prog_detail} | Sem: {safe_get(5)}\n" # E, F
-                        f"📞 {safe_get(6)}\n" # G Phone
-                        f"📧 {safe_get(7)}\n" # H Personal Email
-                        f"🏫 {safe_get(8)}\n" # I USAS Email
-                        f"🪪 IC: {safe_get(9)}\n" # J IC
-                        f"🎂 {safe_get(10)} ({safe_get(11)})\n" # K Birthday, L Place
-                        f"🏠 {safe_get(12)}\n" # M Address
-                        f"📅 Entry: {safe_get(13)}\n" # N Date Entry
-                        f"⏱️ Min: {safe_get(14)}\n" # O Minute
-                        f"🔑 ID: `{safe_get(15)}`\n" # P Membership ID
-                        f"📄 Proof: {proof_display}\n" # Q Receipt Proof (Index 16)
-                        f"🧾 Invoice: `{safe_get(19)}`\n" # T Invoice No (Index 19)
-                        f"📎 Receipt: {receipt_display}\n" # S Receipt URL (Index 18)
-                        f"✅ Status: {safe_get(17)}\n" # R Status
+                        f"👤 *{safe_get(2)}*\n"
+                        f"🆔 `{safe_get(3)}`\n"
+                        f"🎓 Prog: {prog_detail} | Sem: {safe_get(5)}\n"
+                        f"📞 {safe_get(6)}\n"
+                        f"📧 {safe_get(7)}\n"
+                        f"🏫 {safe_get(8)}\n"
+                        f"🪪 IC: {safe_get(9)}\n"
+                        f"🎂 {safe_get(10)} ({safe_get(11)})\n"
+                        f"🏠 {safe_get(12)}\n"
+                        f"📅 Entry: {safe_get(13)}\n"
+                        f"⏱️ Min: {safe_get(14)}\n"
+                        f"🔑 ID: `{safe_get(15)}`\n"
+                        f"📄 Proof: {proof_display}\n"
+                        f"🧾 Invoice: `{safe_get(19)}`\n"
+                        f"📎 Receipt: {receipt_display}\n"
+                        f"✅ Status: {safe_get(17)}\n"
                     )
                     items.append(detail_card)
 
@@ -614,8 +601,6 @@ async def search_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     return states.ADMIN_MANAGE
 
 
-
-# --- DELETE MEMBER FLOW ---
 async def del_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     await update.message.reply_text(strings.get('ADMIN_DEL_START', lang), parse_mode="Markdown", reply_markup=keyboards.get_cancel_menu(lang))
@@ -652,7 +637,7 @@ async def back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text(strings.get('ERR_CANCEL', lang), reply_markup=keyboards.get_admin_menu(lang))
     return states.ADMIN_MENU
 
-# --- BROADCAST FLOW ---
+
 async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     await update.message.reply_text(
@@ -675,7 +660,6 @@ async def broadcast_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     context.user_data['broadcast_msg'] = text
     
-    # Get user count preview
     users = await run_db_call(db.get_all_users)
     count = len(users)
     
@@ -694,8 +678,6 @@ async def broadcast_send(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return await back(update, context)
         
     if text not in strings.get_all('BTN_CONFIRM_YES'):
-        # Invalid input, ask again or cancel? Let's assume cancel or re-ask.
-        # Simplest: cancel
         return await back(update, context)
 
     msg = context.user_data.get('broadcast_msg')

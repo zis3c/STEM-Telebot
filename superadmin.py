@@ -20,7 +20,7 @@ async def _require_superadmin(update: Update) -> bool:
         return False
     return True
 
-# --- HELPERS ---
+
 def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
     return context.user_data.get('lang', strings.DEFAULT_LANG)
 
@@ -35,27 +35,16 @@ def get_super_menu(lang='EN'):
         [strings.get('BTN_SA_EXIT', lang)]
     ], resize_keyboard=True)
 
-# --- START ---
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
     is_sa = db.is_superadmin(user_id)
     logger.info(f"DEBUG: /superadmin attempt by {user_id}. Is SA? {is_sa}. SA List: {db.superadmin_ids}")
     
     if not is_sa: 
-        # Security: Silent fail for non-superadmins
         return ConversationHandler.END
     
-    # Sync config in background so UI pops immediately
-    # We rely on cache for immediate display. The refresh happens for NEXT time.
-    # Or we can await loop.run_in_executor(None, db.refresh_system_config) 
-    # But even that awaits. 
-    # FASTEST: Just trigger it and don't wait. Or trust the background job.
-    # Let's trust cache. If it's stale, it updates in background.
-    # For now, let's just make it non-blocking fire-and-forget style or short timeout?
-    # Actually, asyncio.to_thread is good for Py3.9+.
-    # Since we want speed, let's skip the forced refresh here and rely on the background job?
-    # But we don't have a background job for config refresh yet (only check_registrations).
-    # Let's add loop.run_in_executor.
+    # Refresh config in the background so the dashboard opens without blocking on Sheets I/O.
     loop = asyncio.get_running_loop()
     loop.run_in_executor(None, db.refresh_system_config)
     
@@ -69,7 +58,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return states.SUPER_MENU
 
-# --- FEATURES ---
+
 async def refresh_config(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_superadmin(update):
         return ConversationHandler.END
@@ -85,7 +74,6 @@ async def check_health(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     ram = psutil.virtual_memory().percent
     uptime = time.time() - psutil.boot_time()
     
-    # Format uptime roughly
     hours = int(uptime // 3600)
     mins = int((uptime % 3600) // 60)
     
@@ -125,8 +113,7 @@ async def view_logs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text("❌ Error reading logs.")
     return states.SUPER_MENU
 
-# --- ADMIN MANAGEMENT ---
-# --- MENUS ---
+
 def get_manage_admins_menu(lang='EN'):
     return ReplyKeyboardMarkup([
         [strings.get('BTN_SA_ADD_ADMIN', lang), strings.get('BTN_SA_DEL_ADMIN', lang)],
@@ -134,18 +121,18 @@ def get_manage_admins_menu(lang='EN'):
         [strings.get('BTN_BACK', lang)]
     ], resize_keyboard=True)
 
-# --- ADMIN MANAGEMENT ---
+
 async def manage_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_superadmin(update):
         return ConversationHandler.END
     lang = get_user_lang(context)
     await update.message.reply_text(
-        strings.get('BTN_SA_ADMINS', lang), # Use button label as title
+        strings.get('BTN_SA_ADMINS', lang),
         reply_markup=get_manage_admins_menu(lang)
     )
     return states.SUPER_ADMIN_MANAGE
 
-# --- SUBMENU ACTIONS ---
+
 async def list_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_superadmin(update):
         return ConversationHandler.END
