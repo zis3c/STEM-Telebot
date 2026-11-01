@@ -72,7 +72,8 @@ class Database:
             if os.path.exists(LAST_MAINT_PATH):
                 with open(LAST_MAINT_PATH, "r") as f:
                     return f.read().strip()
-        except: pass
+        except Exception:
+            pass
         return "2000-01-01"
 
     def update_last_maintenance(self, date_value=None):
@@ -254,7 +255,8 @@ class Database:
 
         try:
             ws = self.get_sheet("Registrations")
-            if not ws: return
+            if not ws:
+                return
             
 
             # Fetch ALL values in one go (1 API Call)
@@ -553,7 +555,8 @@ class Database:
     def get_users_sheet(self):
         try:
              main_sheet = self.get_sheet("Registrations")
-             if not main_sheet: return None
+             if not main_sheet:
+                 return None
              
              spreadsheet = main_sheet.spreadsheet
              try:
@@ -576,7 +579,8 @@ class Database:
             self.logged_users_cache.add(user_id) # Mark as logged immediately
             
             sheet = self.get_users_sheet()
-            if not sheet: return
+            if not sheet:
+                return
 
             # Check if ID exists in sheet (to be safe across restarts)
             # Optimization: We just append and rely on "Unique" later or just allow dupe rows for stats.
@@ -636,7 +640,8 @@ class Database:
     def get_unprocessed_registrations(self):
         """Finds rows where Resit (Col 8) is present but Status (Col 9) is Empty."""
         sheet = self.get_sheet("Registrations")
-        if not sheet: return []
+        if not sheet:
+            return []
         try:
             all_values = sheet.get_all_values()
             unprocessed = []
@@ -644,7 +649,8 @@ class Database:
             # Start from row 2 (index 1) to skip header
             for i, row in enumerate(all_values[1:], start=2):
                 # We need Col Q (index 16) for Receipt.
-                if len(row) <= 16: continue 
+                if len(row) <= 16:
+                    continue
                 
                 receipt = row[16].strip()
                 # Status is Col R (index 17).
@@ -665,7 +671,8 @@ class Database:
     def get_members_by_filter(self, status_filter):
         """Get members filtered by Status (Col I)."""
         sheet = self.get_sheet("Registrations")
-        if not sheet: return []
+        if not sheet:
+            return []
         
         try:
             rows = sheet.get_all_values()
@@ -707,7 +714,8 @@ class Database:
     def update_status(self, row_index, status):
         """Updates Column I (9) with status."""
         sheet = self.get_sheet("Registrations")
-        if not sheet: return False
+        if not sheet:
+            return False
         try:
             # Update Cell (Row, Col 18 (R))
             sheet.update_cell(row_index, 18, status)

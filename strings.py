@@ -408,4 +408,4 @@ def get(key, lang='EN'):
 
 def get_all(key):
     """Get a list of values for a key across all languages (for Filters)"""
-    return [STRINGS[l].get(key) for l in STRINGS if STRINGS[l].get(key)]
+    return [STRINGS[lang].get(key) for lang in STRINGS if STRINGS[lang].get(key)]

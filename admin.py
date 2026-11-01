@@ -242,14 +242,14 @@ async def stats_demographic(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         report_url = f"{base_url}/stats/demographic/{token}"
 
         message = (
-            f"*Demographic Stats*\n"
-            f"_This secure link expires in 20 minutes._"
+            "*Demographic Stats*\n"
+            "_This secure link expires in 20 minutes._"
         )
         open_label = "Open Stats Dashboard"
         if lang == "MS":
             message = (
-                f"*Statistik Demografi*\n"
-                f"_Pautan selamat ini tamat dalam 20 minit._"
+                "*Statistik Demografi*\n"
+                "_Pautan selamat ini tamat dalam 20 minit._"
             )
             open_label = "Buka Dashboard Statistik"
 
@@ -334,8 +334,6 @@ async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE
                 def safe_get(idx):
                     return escape_md(row[idx] if len(row) > idx else "-")
 
-                raw_receipt = row[18] if len(row) > 18 else "-"
-                receipt_display = f"[Download PDF]({raw_receipt})" if str(raw_receipt).startswith("http") else escape_md(raw_receipt)
 
                 raw_proof = row[16] if len(row) > 16 else "-"
                 if "drive.google.com" in str(raw_proof) and "id=" in str(raw_proof):
@@ -630,7 +628,8 @@ async def del_matric(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         log_security_event("INPUT_REJECT", f"field=admin_delete_matric len={len(text)} uid={update.effective_user.id}")
         await update.message.reply_text(strings.get('ADMIN_DEL_NOT_FOUND', lang), parse_mode="Markdown")
         return states.ADMIN_MANAGE
-    if text in strings.get_all('BTN_CANCEL') or text == "CANCEL": return await back_to_manage(update, context)
+    if text in strings.get_all('BTN_CANCEL') or text == "CANCEL":
+        return await back_to_manage(update, context)
     
     loading = await update.message.reply_text(strings.get('ADMIN_SEARCHING', lang), parse_mode="Markdown")
     
@@ -700,7 +699,8 @@ async def broadcast_send(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return await back(update, context)
 
     msg = context.user_data.get('broadcast_msg')
-    if not msg: return await back(update, context)
+    if not msg:
+        return await back(update, context)
     ok, retry_after = RATE_LIMITER.check(
         f"broadcast_send:{update.effective_user.id}",
         GLOBAL_RATE_WINDOW_SEC,

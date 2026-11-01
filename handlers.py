@@ -440,11 +440,16 @@ async def check_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     
     # Check against all language variations
-    if text in strings.get_all('BTN_CHECK'): return await check_start(update, context)
-    if text in strings.get_all('BTN_HELP'): return await help_command(update, context)
-    if text in strings.get_all('BTN_SETTINGS'): return await settings_menu(update, context)
-    if text in strings.get_all('BTN_LANGUAGES'): return await languages_menu(update, context)
-    if text in strings.get_all('BTN_BACK'): return await start(update, context) # Default back to main, but sub-menus might handle back differently
+    if text in strings.get_all('BTN_CHECK'):
+        return await check_start(update, context)
+    if text in strings.get_all('BTN_HELP'):
+        return await help_command(update, context)
+    if text in strings.get_all('BTN_SETTINGS'):
+        return await settings_menu(update, context)
+    if text in strings.get_all('BTN_LANGUAGES'):
+        return await languages_menu(update, context)
+    if text in strings.get_all('BTN_BACK'):
+        return await start(update, context) # Default back to main, but sub-menus might handle back differently
     return None
 
 # --- HANDLERS ---
@@ -604,7 +609,8 @@ async def receive_matric(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # Global Navigation Check
     nav = await check_keywords(update, context)
-    if nav is not None: return nav
+    if nav is not None:
+        return nav
 
     if not re.match(r'^[A-Z0-9]{6,15}$', text):
         await update.message.reply_text(
@@ -634,7 +640,8 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         )
         return states.ASK_IC
     
-    if text in strings.get_all('BTN_CANCEL') or text == "CANCEL": return await cancel(update, context)
+    if text in strings.get_all('BTN_CANCEL') or text == "CANCEL":
+        return await cancel(update, context)
 
     # Handle "Try Again"
     if text in strings.get_all('BTN_TRY_AGAIN'):
@@ -648,7 +655,8 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     # Global Navigation Check
     nav = await check_keywords(update, context)
-    if nav is not None: return nav
+    if nav is not None:
+        return nav
 
     if not re.match(r'^\d{4}$', text):
         await update.message.reply_text(
@@ -716,7 +724,6 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 db_prog = row_values[4] # E is 4
                 db_prog_short = strings.format_program_short(db_prog)
                 # Col Q (index 16) is Receipt, Col R (index 17) is Status
-                db_resit = str(row_values[16]).strip() if len(row_values) > 16 else ""
                 db_status_raw = str(row_values[17]).strip() if len(row_values) > 17 else ""
                 db_status_norm = " ".join(db_status_raw.lower().split())
                 membership_id = str(row_values[15]).strip() if len(row_values) > 15 else ""
@@ -901,16 +908,21 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def log_any_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Logs ALL user interactions for anomaly detection."""
     user = update.effective_user
-    if not user: return
+    if not user:
+        return
     
     # Handle non-text messages
     if not update.message or not update.message.text:
         msg_type = "MEDIA/OTHER"
         if update.message:
-            if update.message.sticker: msg_type = "STICKER"
-            elif update.message.photo: msg_type = "PHOTO"
-            elif update.message.document: msg_type = "DOCUMENT"
-            elif update.message.voice: msg_type = "VOICE"
+            if update.message.sticker:
+                msg_type = "STICKER"
+            elif update.message.photo:
+                msg_type = "PHOTO"
+            elif update.message.document:
+                msg_type = "DOCUMENT"
+            elif update.message.voice:
+                msg_type = "VOICE"
         db.log_action(f"{user.first_name} ({user.id})", "MSG_NON_TEXT", msg_type, role="USER")
         return
 
@@ -947,7 +959,8 @@ async def log_any_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def check_pending_now(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Manual trigger to check pending registrations immediately."""
     user_id = update.effective_user.id
-    if not db.is_admin(user_id): return
+    if not db.is_admin(user_id):
+        return
     
     await update.message.reply_text("🔎 Scanning for pending registrations...")
     await check_registrations(context)

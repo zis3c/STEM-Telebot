@@ -149,7 +149,6 @@ async def manage_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 async def list_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_superadmin(update):
         return ConversationHandler.END
-    lang = get_user_lang(context)
     admins = db.cached_sheet_admins
     
     if not admins:
