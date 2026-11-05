@@ -296,11 +296,13 @@ class Database:
         if self.student_cache:
             if time.time() - self.last_student_refresh >= self.CACHE_TTL:
                 self._start_student_cache_refresh()
-            return self.student_cache.get(matric, (None, None))
+        else:
+            # Cold start only: block once to build the initial cache.
+            self.refresh_student_cache(force=True)
 
-        # Cold start only: block once to build the initial cache.
-        self.refresh_student_cache(force=True)
-        return self.student_cache.get(matric, (None, None))
+        # Duplicate registrations keep every row; use the most recent (bottom-most).
+        entries = self.student_cache.get(matric)
+        return entries[-1] if entries else (None, None)
 
     def _parse_sheet_date(self, raw_value):
         """Parse common sheet date/time formats into datetime."""
@@ -390,7 +392,7 @@ class Database:
         birth_year_counts = {}
         demographic_total = 0
 
-        for row, _ in self.student_cache.values():
+        for row, _ in (entry for entries in self.student_cache.values() for entry in entries):
             status = self._normalize_status(row[17] if len(row) > 17 else "")
 
             if status == "pending":
@@ -497,14 +499,14 @@ class Database:
 
     def get_members(self, limit=50):
         self.refresh_student_cache()
-        all_values = [row for row, idx in self.student_cache.values()]
+        all_values = [row for entries in self.student_cache.values() for row, idx in entries]
         return all_values[::-1][:limit]
 
     def search_members(self, query):
         self.refresh_student_cache()
         query = query.lower()
         matches = []
-        for row, _ in self.student_cache.values():
+        for row, _ in (entry for entries in self.student_cache.values() for entry in entries):
             if len(row) > 9:
                 name = row[2].lower()
                 matric = row[3].lower()
