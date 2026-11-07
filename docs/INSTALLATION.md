@@ -141,7 +141,7 @@ The approval/reject + receipt pipeline is controlled by Apps Script.
 
 1. Open your Google Sheet.
 2. Go to `Extensions > Apps Script`.
-3. Replace existing code with contents of `google_apps_script.js`.
+3. Replace existing code with contents of `scripts/google_apps_script.js`.
 4. Save the script.
 5. Run `setupSecrets` once and set real values in Script Properties:
    - `RECEIPT_FOLDER_ID`
@@ -258,7 +258,7 @@ journalctl -u stem-telebot -n 100 --no-pager
 
 ## 14. Related Docs
 
-- `README.md`
+- `../README.md`
 - `AUTO_DEPLOY.md`
 - `CONTRIBUTING.md`
-- `google_apps_script.js`
+- `../scripts/google_apps_script.js`

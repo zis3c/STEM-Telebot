@@ -8,12 +8,13 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from security_utils import sanitize_sensitive_text
+from .security_utils import sanitize_sensitive_text
+from .. import PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ACTIVITY_LOG_PATH = os.path.join(BASE_DIR, "activity.log")
-LAST_MAINT_PATH = os.path.join(BASE_DIR, "last_maint.txt")
+
+ACTIVITY_LOG_PATH = os.path.join(PROJECT_ROOT, "activity.log")
+LAST_MAINT_PATH = os.path.join(PROJECT_ROOT, "last_maint.txt")
 KL_TZ = ZoneInfo("Asia/Kuala_Lumpur")
 
 

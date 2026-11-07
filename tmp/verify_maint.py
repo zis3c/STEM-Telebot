@@ -3,7 +3,7 @@ import sys
 
 sys.path.append(r'C:\Users\RADZ\project io\STEM Telebot')
 
-from database import db
+from stem_telebot.core.database import db
 
 def verify():
     print("--- Maintenance Logic Verification ---")

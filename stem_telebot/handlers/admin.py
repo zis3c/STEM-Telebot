@@ -1,18 +1,16 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.error import BadRequest
 from telegram.ext import ConversationHandler, ContextTypes
-import strings
-import keyboards
-import states
-import handlers
-from database import db
-import stats_web
+from . import user as handlers
+from ..core import stats_web
+from ..core.database import db
+from ..ui import keyboards, states, strings
 import logging
 import asyncio
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import os
-from security_utils import RATE_LIMITER, log_security_event
+from ..core.security_utils import RATE_LIMITER, log_security_event
 
 logger = logging.getLogger(__name__)
 KL_TZ = ZoneInfo("Asia/Kuala_Lumpur")

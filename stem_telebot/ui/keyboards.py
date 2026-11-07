@@ -1,5 +1,5 @@
 from telegram import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
-import strings
+from . import strings
 
 def get_main_menu(lang='EN'):
     return ReplyKeyboardMarkup(

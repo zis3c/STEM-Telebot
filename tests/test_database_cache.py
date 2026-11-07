@@ -2,7 +2,7 @@
 import time
 import unittest
 
-from database import Database
+from stem_telebot.core.database import Database
 
 
 def _row(name, matric, ic="990101012345", entry="2026-01-01", status="Approved"):

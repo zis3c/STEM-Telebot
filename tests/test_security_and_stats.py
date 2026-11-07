@@ -4,8 +4,7 @@ import unittest
 
 os.environ.setdefault("STATS_LINK_SECRET", "test-secret-demo-only-key")
 
-import security_utils  # noqa: E402
-import stats_web  # noqa: E402
+from stem_telebot.core import security_utils, stats_web  # noqa: E402
 
 
 class SecurityUtilsTests(unittest.TestCase):

@@ -1,14 +1,12 @@
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ConversationHandler, ContextTypes
-import strings
-import keyboards
-import states
-from database import ACTIVITY_LOG_PATH, db
+from ..core.database import ACTIVITY_LOG_PATH, db
+from ..ui import keyboards, states, strings
 import psutil
 import time
 import logging
 import asyncio
-from security_utils import log_security_event
+from ..core.security_utils import log_security_event
 
 logger = logging.getLogger(__name__)
 

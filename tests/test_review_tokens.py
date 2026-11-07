@@ -7,8 +7,8 @@ os.environ.setdefault("SHEET_ID", "test-sheet")
 os.environ.setdefault("GOOGLE_CREDENTIALS", "{\"type\":\"service_account\"}")
 logging.getLogger().setLevel(logging.CRITICAL + 1)
 
-import handlers  # noqa: E402
-import keyboards  # noqa: E402
+from stem_telebot.handlers import user as handlers  # noqa: E402
+from stem_telebot.ui import keyboards  # noqa: E402
 
 
 class ReviewTokenTests(unittest.TestCase):

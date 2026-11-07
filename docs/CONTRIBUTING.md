@@ -34,7 +34,7 @@ Thank you for your interest in contributing! We welcome bug reports, feature req
 
 When modifying `database.py` or `admin.py`, strictly adhere to the 18-column structure (A-R) of the Google Sheet.
 
-- **Google Apps Script**: If you change the logic for ID generation, update `google_apps_script.js` accordingly.
+- **Google Apps Script**: If you change the logic for ID generation, update `scripts/google_apps_script.js` accordingly.
 - **Verification**: Always verify that "Detailed View" in Admin Search maps correctly to the sheet columns.
 
 ## License
@@ -43,7 +43,7 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ## Web UI Contribution Notes
 
-When updating web output pages, edit template modules instead of putting large HTML blocks in `bot.py`:
+When updating web output pages, edit template modules instead of putting large HTML blocks in `stem_telebot/bot.py`:
 
 - `membership_card_template.py` (membership card page)
 - `demographic_stats_template.py` (demographic stats page)

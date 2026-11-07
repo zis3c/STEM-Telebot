@@ -9,7 +9,7 @@
 ![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen.svg)
 
 <div align="center">
-  <img src="preview.PNG" alt="STEM Telebot Preview" width="200">
+  <img src="assets/preview.PNG" alt="STEM Telebot Preview" width="200">
 </div>
 
 🔗 **Try it live:** [**@stemusasbot**](https://t.me/stemusasbot) · 🎥 **Video tutorial:** [**Watch on YouTube**](https://www.youtube.com/watch?v=PAk9x6VrDkE&pp=ygUfaG93IHRvIHVzZSBTVEVNQm90IGluIHRlbGVncmFtIA%3D%3D)
@@ -141,34 +141,48 @@ STEM-Telebot/
 |- .github/
 |  `- workflows/
 |     |- deploy-tencent.yml        # GitHub Actions deploy workflow
-|     `- security-audit.yml        # GitHub Actions pip-audit workflow
-|- admin.py                        # Admin panel actions
-|- AUTO_DEPLOY.md                  # Tencent deploy guide
-|- bot.py                          # Main entrypoint, polling/webhook bootstrap
-|- CONTRIBUTING.md                 # Contribution guide
-|- database.py                     # Google Sheets API wrapper and activity logging
-|- demographic_stats_template.py   # Web demographic dashboard HTML template
-|- google_apps_script.js           # Apps Script helper for Sheets automation
-|- handlers.py                     # Core user flows
-|- INSTALLATION.md                 # Full install and setup guide
-|- keyboards.py                    # Reply and inline keyboard layouts
-|- membership_card_template.py      # Web membership card HTML template
+|     `- analysis.yml              # Static analysis and security workflows
+|- assets/
+|  |- logostem.png                 # Bot logo and web favicon
+|  |- preview.PNG                  # README preview image
+|  `- logo.jpg                     # Brand logo
+|- docs/
+|  |- AUTO_DEPLOY.md               # Tencent deploy guide
+|  |- CONTRIBUTING.md              # Contribution guide
+|  |- INSTALLATION.md              # Full install and setup guide
+|  |- SECURITY.md                  # Security policy
+|  `- STEM Bot Manual Guide.pdf    # User manual
+|- scripts/
+|  `- google_apps_script.js        # Apps Script helper for Sheets automation
+|- stem_telebot/
+|  |- bot.py                       # Polling/webhook bootstrap and web routes
+|  |- handlers/
+|  |  |- user.py                   # Core user flows
+|  |  |- admin.py                  # Admin panel actions
+|  |  `- superadmin.py             # Superadmin controls
+|  |- core/
+|  |  |- database.py               # Google Sheets API wrapper and activity logging
+|  |  |- security_utils.py         # Input and security event helpers
+|  |  `- stats_web.py              # Web stats page helpers
+|  |- ui/
+|  |  |- keyboards.py              # Reply and inline keyboard layouts
+|  |  |- states.py                 # Conversation flow state constants
+|  |  `- strings.py                # User-facing text in EN and MS
+|  `- templates/
+|     |- membership_card_template.py      # Web membership card HTML template
+|     `- demographic_stats_template.py    # Web demographic dashboard HTML template
+|- bot.py                          # Entrypoint launcher (python bot.py)
+|- last_maint.txt                  # Runtime state for daily log checks
 |- README.md                       # Project overview
 |- requirements.txt                # Project dependencies
-|- SECURITY.md                     # Security policy
-|- security_utils.py               # Input and security event helpers
-|- states.py                       # Conversation flow state constants
-|- stats_web.py                    # Web stats page helpers
-|- strings.py                      # User-facing text in EN and MS
-|- superadmin.py                   # Superadmin controls
-`- STEM Bot Manual Guide.pdf       # User manual
+`- ruff.toml                       # Ruff lint configuration
 ```
 
 ## Web UI Templates
 
-- Membership web card UI is rendered from `membership_card_template.py`.
-- Demographic web dashboard UI is rendered from `demographic_stats_template.py`.
-- `bot.py` now calls these template modules to keep the main file cleaner and easier to maintain.
+- Membership web card UI is rendered from `stem_telebot/templates/membership_card_template.py`.
+- Demographic web dashboard UI is rendered from `stem_telebot/templates/demographic_stats_template.py`.
+- `stem_telebot/bot.py` calls these template modules to keep the main file cleaner and easier to maintain.
 
 ## Commands
 
@@ -200,10 +214,10 @@ STEM-Telebot/
 
 ## Additional Docs
 
-- [AUTO_DEPLOY.md](AUTO_DEPLOY.md)
-- [INSTALLATION.md](INSTALLATION.md)
-- [CONTRIBUTING.md](CONTRIBUTING.md)
-- [SECURITY.md](SECURITY.md)
+- [AUTO_DEPLOY.md](docs/AUTO_DEPLOY.md)
+- [INSTALLATION.md](docs/INSTALLATION.md)
+- [CONTRIBUTING.md](docs/CONTRIBUTING.md)
+- [SECURITY.md](docs/SECURITY.md)
 - [LICENSE](LICENSE)
 
 <center>Built with 🔥 by <b>@zis3c</b></center>

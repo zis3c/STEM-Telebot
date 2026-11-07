@@ -58,7 +58,7 @@ jobs:
         with:
           python-version: '3.13'
       - run: pip install bandit
-      - run: bandit -r admin.py bot.py database.py handlers.py keyboards.py security_utils.py states.py stats_web.py strings.py superadmin.py -ll -ii
+      - run: bandit -r stem_telebot -ll -ii
 
   javascript:
     name: JavaScript syntax
@@ -68,7 +68,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - run: node --check google_apps_script.js
+      - run: node --check scripts/google_apps_script.js
 
   semgrep:
     name: Semgrep

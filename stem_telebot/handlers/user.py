@@ -1,11 +1,9 @@
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.error import BadRequest
 from telegram.ext import ConversationHandler, ContextTypes
-import strings
-import keyboards
-import states
-from database import ACTIVITY_LOG_PATH, db
-import stats_web
+from ..core import stats_web
+from ..core.database import ACTIVITY_LOG_PATH, db
+from ..ui import keyboards, states, strings
 import logging
 import hashlib
 import re
@@ -18,7 +16,7 @@ import urllib.error
 from datetime import datetime, timedelta
 from io import BytesIO
 from zoneinfo import ZoneInfo
-from security_utils import RATE_LIMITER, log_security_event
+from ..core.security_utils import RATE_LIMITER, log_security_event
 
 logger = logging.getLogger(__name__)
 
