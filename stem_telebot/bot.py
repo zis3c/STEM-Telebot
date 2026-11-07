@@ -21,6 +21,7 @@ from telegram.ext import (
 
 from . import PROJECT_ROOT
 from .core import stats_web
+from .core.pending_deletions import restore_pending_deletions
 from .core.security_utils import (
     DEFAULT_TELEGRAM_IP_RANGES,
     SECURITY_METRICS,
@@ -655,6 +656,7 @@ async def main():
     try:
         await application.initialize()
         await application.start()
+        await restore_pending_deletions(application)
 
         # Warm the member cache before the bot starts serving user checks.
         # This avoids the first / Check Membership after a restart from blocking on Google Sheets.

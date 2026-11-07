@@ -4,6 +4,7 @@ from telegram.ext import ConversationHandler, ContextTypes
 from . import user as handlers
 from ..core import stats_web
 from ..core.database import db
+from ..core.pending_deletions import schedule_message_deletion
 from ..ui import keyboards, states, strings
 import logging
 import asyncio
@@ -54,23 +55,6 @@ def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
 
 async def run_db_call(func, *args, **kwargs):
     return await asyncio.to_thread(func, *args, **kwargs)
-
-
-async def _delete_message_job(context: ContextTypes.DEFAULT_TYPE):
-    job = context.job
-    if not job:
-        return
-    chat_id = job.data.get("chat_id")
-    message_id = job.data.get("message_id")
-    if not chat_id or not message_id:
-        return
-    try:
-        await context.bot.delete_message(chat_id=chat_id, message_id=message_id)
-    except BadRequest:
-        # Message may already be deleted/expired. Ignore safely.
-        pass
-    except Exception as e:
-        logger.warning("Could not delete scheduled stats message: %s", e)
 
 
 def _parse_membership_datetime(raw_value):
@@ -294,15 +278,12 @@ async def stats_demographic(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             "chat_id": sent_report_message.chat_id,
             "message_id": sent_report_message.message_id,
         }
-        if context.job_queue:
-            context.job_queue.run_once(
-                _delete_message_job,
-                when=20 * 60,
-                data={
-                    "chat_id": sent_report_message.chat_id,
-                    "message_id": sent_report_message.message_id,
-                },
-            )
+        schedule_message_deletion(
+            context.job_queue,
+            sent_report_message.chat_id,
+            sent_report_message.message_id,
+            delay_seconds=20 * 60,
+        )
         await update.message.reply_text(
             strings.get('ADMIN_STATS_MENU_PROMPT', lang),
             parse_mode="Markdown",

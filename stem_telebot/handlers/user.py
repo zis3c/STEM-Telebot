@@ -3,6 +3,7 @@ from telegram.error import BadRequest
 from telegram.ext import ConversationHandler, ContextTypes
 from ..core import stats_web
 from ..core.database import ACTIVITY_LOG_PATH, db
+from ..core.pending_deletions import schedule_message_deletion
 from ..ui import keyboards, states, strings
 import logging
 import hashlib
@@ -209,23 +210,6 @@ async def _finalize_review_cards(context: ContextTypes.DEFAULT_TYPE, review_toke
             )
         except Exception:
             continue
-
-
-async def _delete_message_job(context: ContextTypes.DEFAULT_TYPE):
-    job = context.job
-    if not job:
-        return
-    chat_id = job.data.get("chat_id")
-    message_id = job.data.get("message_id")
-    if not chat_id or not message_id:
-        return
-    try:
-        await context.bot.delete_message(chat_id=chat_id, message_id=message_id)
-    except BadRequest:
-        # Message may already be deleted/expired.
-        pass
-    except Exception as e:
-        logger.warning("Could not delete scheduled profile card message: %s", e)
 
 
 def _touch_verif_state(store, key, now_ts):
@@ -858,16 +842,11 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             "chat_id": sent_profile_message.chat_id,
             "message_id": sent_profile_message.message_id,
         }
-        if context.job_queue:
-            context.job_queue.run_once(
-                _delete_message_job,
-                when=1200,
-                data={
-                    "chat_id": sent_profile_message.chat_id,
-                    "message_id": sent_profile_message.message_id,
-                },
-                name=f"profile_card_delete:{sent_profile_message.chat_id}:{sent_profile_message.message_id}",
-            )
+        schedule_message_deletion(
+            context.job_queue,
+            sent_profile_message.chat_id,
+            sent_profile_message.message_id,
+        )
     if show_renewal_prompt:
         await update.message.reply_text(
             strings.get('REGISTRATION_MSG', lang),
