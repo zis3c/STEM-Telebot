@@ -6,6 +6,7 @@ __pycache__/
 env/
 venv/
 service_account.json
+last_maint.txt
 *.log
 proposeSTEM/
 columnDB.txt

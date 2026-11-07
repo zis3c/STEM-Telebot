@@ -172,7 +172,6 @@ STEM-Telebot/
 |     |- membership_card_template.py      # Web membership card HTML template
 |     `- demographic_stats_template.py    # Web demographic dashboard HTML template
 |- bot.py                          # Entrypoint launcher (python bot.py)
-|- last_maint.txt                  # Runtime state for daily log checks
 |- README.md                       # Project overview
 |- requirements.txt                # Project dependencies
 `- ruff.toml                       # Ruff lint configuration
