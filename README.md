@@ -19,7 +19,11 @@ A high-performance, bilingual Telegram bot built for the STEM USAS student organ
 > [!NOTE]
 > **Real-time Sync**: The bot acts as a bridge between Telegram and a Google Sheets backend. It features automated alerts for new registrations and handles member approvals with dedicated administrative layers.
 
-## Features
+## Core Features & Capabilities
+
+<p align="center">
+  <img src="./assets/features-overview.png" alt="STEM Telebot feature overview" width="100%">
+</p>
 
 - **Multi-lingual Interface**: Full support for English and Bahasa Melayu (Switch via `/settings` or the menu).
 - **Membership Verification**: 2-step verification using **Matric Number** and **IC Last 4 Digits** against official records.
@@ -145,6 +149,7 @@ STEM-Telebot/
 |- assets/
 |  |- logostem.png                 # Bot logo and web favicon
 |  |- preview.PNG                  # README preview image
+|  |- features-overview.png        # README feature overview banner
 |  `- logo.jpg                     # Brand logo
 |- docs/
 |  |- AUTO_DEPLOY.md               # Tencent deploy guide
