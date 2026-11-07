@@ -161,7 +161,7 @@ class Database:
             try:
                 return sh.worksheet(sheet_name)
             except gspread.WorksheetNotFound:
-                # Create if missing (Auto-Healing)
+                # Auto-heal a missing sheet.
                 ws = sh.add_worksheet(title=sheet_name, rows=100, cols=10)
                 if sheet_name == "system_admins":
                     ws.append_row(["User ID", "Name", "Added By"])
@@ -691,7 +691,7 @@ class Database:
         if not sheet:
             return False
         try:
-            # Update Cell (Row, Col 18 (R))
+            # Column R (index 18) holds the status.
             sheet.update_cell(row_index, 18, status)
             return True
         except Exception as e:

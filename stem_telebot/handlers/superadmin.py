@@ -167,7 +167,6 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         
     user_id = int(text)
     
-    # Check if already admin
     if db.is_admin(user_id):
         await update.message.reply_text(
             strings.get('ERR_SA_ALREADY_ADMIN', lang),

@@ -578,11 +578,9 @@ async def receive_matric(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         return states.ASK_MATRIC
     
-    # Check Cancel
     if text in strings.get_all('BTN_CANCEL') or text == "CANCEL": 
         return await cancel(update, context)
     
-    # Handle "Try Again"
     if text in strings.get_all('BTN_TRY_AGAIN'):
         await update.message.reply_text(strings.get('PROMPT_MATRIC', lang), parse_mode="Markdown", reply_markup=keyboards.get_cancel_menu(lang))
         return states.ASK_MATRIC
@@ -623,7 +621,6 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if text in strings.get_all('BTN_CANCEL') or text == "CANCEL":
         return await cancel(update, context)
 
-    # Handle "Try Again"
     if text in strings.get_all('BTN_TRY_AGAIN'):
         user_matric = context.user_data.get('matric', 'Unknown')
         await update.message.reply_text(
@@ -974,7 +971,6 @@ async def check_registrations(context: ContextTypes.DEFAULT_TYPE):
             review_token = build_review_token(data)
             review_keyboard = keyboards.get_admin_review_keyboard(row_idx, matric, review_token, "EN")
 
-            # Send to all admins
             for admin_id in admins:
                 try:
                     sent = await context.bot.send_message(

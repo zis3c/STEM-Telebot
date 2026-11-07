@@ -104,7 +104,7 @@ function setupSecrets() {
 }
 
 /**
- * DEBUG CONFIGURATION
+ * Debug configuration
  * Run this to check if your secrets are saved correctly.
  */
 function debugConfiguration() {
@@ -182,7 +182,7 @@ function testLastRow() {
 }
 
 /**
- * SIMPLE EMAIL TEST
+ * Simple email test
  * Run this function to test email sending to YOURSELF with dummy data.
  */
 function testSimpleEmail() {
@@ -795,7 +795,7 @@ function generateMembershipId(sheet, dateObj, currentRowIdx) {
 }
 
 /**
- * FORCE AUTHORIZATION
+ * Force authorization
  * Run this function ONCE to force Google to ask for Email permissions.
  * Click 'Run' > 'forceAuth'
  */
@@ -815,7 +815,7 @@ function forceAuth() {
 }
 
 /**
- * TRIGGER SETUP
+ * Trigger setup
  * Run this function ONCE manually.
  */
 function setupTrigger() {
