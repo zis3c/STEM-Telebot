@@ -9,6 +9,7 @@ import logging
 import asyncio
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from urllib.parse import parse_qs, urlparse
 import os
 from ..core.security_utils import RATE_LIMITER, log_security_event
 
@@ -20,6 +21,24 @@ MAX_INPUT_LEN_SEARCH = int(os.getenv("MAX_INPUT_LEN_SEARCH", "80"))
 MAX_INPUT_LEN_BROADCAST = int(os.getenv("MAX_INPUT_LEN_BROADCAST", "2000"))
 BROADCAST_MAX_RECIPIENTS = int(os.getenv("BROADCAST_MAX_RECIPIENTS", "5000"))
 BROADCAST_MSGS_PER_SEC = float(os.getenv("BROADCAST_MSGS_PER_SEC", "12"))
+
+
+def _normalize_doc_url(value):
+    """Validates a Google Docs/Drive URL and normalizes Drive open links."""
+    text = str(value or "").strip()
+    try:
+        parsed = urlparse(text)
+    except ValueError:
+        return text, False
+    host = parsed.hostname or ""
+    trusted = parsed.scheme == "https" and (
+        host == "drive.google.com"
+        or host == "docs.google.com"
+        or host == "lh3.googleusercontent.com"
+    )
+    if trusted and host == "drive.google.com" and "id" in parse_qs(parsed.query):
+        text = text.replace("open?", "uc?export=download&", 1)
+    return text, trusted
 
 
 def _public_base_url() -> str:
@@ -332,10 +351,8 @@ async def check_pending_click(update: Update, context: ContextTypes.DEFAULT_TYPE
                     return escape_md(row[idx] if len(row) > idx else "-")
 
 
-                raw_proof = row[16] if len(row) > 16 else "-"
-                if "drive.google.com" in str(raw_proof) and "id=" in str(raw_proof):
-                    raw_proof = str(raw_proof).replace("open?", "uc?export=download&")
-                proof_display = f"[Proof PDF]({raw_proof})" if str(raw_proof).startswith("http") else escape_md(raw_proof)
+                raw_proof, proof_trusted = _normalize_doc_url(row[16] if len(row) > 16 else "-")
+                proof_display = f"[Proof PDF]({raw_proof})" if proof_trusted else escape_md(raw_proof)
                 prog_display = escape_md(strings.format_program_short(row[4] if len(row) > 4 else "-"))
 
                 detail_card = (
@@ -536,11 +553,9 @@ async def search_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     raw_receipt = row[18] if len(row) > 18 else "-"
                     receipt_display = f"[Download PDF]({raw_receipt})" if raw_receipt.startswith("http") else escape_md(raw_receipt)
 
-                    raw_proof = row[16] if len(row) > 16 else "-"
-                    if "drive.google.com" in raw_proof and "id=" in raw_proof:
-                        raw_proof = raw_proof.replace("open?", "uc?export=download&")
+                    raw_proof, proof_trusted = _normalize_doc_url(row[16] if len(row) > 16 else "-")
                     
-                    proof_display = f"[Proof PDF]({raw_proof})" if raw_proof.startswith("http") else escape_md(raw_proof)
+                    proof_display = f"[Proof PDF]({raw_proof})" if proof_trusted else escape_md(raw_proof)
 
                     detail_card = (
                         f"👤 *{safe_get(2)}*\n"

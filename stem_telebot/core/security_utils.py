@@ -109,14 +109,18 @@ def log_security_event(tag: str, details: str = "") -> None:
     logger.warning("SECURITY_EVENT %s %s", tag, clean)
 
 
+_EMAIL_RE = re.compile(r"([A-Za-z0-9._%+-]+)@((?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})")
+
+
+def _mask_email(match: re.Match) -> str:
+    local, domain = match.group(1), match.group(2)
+    return f"{local[0]}***@{domain}" if local else match.group(0)
+
+
 def sanitize_sensitive_text(value) -> str:
     text = str(value or "")
     text = re.sub(r"(?i)(token|secret|password|key)=([^\s&]+)", r"\1=***", text)
-    text = re.sub(
-        r'([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[A-Za-z]{2,})',
-        r"\1***@\2",
-        text,
-    )
+    text = _EMAIL_RE.sub(_mask_email, text)
     text = re.sub(r"\b\d{6,}\b", "***REDACTED***", text)
     text = re.sub(r"https?://\S+", "<url>", text)
     return text
