@@ -109,7 +109,9 @@ def log_security_event(tag: str, details: str = "") -> None:
     logger.warning("SECURITY_EVENT %s %s", tag, clean)
 
 
-_EMAIL_RE = re.compile(r"([A-Za-z0-9._%+-]+)@((?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})")
+_EMAIL_RE = re.compile(
+    r"(?<![A-Za-z0-9._%+-])([A-Za-z0-9._%+-]{1,64})@([A-Za-z0-9.-]{1,189})"
+)
 
 
 def _mask_email(match: re.Match) -> str:
