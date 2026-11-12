@@ -1,10 +1,51 @@
 import hmac
 import os
+import re
 import secrets
 import threading
 import time
 from hashlib import sha256
 from typing import Dict, Optional, Tuple
+
+
+DEFAULT_PUBLIC_STATS_ORIGINS = (
+    "https://stem.zis3c.dev",
+    "https://stemusas.com",
+    "https://www.stemusas.com",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
+)
+_PAGES_PREVIEW_RE = re.compile(r"^https://[a-z0-9-]+\.stem-usas\.pages\.dev$")
+
+
+def is_allowed_public_stats_origin(origin: Optional[str]) -> bool:
+    if not origin:
+        return False
+    clean = origin.strip().rstrip("/")
+    raw_env = os.getenv("PUBLIC_STATS_CORS_ORIGINS", "")
+    allowed = (
+        tuple(o.strip().rstrip("/") for o in raw_env.split(",") if o.strip())
+        if raw_env.strip()
+        else DEFAULT_PUBLIC_STATS_ORIGINS
+    )
+    if clean in allowed:
+        return True
+    return bool(_PAGES_PREVIEW_RE.match(clean))
+
+
+def build_public_stats_headers(origin: Optional[str]) -> Dict[str, str]:
+    headers = {
+        "Cache-Control": "public, max-age=300",
+        "X-Content-Type-Options": "nosniff",
+        "Vary": "Origin",
+    }
+    if origin and is_allowed_public_stats_origin(origin):
+        headers["Access-Control-Allow-Origin"] = origin.strip().rstrip("/")
+        headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        headers["Access-Control-Max-Age"] = "86400"
+    return headers
 
 
 _REPORTS: Dict[str, dict] = {}

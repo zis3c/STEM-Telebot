@@ -25,6 +25,7 @@ from .core.pending_deletions import restore_pending_deletions
 from .core.security_utils import (
     DEFAULT_TELEGRAM_IP_RANGES,
     SECURITY_METRICS,
+    SlidingWindowLimiter,
     env_bool,
     extract_client_ip,
     ip_allowed,
@@ -627,10 +628,43 @@ async def main():
         )
         return web.Response(text=html, content_type="text/html")
 
+    public_stats_limiter = SlidingWindowLimiter()
+
+    async def public_stats_options(request):
+        headers = stats_web.build_public_stats_headers(request.headers.get("Origin"))
+        return web.Response(status=204, headers=headers)
+
+    async def public_stats(request):
+        headers = stats_web.build_public_stats_headers(request.headers.get("Origin"))
+        if not app_ready.is_set():
+            return web.json_response({"error": "starting"}, status=503, headers=headers)
+
+        remote_ip = request.remote or ""
+        xff = request.headers.get("X-Forwarded-For", "")
+        client_ip = extract_client_ip(remote_ip, xff, TRUST_PROXY_HOPS) or "unknown"
+        allowed, retry_after = public_stats_limiter.check(
+            f"pubstats:{client_ip}", window_sec=60, max_req=60
+        )
+        if not allowed:
+            return web.json_response(
+                {"error": "rate_limited"},
+                status=429,
+                headers={**headers, "Retry-After": str(retry_after)},
+            )
+
+        try:
+            payload = await asyncio.to_thread(admin.db.get_public_stats)
+            return web.json_response(payload, headers=headers)
+        except Exception:
+            logger.exception("Public stats error")
+            return web.json_response({"error": "unavailable"}, status=500, headers=headers)
+
     app = web.Application()
     app.router.add_post("/telegram", telegram_webhook)
     app.router.add_get("/", health)
     app.router.add_get("/health", health)
+    app.router.add_get("/api/public/stats", public_stats)
+    app.router.add_options("/api/public/stats", public_stats_options)
     app.router.add_get("/stats/demographic/{token}", demographic_report)
     app.router.add_get("/profile/membership/{token}", membership_profile_report)
 

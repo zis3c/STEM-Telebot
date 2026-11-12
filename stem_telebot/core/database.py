@@ -477,6 +477,43 @@ class Database:
             "course_distribution": course_distribution,
             "birth_year_distribution": birth_year_distribution,
         }
+
+    def get_public_stats(self):
+        """Returns sanitized public aggregate counts without any PII."""
+        if self.student_cache:
+            if time.time() - self.last_student_refresh >= self.CACHE_TTL:
+                self._start_student_cache_refresh()
+        else:
+            self.refresh_student_cache(force=True)
+
+        now = datetime.now()
+        active_members = 0
+
+        for entries in self.student_cache.values():
+            if not entries:
+                continue
+            row, _ = entries[-1]
+            status = self._normalize_status(row[17] if len(row) > 17 else "")
+            if status != "approved":
+                continue
+
+            entry_raw = ""
+            if len(row) > 13 and str(row[13]).strip():
+                entry_raw = row[13]
+            elif len(row) > 0:
+                entry_raw = row[0]
+
+            entry_dt = self._parse_sheet_date(entry_raw)
+            if entry_dt and now >= (entry_dt + timedelta(days=365)):
+                continue
+
+            active_members += 1
+
+        return {
+            "active_members": active_members,
+            "cached_at": int(self.last_student_refresh or 0),
+        }
+
     def add_member(self, name, matric, ic, prog):
         sheet = self.get_sheet("Registrations")
         if sheet:

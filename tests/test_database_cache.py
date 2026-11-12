@@ -71,6 +71,32 @@ class StudentCacheConsumerTests(unittest.TestCase):
         })
         self.assertEqual(len(db.search_members("A1234567")), 2)
 
+    def test_get_public_stats_counts_latest_non_expired_approved_only(self):
+        from datetime import datetime, timedelta
+
+        fresh_date = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d")
+        old_date = (datetime.now() - timedelta(days=400)).strftime("%Y-%m-%d")
+        db = self._db({
+            # Renewed member: old expired row + new active row -> counts once
+            "A1": [
+                (_row("One", "A1", entry=old_date, status="Expired"), 2),
+                (_row("One", "A1", entry=fresh_date, status="Approved"), 3),
+            ],
+            # Active verified member
+            "A2": [(_row("Two", "A2", entry=fresh_date, status="Verified"), 4)],
+            # Expired by date even if sheet says Approved
+            "A3": [(_row("Three", "A3", entry=old_date, status="Approved"), 5)],
+            # Pending & rejected should not count
+            "A4": [(_row("Four", "A4", entry=fresh_date, status="Pending"), 6)],
+            "A5": [(_row("Five", "A5", entry=fresh_date, status="Rejected"), 7)],
+        })
+
+        stats = db.get_public_stats()
+
+        self.assertEqual(set(stats.keys()), {"active_members", "cached_at"})
+        self.assertEqual(stats["active_members"], 2)
+        self.assertGreater(stats["cached_at"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

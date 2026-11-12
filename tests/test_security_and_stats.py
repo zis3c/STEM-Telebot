@@ -72,6 +72,20 @@ class StatsWebTests(unittest.TestCase):
         _, err_tampered = stats_web.read_member_profile_report(tampered)
         self.assertEqual(err_tampered, "bad_signature")
 
+    def test_public_stats_cors_headers_allowlist(self):
+        allowed = stats_web.build_public_stats_headers("https://stem.zis3c.dev")
+        self.assertEqual(allowed.get("Access-Control-Allow-Origin"), "https://stem.zis3c.dev")
+        self.assertEqual(allowed.get("X-Content-Type-Options"), "nosniff")
+
+        preview = stats_web.build_public_stats_headers("https://abc123.stem-usas.pages.dev")
+        self.assertEqual(
+            preview.get("Access-Control-Allow-Origin"),
+            "https://abc123.stem-usas.pages.dev",
+        )
+
+        blocked = stats_web.build_public_stats_headers("https://evil.example.com")
+        self.assertNotIn("Access-Control-Allow-Origin", blocked)
+
 
 if __name__ == "__main__":
     unittest.main()
