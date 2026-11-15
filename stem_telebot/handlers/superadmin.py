@@ -589,10 +589,7 @@ async def inventory_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def inventory_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_inventory(update):
-        await update.message.reply_text(
-            strings.get('INV_ACCESS_DENIED', get_user_lang(context)),
-            parse_mode="Markdown",
-        )
+        # Silent fail for unauthorized users, same as /admin.
         return ConversationHandler.END
     context.user_data.pop("inv_flow", None)
     return await inventory_menu(update, context)
