@@ -5,6 +5,7 @@ from string import Formatter
 from stem_telebot.ui import strings
 
 NEW_KEYS = (
+    "BTN_INVENTORY",
     "INV_MENU",
     "INV_LIST_TITLE",
     "INV_LIST_LINE",
