@@ -1245,6 +1245,31 @@ class Database:
             "new": value,
         }
 
+    def delete_inventory_item(self, item_id):
+        """Deletes an inventory row. Movement history is kept."""
+        ws = self.get_sheet("Inventory")
+        if not ws:
+            return {"ok": False, "error": "sheet_unavailable"}
+
+        item_id = str(item_id or "").strip().upper()
+        try:
+            cell = ws.find(item_id, in_column=1)
+        except Exception as e:
+            logger.error("Inventory lookup error: %s", e)
+            return {"ok": False, "error": "lookup_failed"}
+        if not cell:
+            return {"ok": False, "error": "not_found"}
+
+        try:
+            row = ws.row_values(cell.row)
+            name = str(row[1]).strip() if len(row) > 1 else item_id
+            ws.delete_rows(cell.row)
+        except Exception as e:
+            logger.error("Inventory delete error: %s", e)
+            return {"ok": False, "error": "delete_failed"}
+
+        return {"ok": True, "id": item_id, "name": name}
+
     def get_inventory_log(self, limit=50):
         """Returns the most recent inventory movements, newest first."""
         ws = self.get_sheet("InventoryLog")

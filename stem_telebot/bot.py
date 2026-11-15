@@ -360,6 +360,7 @@ async def main():
     filter_sa_inv_add = build_filter("BTN_SA_INV_ADD")
     filter_sa_inv_adjust = build_filter("BTN_SA_INV_ADJUST")
     filter_sa_inv_edit = build_filter("BTN_SA_INV_EDIT")
+    filter_sa_inv_delete = build_filter("BTN_SA_INV_DELETE")
     filter_sa_inv_dashboard = build_filter("BTN_SA_INV_DASHBOARD")
 
     filter_sa_add = build_filter("BTN_SA_ADD_ADMIN")
@@ -420,6 +421,7 @@ async def main():
                 MessageHandler(filter_sa_inv_add, superadmin.inventory_add_start),
                 MessageHandler(filter_sa_inv_adjust, superadmin.inventory_adjust_start),
                 MessageHandler(filter_sa_inv_edit, superadmin.inventory_edit_start),
+                MessageHandler(filter_sa_inv_delete, superadmin.inventory_delete_start),
                 MessageHandler(filter_sa_inv_dashboard, superadmin.inventory_dashboard),
                 MessageHandler(filter_back, superadmin.inventory_back),
                 MessageHandler(filter_sa_exit, superadmin.exit),
