@@ -237,6 +237,21 @@ def get_account_confirm_menu(lang='EN'):
         one_time_keyboard=True,
     )
 
+
+def get_value_suggestions_menu(options, lang='EN'):
+    """Reply keyboard with existing values; users can still type a new one."""
+    rows = []
+    row = []
+    for option in options:
+        row.append(option)
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    rows.append([strings.get('BTN_CANCEL', lang)])
+    return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
+
 def get_program_menu(lang='EN'):
     return ReplyKeyboardMarkup(
         [

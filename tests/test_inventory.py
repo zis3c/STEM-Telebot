@@ -215,6 +215,22 @@ class RoleConfigTests(unittest.TestCase):
         self.assertNotIn(555, db.cached_sheet_admins)
 
 
+class SuggestionTests(unittest.TestCase):
+    def test_suggestions_dedupe_and_order_by_frequency(self):
+        from stem_telebot.handlers.superadmin import _suggestions
+
+        self.assertEqual(
+            _suggestions(["A", "B", "A", "", " C ", "C"], limit=2),
+            ["A", "C"],
+        )
+
+    def test_suggestions_exclude_reserved_and_long_values(self):
+        from stem_telebot.handlers.superadmin import _suggestions
+
+        values = ["Cancel", "A" * 30, "Store Room"]
+        self.assertEqual(_suggestions(values), ["Store Room"])
+
+
 class InventoryTokenTests(unittest.TestCase):
     def test_token_roundtrip_and_tamper(self):
         token = stats_web.create_inventory_token()
