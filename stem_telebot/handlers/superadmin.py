@@ -60,9 +60,9 @@ async def run_db_call(func, *args, **kwargs):
 def get_super_menu(lang='EN'):
     return ReplyKeyboardMarkup([
         [strings.get('BTN_SA_MAINTENANCE', lang), strings.get('BTN_SA_REFRESH', lang)],
-        [strings.get('BTN_SA_ADMINS', lang), strings.get('BTN_SA_HEALTH', lang)],
-        [strings.get('BTN_SA_INVENTORY', lang), strings.get('BTN_SA_LOGS', lang)],
-        [strings.get('BTN_SA_EXIT', lang)]
+        [strings.get('BTN_SA_ADMINS', lang), strings.get('BTN_SA_LOGISTICS', lang)],
+        [strings.get('BTN_SA_INVENTORY', lang), strings.get('BTN_SA_HEALTH', lang)],
+        [strings.get('BTN_SA_LOGS', lang), strings.get('BTN_SA_EXIT', lang)]
     ], resize_keyboard=True)
 
 
@@ -146,21 +146,58 @@ async def view_logs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 def get_manage_admins_menu(lang='EN'):
     return ReplyKeyboardMarkup([
-        [strings.get('BTN_SA_ADD_ADMIN', lang), strings.get('BTN_SA_ADD_LOGISTICS', lang)],
-        [strings.get('BTN_SA_LIST_ADMIN', lang), strings.get('BTN_SA_DEL_ADMIN', lang)],
+        [strings.get('BTN_SA_ADD_ADMIN', lang), strings.get('BTN_SA_DEL_ADMIN', lang)],
+        [strings.get('BTN_SA_LIST_ADMIN', lang)],
         [strings.get('BTN_BACK', lang)]
     ], resize_keyboard=True)
+
+
+def get_manage_logistics_menu(lang='EN'):
+    return ReplyKeyboardMarkup([
+        [strings.get('BTN_SA_ADD_LOGISTICS', lang), strings.get('BTN_SA_DEL_LOGISTICS', lang)],
+        [strings.get('BTN_SA_LIST_LOGISTICS', lang)],
+        [strings.get('BTN_BACK', lang)]
+    ], resize_keyboard=True)
+
+
+def _manage_section(context) -> str:
+    return context.user_data.get("manage_section", "admin")
+
+
+def _manage_keyboard(lang, section):
+    if section == "logistics":
+        return get_manage_logistics_menu(lang)
+    return get_manage_admins_menu(lang)
+
+
+def _manage_state(section):
+    if section == "logistics":
+        return states.SUPER_LOGISTICS_MANAGE
+    return states.SUPER_ADMIN_MANAGE
 
 
 async def manage_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_superadmin(update):
         return ConversationHandler.END
+    context.user_data["manage_section"] = "admin"
     lang = get_user_lang(context)
     await update.message.reply_text(
         strings.get('BTN_SA_ADMINS', lang),
         reply_markup=get_manage_admins_menu(lang)
     )
     return states.SUPER_ADMIN_MANAGE
+
+
+async def manage_logistics(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_superadmin(update):
+        return ConversationHandler.END
+    context.user_data["manage_section"] = "logistics"
+    lang = get_user_lang(context)
+    await update.message.reply_text(
+        strings.get('BTN_SA_LOGISTICS', lang),
+        reply_markup=get_manage_logistics_menu(lang)
+    )
+    return states.SUPER_LOGISTICS_MANAGE
 
 
 async def _resolve_account_label(bot, user_id, fallback="Unknown"):
@@ -178,24 +215,42 @@ async def _resolve_account_label(bot, user_id, fallback="Unknown"):
     return name or fallback
 
 
-async def list_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def _list_accounts(update, context, section):
     if not await _require_superadmin(update):
         return ConversationHandler.END
     lang = get_user_lang(context)
+    context.user_data["manage_section"] = section
     try:
         accounts = await run_db_call(db.list_sheet_accounts)
     except Exception as e:
         logger.error("List accounts error: %s", e)
         accounts = []
 
+    if section == "logistics":
+        accounts = [
+            account for account in accounts
+            if account["role"].strip().lower().startswith("logist")
+        ]
+        title_key = 'ROLE_LOGISTICS_PLURAL'
+    else:
+        accounts = [
+            account for account in accounts
+            if not account["role"].strip().lower().startswith("logist")
+        ]
+        title_key = 'ROLE_ADMIN_PLURAL'
+
     if not accounts:
         await update.message.reply_text(
             strings.get('MSG_SA_LIST_EMPTY', lang),
-            reply_markup=get_manage_admins_menu(lang),
+            reply_markup=_manage_keyboard(lang, section),
         )
-        return states.SUPER_ADMIN_MANAGE
+        return _manage_state(section)
 
-    lines = [strings.get('MSG_SA_LIST_TITLE', lang).format(count=len(accounts))]
+    lines = [
+        strings.get('MSG_SA_LIST_TITLE', lang).format(
+            role=strings.get(title_key, lang), count=len(accounts)
+        )
+    ]
     for account in accounts:
         label = account["name"] or "Unknown"
         if not label.startswith("@"):
@@ -205,25 +260,27 @@ async def list_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
             if resolved != label:
                 label = resolved
                 await run_db_call(db.update_admin_name, account["id"], resolved)
-        role_key = (
-            'ROLE_LOGISTICS'
-            if account["role"].strip().lower().startswith("logist")
-            else 'ROLE_ADMIN'
-        )
         lines.append(
             strings.get('MSG_SA_LIST_LINE', lang).format(
                 id=account["id"],
                 name=strings.escape_md(_short(label, 14)),
-                role=strings.get(role_key, lang),
             )
         )
 
     await update.message.reply_text(
         "\n".join(lines),
         parse_mode="Markdown",
-        reply_markup=get_manage_admins_menu(lang),
+        reply_markup=_manage_keyboard(lang, section),
     )
-    return states.SUPER_ADMIN_MANAGE
+    return _manage_state(section)
+
+
+async def list_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    return await _list_accounts(update, context, "admin")
+
+
+async def list_logistics(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    return await _list_accounts(update, context, "logistics")
 
 
 async def _prompt_add_account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -243,6 +300,7 @@ async def _prompt_add_account(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def add_admin_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_superadmin(update):
         return ConversationHandler.END
+    context.user_data["manage_section"] = "admin"
     context.user_data["add_account_role"] = "Admin"
     return await _prompt_add_account(update, context)
 
@@ -250,6 +308,7 @@ async def add_admin_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def add_logistics_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_superadmin(update):
         return ConversationHandler.END
+    context.user_data["manage_section"] = "logistics"
     context.user_data["add_account_role"] = "Logistics"
     return await _prompt_add_account(update, context)
 
@@ -268,12 +327,13 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_id = int(text)
     
     if db.is_admin(user_id) or db.is_logistics(user_id):
+        section = _manage_section(context)
         await update.message.reply_text(
             strings.get('ERR_SA_ALREADY_ACCOUNT', lang),
             parse_mode="Markdown",
-            reply_markup=get_manage_admins_menu(lang)
+            reply_markup=_manage_keyboard(lang, section)
         )
-        return states.SUPER_ADMIN_MANAGE
+        return _manage_state(section)
 
     # Resolve a username/display name so the account is recognizable later.
     label = await _resolve_account_label(context.bot, user_id)
@@ -299,14 +359,15 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not await _require_superadmin(update):
         return ConversationHandler.END
     lang = get_user_lang(context)
+    section = _manage_section(context)
     pending = context.user_data.pop("add_account_pending", None)
     if not pending:
         await update.message.reply_text(
             strings.get('MSG_SA_ACCOUNT_PENDING_NONE', lang),
             parse_mode="Markdown",
-            reply_markup=get_manage_admins_menu(lang),
+            reply_markup=_manage_keyboard(lang, section),
         )
-        return states.SUPER_ADMIN_MANAGE
+        return _manage_state(section)
 
     user_id = pending["id"]
     label = pending["label"]
@@ -317,9 +378,9 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text(
             strings.get('ERR_SA_ALREADY_ACCOUNT', lang),
             parse_mode="Markdown",
-            reply_markup=get_manage_admins_menu(lang),
+            reply_markup=_manage_keyboard(lang, section),
         )
-        return states.SUPER_ADMIN_MANAGE
+        return _manage_state(section)
 
     if await run_db_call(
         db.add_admin, user_id, label, f"SA:{update.effective_user.id}", role
@@ -335,7 +396,9 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
             else strings.get('MSG_SA_PROMOTED', lang)
         )
         await update.message.reply_text(
-            added_msg, parse_mode="Markdown", reply_markup=get_manage_admins_menu(lang)
+            added_msg,
+            parse_mode="Markdown",
+            reply_markup=_manage_keyboard(lang, section),
         )
 
         # Notify the new account holder.
@@ -353,19 +416,21 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
             "ADD_LOGISTICS" if role == "Logistics" else "ADD_ADMIN",
             f"Granted {role} to {user_id} ({label})",
         )
-        return states.SUPER_ADMIN_MANAGE
+        return _manage_state(section)
 
     await update.message.reply_text(
         strings.get('ERR_SA_ACCOUNT_DB', lang),
         parse_mode="Markdown",
-        reply_markup=get_manage_admins_menu(lang),
+        reply_markup=_manage_keyboard(lang, section),
     )
-    return states.SUPER_ADMIN_MANAGE
+    return _manage_state(section)
 
 
 async def account_confirm_retry(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     if not context.user_data.get("add_account_pending"):
+        if _manage_section(context) == "logistics":
+            return await manage_logistics(update, context)
         return await manage_admins(update, context)
     await update.message.reply_text(
         strings.get('MSG_SA_ACCOUNT_CONFIRM_HINT', lang),
@@ -377,6 +442,7 @@ async def account_confirm_retry(update: Update, context: ContextTypes.DEFAULT_TY
 async def del_admin_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_superadmin(update):
         return ConversationHandler.END
+    context.user_data["manage_section"] = "admin"
     lang = get_user_lang(context)
     await update.message.reply_text(
         strings.get('PROMPT_SA_DEL', lang),
@@ -385,42 +451,96 @@ async def del_admin_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     )
     return states.SUPER_DEL_ID
 
+
+async def del_logistics_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_superadmin(update):
+        return ConversationHandler.END
+    context.user_data["manage_section"] = "logistics"
+    lang = get_user_lang(context)
+    await update.message.reply_text(
+        strings.get('PROMPT_SA_DEL_LOGISTICS', lang),
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_cancel_menu(lang)
+    )
+    return states.SUPER_DEL_ID
+
+
 async def del_admin_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_superadmin(update):
         return ConversationHandler.END
     lang = get_user_lang(context)
+    section = _manage_section(context)
     text = update.message.text.strip()
     
     if not text.isdigit():
-        await update.message.reply_text(strings.get('ERR_SA_INVALID_ID', lang), parse_mode="Markdown")
+        await update.message.reply_text(
+            strings.get('ERR_SA_INVALID_ID', lang), parse_mode="Markdown"
+        )
         return states.SUPER_DEL_ID
         
     user_id = int(text)
-    if await run_db_call(db.remove_admin, user_id):
-        db.log_action(update.effective_user.first_name, "REMOVE_ADMIN", f"Removed account {user_id}")
-        await update.message.reply_text(
-            strings.get('MSG_SA_ACCOUNT_DELETED', lang),
-            parse_mode="Markdown",
-            reply_markup=get_manage_admins_menu(lang),
-        )
-    else:
+    try:
+        accounts = await run_db_call(db.list_sheet_accounts)
+    except Exception as e:
+        logger.error("Delete account lookup error: %s", e)
+        accounts = []
+    target = next((account for account in accounts if account["id"] == user_id), None)
+
+    if not target:
         await update.message.reply_text(
             strings.get('ERR_SA_ACCOUNT_NOT_FOUND', lang),
             parse_mode="Markdown",
-            reply_markup=get_manage_admins_menu(lang),
+            reply_markup=_manage_keyboard(lang, section),
+        )
+        return _manage_state(section)
+
+    is_logistics = target["role"].strip().lower().startswith("logist")
+    if section == "logistics" and not is_logistics:
+        await update.message.reply_text(
+            strings.get('ERR_SA_NOT_LOGISTICS', lang),
+            parse_mode="Markdown",
+            reply_markup=_manage_keyboard(lang, section),
+        )
+        return states.SUPER_LOGISTICS_MANAGE
+    if section == "admin" and is_logistics:
+        await update.message.reply_text(
+            strings.get('ERR_SA_NOT_ADMIN', lang),
+            parse_mode="Markdown",
+            reply_markup=_manage_keyboard(lang, section),
+        )
+        return states.SUPER_ADMIN_MANAGE
+
+    if await run_db_call(db.remove_admin, user_id):
+        db.log_action(
+            update.effective_user.first_name,
+            "REMOVE_ADMIN",
+            f"Removed account {user_id}",
+        )
+        await update.message.reply_text(
+            strings.get('MSG_SA_ACCOUNT_DELETED', lang),
+            parse_mode="Markdown",
+            reply_markup=_manage_keyboard(lang, section),
+        )
+    else:
+        await update.message.reply_text(
+            strings.get('ERR_SA_ACCOUNT_DB', lang),
+            parse_mode="Markdown",
+            reply_markup=_manage_keyboard(lang, section),
         )
         
-    return states.SUPER_ADMIN_MANAGE
+    return _manage_state(section)
+
 
 async def back_to_manage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.pop("add_account_pending", None)
     context.user_data.pop("add_account_role", None)
+    section = _manage_section(context)
     lang = get_user_lang(context)
     await update.message.reply_text(
         strings.get('ERR_CANCEL', lang),
-        reply_markup=get_manage_admins_menu(lang)
+        reply_markup=_manage_keyboard(lang, section)
     )
-    return states.SUPER_ADMIN_MANAGE
+    return _manage_state(section)
 
 async def back_to_super(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
