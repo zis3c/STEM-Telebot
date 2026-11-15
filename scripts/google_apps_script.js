@@ -599,7 +599,6 @@ function createPdfHtml(name, matric, memberId, date, invoiceNo, receiptNo, logoB
     var safeReceiptNo = escapeHtml(receiptNo);
     var safeInvoiceNo = escapeHtml(invoiceNo);
 
-    // Logo Logic
     var logoHtml = logoBase64
         ? `<img src="${logoBase64}" style="height: 80px; width: auto; vertical-align: middle;">`
         : `<span class="logo">STEM <span>USAS</span></span>`;
@@ -742,7 +741,6 @@ function broadcastAllRows() {
     if (!sheet) return;
 
     var lastRow = sheet.getLastRow();
-    // Start from Row 2 (Skip Header)
     for (var i = 2; i <= lastRow; i++) {
         Logger.log("ðŸ”„ Processing Row " + i + " of " + lastRow);
         processRowOnSubmit(sheet, i);

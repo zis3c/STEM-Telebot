@@ -225,7 +225,6 @@ async def maintenance_loop(application):
                         cooldown_seconds=900,
                     )
 
-            # Basic sheets connectivity check.
             try:
                 sheet_ok = await asyncio.to_thread(db.get_sheet, "Registrations")
                 if not sheet_ok:
@@ -479,9 +478,8 @@ async def main():
         },
         fallbacks=[CommandHandler("cancel", superadmin.exit)],
         allow_reentry=True,
-        # Persist this menu so a restart does not kick superadmins back to /superadmin.
-        # shortcut: if state numbering or this handler name changes, delete
-        # bot_state.pickle once so stale conversation keys are dropped.
+        # Persist this menu so a restart keeps superadmins in the panel.
+        # shortcut: delete bot_state.pickle if state numbering or the handler name changes.
         name="superadmin_conv",
         persistent=True,
     )
@@ -830,8 +828,7 @@ async def main():
         await application.start()
         await restore_pending_deletions(application)
 
-        # Warm the member cache before the bot starts serving user checks.
-        # This avoids the first / Check Membership after a restart from blocking on Google Sheets.
+        # Warm the member cache so the first check after a restart does not block on Sheets.
         await asyncio.to_thread(admin.db.refresh_student_cache, True)
 
         if WEBHOOK_URL:

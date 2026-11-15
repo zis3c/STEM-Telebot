@@ -69,7 +69,6 @@ STRINGS = {
         'MSG_APPROVED': "✅ Accepted {name}.",
         'MSG_REJECTED': "🚫 Rejected {name}.",
         
-        # Buttons
         'BTN_CHECK': "Check Membership",
         'BTN_HELP': "Help",
         'BTN_SETTINGS': "Settings",
@@ -87,7 +86,6 @@ STRINGS = {
         'MSG_LANG_CHANGED': "Language changed to English! 🇬🇧",
         'MSG_SELECT_LANG': "🌐 *Select Language*",
         
-        # Admin - Keep English for Admins usually, but good to have structure
         'ADMIN_DASHBOARD': "*Admin Dashboard*\nSelect an action:",
         'ADMIN_STATS_MENU_PROMPT': "*Statistics Menu*\nChoose a stats view:",
         'ADMIN_STATS': (
@@ -178,7 +176,7 @@ STRINGS = {
         'MSG_SA_PROMOTED': "🎉 *Congratulations! You have been promoted to Admin.*",
         'MSG_SA_LOGISTICS_PROMOTED': "🎉 *Congratulations! You have been promoted to Logistics.*\nSend /logistics to open the menu.",
 
-        # Inventory (superadmin + logistics role)
+        # Inventory
         'INV_MENU': "*Inventory*\nSelect:",
         'INV_LIST_TITLE': "*Stock ({count})* · {low} low",
         'INV_LIST_LINE': "`{id}` {name} | *{qty}{unit}*{flag}",
@@ -238,7 +236,7 @@ STRINGS = {
         'INV_DASHBOARD_TITLE': "*Inventory Dashboard*\nLink valid for 7 days.",
         'INV_DASHBOARD_UNAVAILABLE': "❌ Set PUBLIC_BASE_URL first.",
 
-        # Account management (admin + logistics)
+        # Accounts
         'PROMPT_SA_ACCOUNT_STEP': "*Add {role}*\nSend Telegram ID:",
         'PROMPT_SA_ACCOUNT_CONFIRM': "*Confirm {role}*\n`{id}` {name}",
         'ROLE_ADMIN': "Admin",
@@ -280,7 +278,6 @@ STRINGS = {
         'ADMIN_BROADCAST_START': "Sending...",
         'ADMIN_BROADCAST_DONE': "*Broadcast Complete* 📢\n\nSuccess: *{success}*\nBlocked/Failed: *{failed}*",
         
-        # Programs
         'BTN_PROG_IT': "DIPLOMA TEKNOLOGI MAKLUMAT",
         'BTN_PROG_MM': "DIPLOMA MULTIMEDIA DENGAN DAKWAH",
         'BTN_PROG_CS': "IJAZAH SARJANA MUDA SAINS KOMPUTER",
@@ -353,7 +350,6 @@ STRINGS = {
         'MSG_APPROVED': "✅ Diterima {name}.",
         'MSG_REJECTED': "🚫 Ditolak {name}.",
         
-        # Buttons
         'BTN_CHECK': "Semak Keahlian",
         'BTN_HELP': "Info",
         'BTN_SETTINGS': "Tetapan",
@@ -371,7 +367,6 @@ STRINGS = {
         'MSG_LANG_CHANGED': "Bahasa ditukar kepada Bahasa Melayu! 🇲🇾",
         'MSG_SELECT_LANG': "🌐 *Pilih Bahasa*",
         
-        # Admin - Fallback to English often okay, but can translate
         'ADMIN_DASHBOARD': "*Admin Dashboard*\nPilih tindakan:",
         'ADMIN_STATS_MENU_PROMPT': "*Menu Statistik*\nPilih paparan statistik:",
         'ADMIN_STATS': (
@@ -471,7 +466,7 @@ STRINGS = {
         'MSG_SA_PROMOTED': "🎉 Tahniah! Anda telah dilantik sebagai Admin.",
         'MSG_SA_LOGISTICS_PROMOTED': "🎉 *Tahniah! Anda telah dilantik sebagai Logistik.*\nHantar /logistics untuk buka menu.",
 
-        # Inventory (superadmin + logistics role)
+        # Inventory
         'INV_MENU': "*Inventori*\nPilih:",
         'INV_LIST_TITLE': "*Stok ({count})* · {low} rendah",
         'INV_LIST_LINE': "`{id}` {name} | *{qty}{unit}*{flag}",
@@ -531,7 +526,7 @@ STRINGS = {
         'INV_DASHBOARD_TITLE': "*Dashboard Inventori*\nPautan sah 7 hari.",
         'INV_DASHBOARD_UNAVAILABLE': "❌ Tetapkan PUBLIC_BASE_URL dahulu.",
 
-        # Account management (admin + logistics)
+        # Accounts
         'PROMPT_SA_ACCOUNT_STEP': "*Tambah {role}*\nHantar ID Telegram:",
         'PROMPT_SA_ACCOUNT_CONFIRM': "*Sahkan {role}*\n`{id}` {name}",
         'ROLE_ADMIN': "Admin",
@@ -563,7 +558,6 @@ STRINGS = {
         'ADMIN_BROADCAST_START': "Sedang menghantar...",
         'ADMIN_BROADCAST_DONE': "*Hebahan Selesai* 📢\n\n✅ Berjaya: {success}\n❌ Gagal: {failed}",
         
-        # Programs (Same for both languages usually, or translate if needed)
         'BTN_PROG_IT': "DIPLOMA TEKNOLOGI MAKLUMAT",
         'BTN_PROG_MM': "DIPLOMA MULTIMEDIA DENGAN DAKWAH",
         'BTN_PROG_CS': "IJAZAH SARJANA MUDA SAINS KOMPUTER",
