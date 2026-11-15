@@ -208,15 +208,13 @@ async def list_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 async def _prompt_add_account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     role = context.user_data.get("add_account_role", "Admin")
-    prompt = strings.get('PROMPT_SA_ADD', lang)
-    if role == "Logistics":
-        prompt = (
-            "Please reply with the *Telegram ID* to give inventory access "
-            "(logistics role):"
-        )
+    action = (
+        "give inventory access (logistics role)"
+        if role == "Logistics"
+        else "add as Admin"
+    )
     await update.message.reply_text(
-        prompt,
-        parse_mode="Markdown",
+        f"Add account - step 1/2\n\nSend the Telegram ID to {action}.",
         reply_markup=keyboards.get_cancel_menu(lang)
     )
     return states.SUPER_ADD_ID
@@ -259,6 +257,46 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # Resolve a username/display name so the account is recognizable later.
     label = await _resolve_account_label(context.bot, user_id)
+    context.user_data["add_account_pending"] = {
+        "id": user_id,
+        "label": label,
+        "role": role,
+    }
+    await update.message.reply_text(
+        "Add account - step 2/2\n\n"
+        f"ID: {user_id}\n"
+        f"Name: {label}\n"
+        f"Role: {role}\n\n"
+        "Save this account?",
+        reply_markup=keyboards.get_account_confirm_menu(lang),
+    )
+    return states.SUPER_ACCOUNT_CONFIRM
+
+
+async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_superadmin(update):
+        return ConversationHandler.END
+    lang = get_user_lang(context)
+    pending = context.user_data.pop("add_account_pending", None)
+    if not pending:
+        await update.message.reply_text(
+            "Nothing to confirm.",
+            reply_markup=get_manage_admins_menu(lang),
+        )
+        return states.SUPER_ADMIN_MANAGE
+
+    user_id = pending["id"]
+    label = pending["label"]
+    role = pending["role"]
+    context.user_data.pop("add_account_role", None)
+
+    if db.is_admin(user_id) or db.is_logistics(user_id):
+        await update.message.reply_text(
+            strings.get('ERR_SA_ALREADY_ADMIN', lang),
+            parse_mode="Markdown",
+            reply_markup=get_manage_admins_menu(lang),
+        )
+        return states.SUPER_ADMIN_MANAGE
 
     if await run_db_call(
         db.add_admin, user_id, label, f"SA:{update.effective_user.id}", role
@@ -276,27 +314,39 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.message.reply_text(
             added_msg, parse_mode="Markdown", reply_markup=get_manage_admins_menu(lang)
         )
-        
+
         # Notify the new account holder.
         try:
             await context.bot.send_message(
-                chat_id=user_id, 
+                chat_id=user_id,
                 text=promoted_msg,
                 parse_mode="Markdown"
             )
         except Exception as e:
             logger.warning(f"Failed to notify new account {user_id}: {e}")
-            
+
         db.log_action(
             update.effective_user.first_name,
             "ADD_LOGISTICS" if role == "Logistics" else "ADD_ADMIN",
             f"Granted {role} to {user_id} ({label})",
         )
-        context.user_data.pop("add_account_role", None)
         return states.SUPER_ADMIN_MANAGE
-    else:
-        await update.message.reply_text("❌ DB Error", reply_markup=get_manage_admins_menu(lang))
-        return states.SUPER_ADMIN_MANAGE
+
+    await update.message.reply_text(
+        "❌ DB Error", reply_markup=get_manage_admins_menu(lang)
+    )
+    return states.SUPER_ADMIN_MANAGE
+
+
+async def account_confirm_retry(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    lang = get_user_lang(context)
+    if not context.user_data.get("add_account_pending"):
+        return await manage_admins(update, context)
+    await update.message.reply_text(
+        "Tap Confirm to save or Cancel to discard.",
+        reply_markup=keyboards.get_account_confirm_menu(lang),
+    )
+    return states.SUPER_ACCOUNT_CONFIRM
 
 async def del_admin_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_superadmin(update):
@@ -329,6 +379,8 @@ async def del_admin_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return states.SUPER_ADMIN_MANAGE
 
 async def back_to_manage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data.pop("add_account_pending", None)
+    context.user_data.pop("add_account_role", None)
     lang = get_user_lang(context)
     await update.message.reply_text(
         strings.get('ERR_CANCEL', lang),
