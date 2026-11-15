@@ -338,6 +338,7 @@ async def main():
 
     filter_sa_maint = build_filter("BTN_SA_MAINTENANCE")
     filter_sa_admins = build_filter("BTN_SA_ADMINS")
+    filter_sa_logistics = build_filter("BTN_SA_LOGISTICS")
     filter_sa_health = build_filter("BTN_SA_HEALTH")
     filter_sa_refresh = build_filter("BTN_SA_REFRESH")
     filter_sa_logs = build_filter("BTN_SA_LOGS")
@@ -352,6 +353,8 @@ async def main():
     filter_sa_add_logistics = build_filter("BTN_SA_ADD_LOGISTICS")
     filter_sa_list = build_filter("BTN_SA_LIST_ADMIN")
     filter_sa_del = build_filter("BTN_SA_DEL_ADMIN")
+    filter_sa_list_logistics = build_filter("BTN_SA_LIST_LOGISTICS")
+    filter_sa_del_logistics = build_filter("BTN_SA_DEL_LOGISTICS")
     filter_sa_confirm = build_filter("BTN_CONFIRM_ACTION")
     filter_sa_exit = build_filter("BTN_SA_EXIT")
 
@@ -393,6 +396,7 @@ async def main():
                 MessageHandler(filter_sa_maint, superadmin.toggle_maintenance),
                 MessageHandler(filter_sa_health, superadmin.check_health),
                 MessageHandler(filter_sa_admins, superadmin.manage_admins),
+                MessageHandler(filter_sa_logistics, superadmin.manage_logistics),
                 MessageHandler(filter_sa_refresh, superadmin.refresh_config),
                 MessageHandler(filter_sa_logs, superadmin.view_logs),
                 MessageHandler(filter_sa_inventory, superadmin.inventory_menu),
@@ -415,9 +419,15 @@ async def main():
             ],
             states.SUPER_ADMIN_MANAGE: [
                 MessageHandler(filter_sa_add, superadmin.add_admin_start),
-                MessageHandler(filter_sa_add_logistics, superadmin.add_logistics_start),
                 MessageHandler(filter_sa_list, superadmin.list_admins),
                 MessageHandler(filter_sa_del, superadmin.del_admin_start),
+                MessageHandler(filter_back, superadmin.back_to_super),
+                MessageHandler(filter_sa_exit, superadmin.exit),
+            ],
+            states.SUPER_LOGISTICS_MANAGE: [
+                MessageHandler(filter_sa_add_logistics, superadmin.add_logistics_start),
+                MessageHandler(filter_sa_list_logistics, superadmin.list_logistics),
+                MessageHandler(filter_sa_del_logistics, superadmin.del_logistics_start),
                 MessageHandler(filter_back, superadmin.back_to_super),
                 MessageHandler(filter_sa_exit, superadmin.exit),
             ],
