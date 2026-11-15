@@ -11,3 +11,4 @@ pending_deletions.json
 *.log
 proposeSTEM/
 columnDB.txt
+bot_state.pickle
