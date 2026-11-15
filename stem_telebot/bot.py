@@ -116,6 +116,19 @@ async def configure_runtime(application):
             name="send_daily_logs",
         )
 
+    async def _refresh_config_job(_context):
+        from .core.database import db
+
+        await asyncio.to_thread(db.refresh_system_config, True)
+
+    if not application.job_queue.get_jobs_by_name("refresh_config"):
+        application.job_queue.run_repeating(
+            _refresh_config_job,
+            interval=300,
+            first=30,
+            name="refresh_config",
+        )
+
     logger.info(
         "Scheduler started - daily logs at %02d:%02d (%s)",
         DAILY_LOG_HOUR,

@@ -60,6 +60,13 @@ async def _require_superadmin(update: Update) -> bool:
 
 async def _require_inventory(update: Update) -> bool:
     uid = update.effective_user.id if update.effective_user else 0
+    # Refresh the role list often so a removed/changed logistics account
+    # cannot keep access from a stale cache.
+    if time.time() - db.last_config_refresh >= 30:
+        try:
+            await asyncio.to_thread(db.refresh_system_config, True)
+        except Exception as e:
+            logger.warning("Inventory role refresh failed: %s", e)
     if not db.is_inventory_user(uid):
         log_security_event("AUTHZ_DENY", f"surface=inventory uid={uid}")
         return False
