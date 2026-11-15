@@ -283,9 +283,14 @@ async def list_logistics(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     return await _list_accounts(update, context, "logistics")
 
 
+def _account_role(context) -> str:
+    """The section the superadmin is in decides the role, not stale user_data."""
+    return "Logistics" if _manage_section(context) == "logistics" else "Admin"
+
+
 async def _prompt_add_account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
-    role = context.user_data.get("add_account_role", "Admin")
+    role = _account_role(context)
     role_key = 'ROLE_LOGISTICS' if role == "Logistics" else 'ROLE_ADMIN'
     await update.message.reply_text(
         strings.get('PROMPT_SA_ACCOUNT_STEP', lang).format(
@@ -301,7 +306,6 @@ async def add_admin_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not await _require_superadmin(update):
         return ConversationHandler.END
     context.user_data["manage_section"] = "admin"
-    context.user_data["add_account_role"] = "Admin"
     return await _prompt_add_account(update, context)
 
 
@@ -309,7 +313,6 @@ async def add_logistics_start(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not await _require_superadmin(update):
         return ConversationHandler.END
     context.user_data["manage_section"] = "logistics"
-    context.user_data["add_account_role"] = "Logistics"
     return await _prompt_add_account(update, context)
 
 
@@ -317,8 +320,9 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if not await _require_superadmin(update):
         return ConversationHandler.END
     lang = get_user_lang(context)
+    section = _manage_section(context)
+    role = _account_role(context)
     text = update.message.text.strip()
-    role = context.user_data.get("add_account_role", "Admin")
     
     if not text.isdigit():
         await update.message.reply_text(strings.get('ERR_SA_INVALID_ID', lang), parse_mode="Markdown")
@@ -327,7 +331,6 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_id = int(text)
     
     if await run_db_call(db.has_sheet_account, user_id):
-        section = _manage_section(context)
         await update.message.reply_text(
             strings.get('ERR_SA_ALREADY_ACCOUNT', lang),
             parse_mode="Markdown",
@@ -340,7 +343,6 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     context.user_data["add_account_pending"] = {
         "id": user_id,
         "label": label,
-        "role": role,
     }
     role_key = 'ROLE_LOGISTICS' if role == "Logistics" else 'ROLE_ADMIN'
     await update.message.reply_text(
@@ -371,8 +373,7 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     user_id = pending["id"]
     label = pending["label"]
-    role = pending["role"]
-    context.user_data.pop("add_account_role", None)
+    role = _account_role(context)
 
     if await run_db_call(db.has_sheet_account, user_id):
         await update.message.reply_text(
@@ -533,7 +534,6 @@ async def del_admin_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def back_to_manage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.pop("add_account_pending", None)
-    context.user_data.pop("add_account_role", None)
     section = _manage_section(context)
     lang = get_user_lang(context)
     await update.message.reply_text(
