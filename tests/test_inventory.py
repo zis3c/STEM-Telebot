@@ -57,6 +57,9 @@ class FakeWS:
     def append_row(self, row):
         self.rows.append(list(row))
 
+    def delete_rows(self, row):
+        self.rows.pop(row - 1)
+
 
 class FakeDB(Database):
     def __init__(self, sheets):
@@ -192,6 +195,85 @@ class RoleConfigTests(unittest.TestCase):
         self.assertTrue(db.is_inventory_user(222))
         self.assertFalse(db.is_inventory_user(111))
         self.assertTrue(db.is_admin(111))
+
+    def test_dual_role_account_is_admin_and_logistics(self):
+        db = self._db(
+            [
+                ["User ID", "Name", "Added By", "Role"],
+                ["444", "@dual", "SA:9", "Admin,Logistics"],
+            ]
+        )
+        db.refresh_system_config(force=True)
+        self.assertTrue(db.is_admin(444))
+        self.assertTrue(db.is_logistics(444))
+        self.assertTrue(db.is_inventory_user(444))
+
+    def test_grant_role_adds_second_role_to_existing_admin(self):
+        db = self._db(
+            [
+                ["User ID", "Name", "Added By", "Role"],
+                ["111", "@alice", "SA:9", "Admin"],
+            ]
+        )
+        result = db.grant_role(111, "@alice", "SA:9", "Logistics")
+
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["created"])
+        rows = db.sheets["system_admins"].get_all_values()
+        self.assertEqual(rows[1][3], "Admin,Logistics")
+        self.assertTrue(db.is_admin(111))
+        self.assertTrue(db.is_logistics(111))
+
+    def test_grant_role_creates_new_account(self):
+        db = self._db([["User ID", "Name", "Added By", "Role"]])
+        result = db.grant_role(555, "@dave", "SA:9", "Logistics")
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["created"])
+        self.assertTrue(db.is_logistics(555))
+
+    def test_grant_role_rejects_duplicate_role(self):
+        db = self._db(
+            [
+                ["User ID", "Name", "Added By", "Role"],
+                ["111", "@alice", "SA:9", "Admin"],
+            ]
+        )
+        result = db.grant_role(111, "@alice", "SA:9", "Admin")
+        self.assertEqual(result["error"], "already_has_role")
+
+    def test_remove_account_role_keeps_other_role(self):
+        db = self._db(
+            [
+                ["User ID", "Name", "Added By", "Role"],
+                ["111", "@alice", "SA:9", "Admin,Logistics"],
+            ]
+        )
+        db.refresh_system_config(force=True)
+
+        result = db.remove_account_role(111, "Logistics")
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["roles"], ["Admin"])
+        rows = db.sheets["system_admins"].get_all_values()
+        self.assertEqual(rows[1][3], "Admin")
+        self.assertTrue(db.is_admin(111))
+        self.assertFalse(db.is_logistics(111))
+
+    def test_remove_account_role_deletes_last_role(self):
+        db = self._db(
+            [
+                ["User ID", "Name", "Added By", "Role"],
+                ["111", "@alice", "SA:9", "Logistics"],
+            ]
+        )
+        db.refresh_system_config(force=True)
+
+        result = db.remove_account_role(111, "Logistics")
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["roles"], [])
+        self.assertEqual(len(db.sheets["system_admins"].get_all_values()), 1)
 
     def test_list_sheet_accounts_includes_role_and_name(self):
         db = self._db(

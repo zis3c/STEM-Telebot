@@ -21,8 +21,7 @@ class AccountPromotionMessageTests(unittest.IsolatedAsyncioTestCase):
         context.bot.send_message = AsyncMock()
 
         with patch.object(superadmin.db, "is_superadmin", return_value=True), \
-             patch.object(superadmin.db, "has_sheet_account", return_value=False), \
-             patch.object(superadmin.db, "add_admin", return_value=True), \
+             patch.object(superadmin.db, "grant_role", return_value={"ok": True}), \
              patch.object(superadmin.db, "log_action", return_value=None):
             await superadmin.add_account_confirm(update, context)
 
