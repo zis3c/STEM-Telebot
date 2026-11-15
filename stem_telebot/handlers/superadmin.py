@@ -360,13 +360,6 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         return _manage_state(section)
 
-    if role == "Logistics" and db.is_admin(user_id):
-        await update.message.reply_text(
-            strings.get('ERR_SA_LOGISTICS_SEPARATE', lang),
-            parse_mode="Markdown",
-            reply_markup=_manage_keyboard(lang, section),
-        )
-        return _manage_state(section)
 
     # Resolve a username/display name so the account is recognizable later.
     label = await _resolve_account_label(context.bot, user_id)
@@ -413,13 +406,6 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return _manage_state(section)
 
-    if role == "Logistics" and db.is_admin(user_id):
-        await update.message.reply_text(
-            strings.get('ERR_SA_LOGISTICS_SEPARATE', lang),
-            parse_mode="Markdown",
-            reply_markup=_manage_keyboard(lang, section),
-        )
-        return _manage_state(section)
 
     if await run_db_call(
         db.add_admin, user_id, label, f"SA:{update.effective_user.id}", role
