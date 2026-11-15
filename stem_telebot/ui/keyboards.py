@@ -216,6 +216,17 @@ def get_super_inventory_menu(lang='EN'):
         resize_keyboard=True
     )
 
+
+def get_inventory_direction_menu(lang='EN'):
+    return ReplyKeyboardMarkup(
+        [
+            ["Stock In (+)", "Stock Out (-)"],
+            [strings.get('BTN_CANCEL', lang)],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True,
+    )
+
 def get_program_menu(lang='EN'):
     return ReplyKeyboardMarkup(
         [
