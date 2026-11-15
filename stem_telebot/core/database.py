@@ -326,6 +326,14 @@ class Database:
             )
         return accounts
 
+    def has_sheet_account(self, user_id):
+        """True if the ID already has a row in system_admins (any role)."""
+        try:
+            target = int(user_id)
+        except (TypeError, ValueError):
+            return False
+        return any(account["id"] == target for account in self.list_sheet_accounts())
+
     def update_admin_name(self, user_id, name):
         """Stores the resolved @username/display name for a managed account."""
         ws = self.get_sheet("system_admins")

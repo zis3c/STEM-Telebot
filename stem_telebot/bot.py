@@ -390,6 +390,7 @@ async def main():
         entry_points=[
             CommandHandler("superadmin", superadmin.start),
             CommandHandler("inventory", superadmin.inventory_start),
+            CommandHandler(["logistics", "logistic"], superadmin.inventory_start),
         ],
         states={
             states.SUPER_MENU: [

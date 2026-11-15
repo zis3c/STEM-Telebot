@@ -326,7 +326,7 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         
     user_id = int(text)
     
-    if db.is_admin(user_id) or db.is_logistics(user_id):
+    if await run_db_call(db.has_sheet_account, user_id):
         section = _manage_section(context)
         await update.message.reply_text(
             strings.get('ERR_SA_ALREADY_ACCOUNT', lang),
@@ -374,7 +374,7 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
     role = pending["role"]
     context.user_data.pop("add_account_role", None)
 
-    if db.is_admin(user_id) or db.is_logistics(user_id):
+    if await run_db_call(db.has_sheet_account, user_id):
         await update.message.reply_text(
             strings.get('ERR_SA_ALREADY_ACCOUNT', lang),
             parse_mode="Markdown",
