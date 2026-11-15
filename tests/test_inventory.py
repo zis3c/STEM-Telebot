@@ -162,6 +162,18 @@ class InventoryTests(unittest.TestCase):
             "not_found",
         )
 
+    def test_delete_inventory_item_removes_row_but_keeps_log(self):
+        db = make_db()
+        db.add_inventory_item("A4 Paper", "Consumable", 10, "ream", "Store", 5, "Ali")
+
+        result = db.delete_inventory_item("INV-001")
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["name"], "A4 Paper")
+        self.assertEqual(db.get_inventory_items(), [])
+        self.assertEqual(len(db.get_inventory_log()), 1)
+        self.assertEqual(db.delete_inventory_item("INV-999")["error"], "not_found")
+
 
 class RoleConfigTests(unittest.TestCase):
     def _db(self, records):

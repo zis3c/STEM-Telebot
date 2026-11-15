@@ -211,7 +211,7 @@ def get_super_inventory_menu(lang='EN'):
         [
             [strings.get('BTN_SA_INV_LIST', lang), strings.get('BTN_SA_INV_ADJUST', lang)],
             [strings.get('BTN_SA_INV_ADD', lang), strings.get('BTN_SA_INV_EDIT', lang)],
-            [strings.get('BTN_SA_INV_DASHBOARD', lang)],
+            [strings.get('BTN_SA_INV_DELETE', lang), strings.get('BTN_SA_INV_DASHBOARD', lang)],
             [strings.get('BTN_BACK', lang)],
         ],
         resize_keyboard=True

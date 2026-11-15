@@ -732,6 +732,8 @@ INVENTORY_EDIT_LABELS = {
 
 INVENTORY_EDIT_SUGGEST = ("category", "unit", "location")
 
+INVENTORY_DELETE_STEPS = ("item_id", "confirm")
+
 
 def _match_edit_field(text):
     for field, label_key in INVENTORY_EDIT_LABELS.items():
@@ -941,6 +943,47 @@ async def inventory_edit_start(update: Update, context: ContextTypes.DEFAULT_TYP
             "unit": _suggestions(item["unit"] for item in items),
             "location": _suggestions(item["location"] for item in items),
         },
+    }
+    await update.message.reply_text(
+        "\n".join(lines),
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_cancel_menu(lang),
+    )
+    return states.SUPER_INVENTORY_INPUT
+
+
+async def inventory_delete_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_inventory(update):
+        return ConversationHandler.END
+    lang = get_user_lang(context)
+    try:
+        items = await run_db_call(db.get_inventory_items)
+    except Exception as e:
+        logger.error("Inventory delete list error: %s", e)
+        items = []
+
+    if not items:
+        await update.message.reply_text(
+            strings.get('INV_EMPTY_ADJUST', lang),
+            parse_mode="Markdown",
+            reply_markup=keyboards.get_super_inventory_menu(lang),
+        )
+        return states.SUPER_INVENTORY_MENU
+
+    lines = [strings.get('INV_DELETE_HEADER', lang), ""]
+    for item in items[:8]:
+        lines.append(_inventory_line(item, lang))
+    if len(items) > 8:
+        lines.append(
+            strings.get('INV_LIST_MORE', lang).format(count=len(items) - 8)
+        )
+    lines.extend(["", strings.get('INV_Q_ITEM', lang)])
+
+    context.user_data["inv_flow"] = {
+        "mode": "delete",
+        "step": 0,
+        "data": {},
+        "items": {item["id"]: item["name"] for item in items},
     }
     await update.message.reply_text(
         "\n".join(lines),
@@ -1239,6 +1282,76 @@ async def _inventory_edit_input(update, context, flow):
     return states.SUPER_INVENTORY_MENU
 
 
+async def _inventory_delete_input(update, context, flow):
+    lang = get_user_lang(context)
+    step = INVENTORY_DELETE_STEPS[flow["step"]]
+    text = (update.message.text or "").strip()
+
+    if step == "item_id":
+        if not text:
+            await _send_inventory_prompt(update, context, strings.get('INV_ERR_ITEM', lang))
+            return states.SUPER_INVENTORY_INPUT
+        item_id = text.upper()
+        items = flow.get("items", {})
+        if item_id not in items:
+            await _send_inventory_prompt(
+                update, context, strings.get('INV_ERR_NOT_FOUND', lang)
+            )
+            return states.SUPER_INVENTORY_INPUT
+        flow["data"]["item_id"] = item_id
+        flow["data"]["name"] = items[item_id]
+        flow["step"] += 1
+        await update.message.reply_text(
+            strings.get('INV_DELETE_CONFIRM', lang).format(
+                id=strings.escape_md(item_id),
+                name=strings.escape_md(_short(items[item_id], 14)),
+            ),
+            parse_mode="Markdown",
+            reply_markup=keyboards.get_account_confirm_menu(lang),
+        )
+        return states.SUPER_INVENTORY_INPUT
+
+    if text not in strings.get_all('BTN_CONFIRM_ACTION'):
+        await _send_inventory_prompt(
+            update,
+            context,
+            strings.get('INV_ERR_CONFIRM', lang),
+            keyboards.get_account_confirm_menu(lang),
+        )
+        return states.SUPER_INVENTORY_INPUT
+
+    data = flow["data"]
+    context.user_data.pop("inv_flow", None)
+    result = await run_db_call(db.delete_inventory_item, data["item_id"])
+    if not result.get("ok"):
+        message = (
+            strings.get('INV_ERR_NOT_FOUND', lang)
+            if result.get("error") == "not_found"
+            else strings.get('INV_DELETE_FAILED', lang)
+        )
+        await update.message.reply_text(
+            message,
+            parse_mode="Markdown",
+            reply_markup=keyboards.get_super_inventory_menu(lang),
+        )
+        return states.SUPER_INVENTORY_MENU
+
+    db.log_action(
+        _actor(update),
+        "INVENTORY_DELETE",
+        f"{result['id']} {result['name']}",
+    )
+    await update.message.reply_text(
+        strings.get('INV_DELETE_SUCCESS', lang).format(
+            id=strings.escape_md(result["id"]),
+            name=strings.escape_md(_short(result["name"], 14)),
+        ),
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_super_inventory_menu(lang),
+    )
+    return states.SUPER_INVENTORY_MENU
+
+
 async def inventory_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_inventory(update):
         return ConversationHandler.END
@@ -1249,6 +1362,8 @@ async def inventory_input(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return await _inventory_adjust_input(update, context, flow)
     if flow.get("mode") == "edit":
         return await _inventory_edit_input(update, context, flow)
+    if flow.get("mode") == "delete":
+        return await _inventory_delete_input(update, context, flow)
     return await _inventory_add_input(update, context, flow)
 
 
