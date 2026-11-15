@@ -130,6 +130,35 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual(result["error"], "negative_qty")
         self.assertEqual(db.get_inventory_items(), [])
 
+    def test_update_inventory_item_field_updates_category_and_min(self):
+        db = make_db()
+        db.add_inventory_item("A4 Paper", "Consumable", 10, "ream", "Store", 5, "Ali")
+
+        result = db.update_inventory_item_field("INV-001", "category", "Lab", "Siti")
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["old"], "Consumable")
+
+        item = db.get_inventory_items()[0]
+        self.assertEqual(item["category"], "Lab")
+        self.assertEqual(item["updated_by"], "Siti")
+
+        result = db.update_inventory_item_field("INV-001", "min_qty", 3, "Siti")
+        self.assertTrue(result["ok"])
+        self.assertEqual(db.get_inventory_items()[0]["min_qty"], 3)
+
+    def test_update_inventory_item_field_rejects_invalid_field_and_missing_id(self):
+        db = make_db()
+        db.add_inventory_item("A4 Paper", "Consumable", 10, "ream", "Store", 5, "Ali")
+
+        self.assertEqual(
+            db.update_inventory_item_field("INV-001", "qty", 99, "Ali")["error"],
+            "invalid_field",
+        )
+        self.assertEqual(
+            db.update_inventory_item_field("INV-999", "name", "X", "Ali")["error"],
+            "not_found",
+        )
+
 
 class RoleConfigTests(unittest.TestCase):
     def _db(self, records):

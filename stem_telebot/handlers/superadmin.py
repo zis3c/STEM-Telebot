@@ -718,6 +718,25 @@ INVENTORY_ADJUST_QUESTIONS = {
     "reason": "INV_Q_REASON",
 }
 
+INVENTORY_EDIT_STEPS = ("item_id", "field", "value")
+
+INVENTORY_EDIT_LABELS = {
+    "name": "INV_LABEL_NAME",
+    "category": "INV_LABEL_CATEGORY",
+    "unit": "INV_LABEL_UNIT",
+    "location": "INV_LABEL_LOCATION",
+    "min_qty": "INV_LABEL_MIN",
+}
+
+INVENTORY_EDIT_SUGGEST = ("category", "unit", "location")
+
+
+def _match_edit_field(text):
+    for field, label_key in INVENTORY_EDIT_LABELS.items():
+        if text in strings.get_all(label_key):
+            return field
+    return None
+
 
 async def _send_inventory_prompt(update, context, text, markup=None):
     await update.message.reply_text(
@@ -761,6 +780,36 @@ async def _ask_adjust_step(update, context, flow):
         step=flow["step"] + 1,
         total=len(INVENTORY_ADJUST_STEPS),
         label=strings.get(INVENTORY_ADJUST_LABELS[step], lang),
+        question=question,
+    )
+    await _send_inventory_prompt(update, context, text, markup)
+
+
+async def _ask_edit_step(update, context, flow):
+    lang = get_user_lang(context)
+    step = INVENTORY_EDIT_STEPS[flow["step"]]
+    if step == "item_id":
+        label_key = "INV_LABEL_ITEM"
+        question = strings.get('INV_Q_ITEM', lang)
+        markup = None
+    elif step == "field":
+        label_key = "INV_LABEL_FIELD"
+        question = strings.get('INV_Q_EDIT_FIELD', lang)
+        markup = keyboards.get_inventory_edit_fields_menu(lang)
+    else:
+        field = flow["data"]["field"]
+        label_key = INVENTORY_EDIT_LABELS[field]
+        question = strings.get('INV_Q_EDIT_VALUE', lang)
+        options = flow.get("suggest", {}).get(field) or []
+        if options:
+            question += "\n" + strings.get('INV_SUGGEST_HINT', lang)
+            markup = keyboards.get_value_suggestions_menu(options, lang)
+        else:
+            markup = None
+    text = strings.get('INV_EDIT_STEP', lang).format(
+        step=flow["step"] + 1,
+        total=len(INVENTORY_EDIT_STEPS),
+        label=strings.get(label_key, lang),
         question=question,
     )
     await _send_inventory_prompt(update, context, text, markup)
@@ -838,6 +887,58 @@ async def inventory_adjust_start(update: Update, context: ContextTypes.DEFAULT_T
         "step": 0,
         "data": {},
         "suggest": {"reason": reasons},
+    }
+    await update.message.reply_text(
+        "\n".join(lines),
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_cancel_menu(lang),
+    )
+    return states.SUPER_INVENTORY_INPUT
+
+
+async def inventory_edit_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_inventory(update):
+        return ConversationHandler.END
+    lang = get_user_lang(context)
+    try:
+        items = await run_db_call(db.get_inventory_items)
+    except Exception as e:
+        logger.error("Inventory edit list error: %s", e)
+        items = []
+
+    if not items:
+        await update.message.reply_text(
+            strings.get('INV_EMPTY_ADJUST', lang),
+            parse_mode="Markdown",
+            reply_markup=keyboards.get_super_inventory_menu(lang),
+        )
+        return states.SUPER_INVENTORY_MENU
+
+    lines = [
+        strings.get('INV_EDIT_HEADER', lang).format(
+            step=1,
+            total=len(INVENTORY_EDIT_STEPS),
+            label=strings.get('INV_LABEL_ITEM', lang),
+        ),
+        "",
+    ]
+    for item in items[:8]:
+        lines.append(_inventory_line(item, lang))
+    if len(items) > 8:
+        lines.append(
+            strings.get('INV_LIST_MORE', lang).format(count=len(items) - 8)
+        )
+    lines.extend(["", strings.get('INV_Q_ITEM', lang)])
+
+    context.user_data["inv_flow"] = {
+        "mode": "edit",
+        "step": 0,
+        "data": {},
+        "suggest": {
+            "category": _suggestions(item["category"] for item in items),
+            "unit": _suggestions(item["unit"] for item in items),
+            "location": _suggestions(item["location"] for item in items),
+        },
     }
     await update.message.reply_text(
         "\n".join(lines),
@@ -1031,6 +1132,111 @@ async def _inventory_adjust_input(update, context, flow):
     return states.SUPER_INVENTORY_MENU
 
 
+async def _inventory_edit_input(update, context, flow):
+    lang = get_user_lang(context)
+    step = INVENTORY_EDIT_STEPS[flow["step"]]
+    text = (update.message.text or "").strip()
+
+    if step == "item_id":
+        if not text:
+            await _send_inventory_prompt(update, context, strings.get('INV_ERR_ITEM', lang))
+            return states.SUPER_INVENTORY_INPUT
+        flow["data"]["item_id"] = text.upper()
+    elif step == "field":
+        field = _match_edit_field(text)
+        if not field:
+            await _send_inventory_prompt(
+                update,
+                context,
+                strings.get('INV_ERR_FIELD', lang),
+                keyboards.get_inventory_edit_fields_menu(lang),
+            )
+            return states.SUPER_INVENTORY_INPUT
+        flow["data"]["field"] = field
+    else:
+        field = flow["data"]["field"]
+        if field == "min_qty":
+            try:
+                value = int(text)
+            except ValueError:
+                await _send_inventory_prompt(
+                    update,
+                    context,
+                    strings.get('INV_ERR_NUMBER', lang)
+                    + "\n"
+                    + strings.get('INV_Q_EDIT_VALUE', lang),
+                )
+                return states.SUPER_INVENTORY_INPUT
+            if value < 0:
+                await _send_inventory_prompt(
+                    update,
+                    context,
+                    strings.get('INV_ERR_NEGATIVE', lang)
+                    + "\n"
+                    + strings.get('INV_Q_EDIT_VALUE', lang),
+                )
+                return states.SUPER_INVENTORY_INPUT
+        elif field == "name":
+            value = text
+            if not value:
+                await _send_inventory_prompt(
+                    update,
+                    context,
+                    strings.get('INV_ERR_NAME', lang)
+                    + "\n"
+                    + strings.get('INV_Q_EDIT_VALUE', lang),
+                )
+                return states.SUPER_INVENTORY_INPUT
+        else:
+            value = "" if text == "-" else text
+
+    flow["step"] += 1
+    if flow["step"] < len(INVENTORY_EDIT_STEPS):
+        await _ask_edit_step(update, context, flow)
+        return states.SUPER_INVENTORY_INPUT
+
+    data = flow["data"]
+    context.user_data.pop("inv_flow", None)
+    result = await run_db_call(
+        db.update_inventory_item_field,
+        data["item_id"],
+        data["field"],
+        value,
+        _actor(update),
+    )
+    if not result.get("ok"):
+        error = result.get("error")
+        message = (
+            strings.get('INV_ERR_NOT_FOUND', lang)
+            if error == "not_found"
+            else strings.get('INV_EDIT_FAILED', lang)
+        )
+        await update.message.reply_text(
+            message,
+            parse_mode="Markdown",
+            reply_markup=keyboards.get_super_inventory_menu(lang),
+        )
+        return states.SUPER_INVENTORY_MENU
+
+    db.log_action(
+        _actor(update),
+        "INVENTORY_EDIT",
+        f"{result['id']} {data['field']}: {result['old']} -> {result['new']}",
+    )
+    label = strings.get(INVENTORY_EDIT_LABELS[data["field"]], lang)
+    await update.message.reply_text(
+        strings.get('INV_EDIT_SUCCESS', lang).format(
+            name=strings.escape_md(_short(result["name"], 14)),
+            label=label,
+            old=strings.escape_md(_short(str(result["old"]), 14)),
+            new=strings.escape_md(_short(str(result["new"]), 14)),
+        ),
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_super_inventory_menu(lang),
+    )
+    return states.SUPER_INVENTORY_MENU
+
+
 async def inventory_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_inventory(update):
         return ConversationHandler.END
@@ -1039,6 +1245,8 @@ async def inventory_input(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return await inventory_menu(update, context)
     if flow.get("mode") == "adjust":
         return await _inventory_adjust_input(update, context, flow)
+    if flow.get("mode") == "edit":
+        return await _inventory_edit_input(update, context, flow)
     return await _inventory_add_input(update, context, flow)
 
 
