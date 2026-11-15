@@ -61,8 +61,8 @@ def get_super_menu(lang='EN'):
     return ReplyKeyboardMarkup([
         [strings.get('BTN_SA_MAINTENANCE', lang), strings.get('BTN_SA_REFRESH', lang)],
         [strings.get('BTN_SA_ADMINS', lang), strings.get('BTN_SA_LOGISTICS', lang)],
-        [strings.get('BTN_SA_INVENTORY', lang), strings.get('BTN_SA_HEALTH', lang)],
-        [strings.get('BTN_SA_LOGS', lang), strings.get('BTN_SA_EXIT', lang)]
+        [strings.get('BTN_SA_HEALTH', lang), strings.get('BTN_SA_LOGS', lang)],
+        [strings.get('BTN_SA_EXIT', lang)]
     ], resize_keyboard=True)
 
 
@@ -597,19 +597,7 @@ async def inventory_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def inventory_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.pop("inv_flow", None)
-    lang = get_user_lang(context)
-    uid = update.effective_user.id if update.effective_user else 0
-    if db.is_superadmin(uid):
-        await update.message.reply_text(
-            "🔙 Superadmin Dashboard",
-            reply_markup=get_super_menu(lang)
-        )
-        return states.SUPER_MENU
-    await update.message.reply_text(
-        strings.get('INV_EXIT', lang),
-        reply_markup=keyboards.get_main_menu(lang)
-    )
-    return ConversationHandler.END
+    return await exit(update, context)
 
 
 async def inventory_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -1004,5 +992,11 @@ async def inventory_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def exit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
-    await update.message.reply_text("Superadmin closed.", reply_markup=keyboards.get_main_menu(lang))
+    uid = update.effective_user.id if update.effective_user else 0
+    is_logistics = db.is_logistics(uid)
+    message = strings.get('INV_EXIT', lang) if is_logistics else "Superadmin closed."
+    await update.message.reply_text(
+        message,
+        reply_markup=keyboards.get_main_menu(lang, show_inventory=is_logistics),
+    )
     return ConversationHandler.END

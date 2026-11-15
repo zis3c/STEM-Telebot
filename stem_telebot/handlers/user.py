@@ -69,6 +69,14 @@ def _global_rate_guard(user_id: int, scope: str):
     return ok, retry
 
 
+def _main_menu(update: Update, lang: str):
+    """Main menu that shows the Inventory button only for logistics accounts."""
+    user = update.effective_user
+    return keyboards.get_main_menu(
+        lang, show_inventory=bool(user and db.is_logistics(user.id))
+    )
+
+
 def _post_apps_script_action(action: str, row_idx: int):
     if not APPS_SCRIPT_WEBHOOK_URL or not APPS_SCRIPT_ADMIN_TOKEN:
         return {"ok": False, "error": "apps_script_not_configured"}
@@ -445,7 +453,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not ok:
         await update.message.reply_text(
             f"Too many requests. Try again in {retry_after}s.",
-            reply_markup=keyboards.get_main_menu(lang),
+            reply_markup=_main_menu(update, lang),
         )
         return ConversationHandler.END
     
@@ -455,7 +463,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     await update.message.reply_text(
         strings.get('WELCOME_MSG', lang).format(name=user.first_name), 
-        reply_markup=keyboards.get_main_menu(lang), 
+        reply_markup=_main_menu(update, lang), 
         parse_mode="Markdown"
     )
 
@@ -563,7 +571,7 @@ async def check_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
-    await update.message.reply_text(strings.get('ERR_CANCEL', lang), reply_markup=keyboards.get_main_menu(lang))
+    await update.message.reply_text(strings.get('ERR_CANCEL', lang), reply_markup=_main_menu(update, lang))
     return ConversationHandler.END
 
 async def receive_matric(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -649,7 +657,7 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not ok:
         await update.message.reply_text(
             f"Too many requests. Try again in {retry_after}s.",
-            reply_markup=keyboards.get_main_menu(lang),
+            reply_markup=_main_menu(update, lang),
         )
         return ConversationHandler.END
     limited, retry_after = _check_verif_limit(update.effective_user.id, user_matric)
@@ -671,7 +679,7 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(
             lock_msg,
             parse_mode="Markdown",
-            reply_markup=keyboards.get_main_menu(lang),
+            reply_markup=_main_menu(update, lang),
         )
         return ConversationHandler.END
 
@@ -802,7 +810,7 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         logger.error("Verification flow error [%s]: %s", "INC-VERIFY", e)
         verification_ok = False
 
-    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=keyboards.get_main_menu(lang))
+    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=_main_menu(update, lang))
     if profile_card_url:
         profile_prompt = (
             "*Interactive Profile Card*\n"
@@ -895,7 +903,7 @@ async def log_any_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
         'BTN_ADMIN_STATS_REGISTRATION', 'BTN_ADMIN_STATS_DEMOGRAPHIC',
         'BTN_ADMIN_DEL', 'BTN_ADMIN_LIST', 'BTN_ADMIN_SEARCH', 'BTN_ADMIN_CHECK_PENDING',
         'BTN_SA_MAINTENANCE', 'BTN_SA_ADMINS', 'BTN_SA_HEALTH', 'BTN_SA_REFRESH', 'BTN_SA_LOGS',
-        'BTN_SA_INVENTORY', 'BTN_SA_INV_LIST', 'BTN_SA_INV_ADD', 'BTN_SA_INV_ADJUST',
+        'BTN_INVENTORY', 'BTN_SA_INV_LIST', 'BTN_SA_INV_ADD', 'BTN_SA_INV_ADJUST',
         'BTN_SA_INV_DASHBOARD', 'BTN_SA_ADD_LOGISTICS'
     ]
     

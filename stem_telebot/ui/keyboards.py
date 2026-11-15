@@ -1,14 +1,14 @@
 from telegram import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 from . import strings
 
-def get_main_menu(lang='EN'):
-    return ReplyKeyboardMarkup(
-        [
-            [strings.get('BTN_CHECK', lang), strings.get('BTN_BECOME_MEMBER', lang)],
-            [strings.get('BTN_HELP', lang), strings.get('BTN_SETTINGS', lang)]
-        ], 
-        resize_keyboard=True
-    )
+def get_main_menu(lang='EN', show_inventory=False):
+    rows = [
+        [strings.get('BTN_CHECK', lang), strings.get('BTN_BECOME_MEMBER', lang)],
+        [strings.get('BTN_HELP', lang), strings.get('BTN_SETTINGS', lang)],
+    ]
+    if show_inventory:
+        rows.append([strings.get('BTN_INVENTORY', lang)])
+    return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 def get_become_member_keyboard(lang='EN'):
     url = "https://docs.google.com/forms/d/e/1FAIpQLSchZH3A3wvlq2RQE47KorzGNLqDgX48zc4PP46kapENjnBiBA/viewform?fbzx=7657887268860346255"

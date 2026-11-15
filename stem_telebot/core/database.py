@@ -253,8 +253,8 @@ class Database:
         return user_id in getattr(self, "cached_sheet_logistics", [])
 
     def is_inventory_user(self, user_id):
-        """Inventory is for superadmins and the logistics/operations role."""
-        return self.is_superadmin(user_id) or self.is_logistics(user_id)
+        """Inventory is handled by the logistics/operations role only."""
+        return self.is_logistics(user_id)
 
     def get_all_admin_ids(self):
         """Returns a set of ALL admin IDs (Super + Env + Sheet)."""
