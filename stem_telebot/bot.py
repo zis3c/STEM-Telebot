@@ -16,6 +16,8 @@ from telegram.ext import (
     CommandHandler,
     ConversationHandler,
     MessageHandler,
+    PersistenceInput,
+    PicklePersistence,
     filters,
 )
 
@@ -44,6 +46,7 @@ from .ui import states, strings
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 PORT = int(os.getenv("PORT", 10000))
+STATE_PICKLE_PATH = os.path.join(PROJECT_ROOT, "bot_state.pickle")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "").rstrip("/")
 WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
 WEBHOOK_IP_VALIDATE = env_bool("TELEGRAM_WEBHOOK_IP_VALIDATE", False)
@@ -300,7 +303,16 @@ async def main():
     if not TOKEN:
         raise RuntimeError("TELEGRAM_TOKEN is missing.")
 
-    application = ApplicationBuilder().token(TOKEN).build()
+    persistence = PicklePersistence(
+        filepath=STATE_PICKLE_PATH,
+        store_data=PersistenceInput(
+            bot_data=False, chat_data=False, user_data=True, callback_data=False
+        ),
+        update_interval=15,
+    )
+    application = (
+        ApplicationBuilder().token(TOKEN).persistence(persistence).build()
+    )
 
     filter_check = build_filter("BTN_CHECK")
     filter_help = build_filter("BTN_HELP")
@@ -434,6 +446,11 @@ async def main():
         },
         fallbacks=[CommandHandler("cancel", superadmin.exit)],
         allow_reentry=True,
+        # Persist this menu so a restart does not kick superadmins back to /superadmin.
+        # shortcut: if state numbering or this handler name changes, delete
+        # bot_state.pickle once so stale conversation keys are dropped.
+        name="superadmin_conv",
+        persistent=True,
     )
 
     admin_conv = ConversationHandler(
