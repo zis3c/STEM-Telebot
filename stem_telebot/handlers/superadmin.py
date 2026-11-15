@@ -465,10 +465,10 @@ async def inventory_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return states.SUPER_INVENTORY_MENU
 
-    url = f"{base_url}/inventory/{stats_web.create_inventory_token()}"
+    url = f"{base_url}/inventory/{stats_web.create_inventory_token(ttl_seconds=7 * 24 * 3600)}"
     await update.message.reply_text(
         "*Inventory Dashboard*\n"
-        "_Read-only link. Share it with the team; it does not expire._",
+        "_Read-only link. Share it with the team; it expires in 7 days._",
         parse_mode="Markdown",
         disable_web_page_preview=True,
         reply_markup=InlineKeyboardMarkup(
