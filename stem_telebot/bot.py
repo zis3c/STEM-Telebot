@@ -494,6 +494,9 @@ async def main():
             ],
         },
         fallbacks=[CommandHandler("cancel", admin.exit)],
+        # Same as superadmin: keep admins in their panel after a restart.
+        name="admin_conv",
+        persistent=True,
     )
 
     application.add_handler(super_conv)
