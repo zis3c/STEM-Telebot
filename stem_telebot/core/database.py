@@ -86,6 +86,9 @@ class Database:
         self._student_refresh_in_progress = False
         
         self.logged_users_cache = set()
+        self._sheet_cache = {}
+        self._sheet_cache_lock = threading.Lock()
+        self.SHEET_CACHE_TTL = 300
         
         self._init_maint_file()
         # Avoid blocking process startup on network I/O.
@@ -133,6 +136,20 @@ class Database:
         return ids
 
     def get_sheet(self, sheet_name="Registrations"):
+        """Return a cached worksheet object; avoids auth/open on every call."""
+        now = time.time()
+        with self._sheet_cache_lock:
+            cached = self._sheet_cache.get(sheet_name)
+            if cached and now - cached[1] < self.SHEET_CACHE_TTL:
+                return cached[0]
+
+        ws = self._load_sheet(sheet_name)
+        if ws is not None:
+            with self._sheet_cache_lock:
+                self._sheet_cache[sheet_name] = (ws, time.time())
+        return ws
+
+    def _load_sheet(self, sheet_name="Registrations"):
         try:
             scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
 
