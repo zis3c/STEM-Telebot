@@ -205,6 +205,17 @@ def get_confirm_menu(lang='EN'):
         one_time_keyboard=True
     )
 
+
+def get_super_inventory_menu(lang='EN'):
+    return ReplyKeyboardMarkup(
+        [
+            [strings.get('BTN_SA_INV_LIST', lang), strings.get('BTN_SA_INV_ADJUST', lang)],
+            [strings.get('BTN_SA_INV_ADD', lang), strings.get('BTN_SA_INV_DASHBOARD', lang)],
+            [strings.get('BTN_BACK', lang)],
+        ],
+        resize_keyboard=True
+    )
+
 def get_program_menu(lang='EN'):
     return ReplyKeyboardMarkup(
         [
