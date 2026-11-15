@@ -47,6 +47,7 @@ class Database:
         self.admin_ids = self._parse_ids("ADMIN_IDS")
         
         self.cached_sheet_admins = [] 
+        self.cached_sheet_logistics = []
         self.maintenance_mode = False
         self.last_config_refresh = 0
         
@@ -172,7 +173,7 @@ class Database:
                 # Auto-heal a missing sheet.
                 ws = sh.add_worksheet(title=sheet_name, rows=100, cols=10)
                 if sheet_name == "system_admins":
-                    ws.append_row(["User ID", "Name", "Added By"])
+                    ws.append_row(["User ID", "Name", "Added By", "Role"])
                 elif sheet_name == "system_config":
                     ws.append_row(["Key", "Value"])
                     ws.append_row(["maintenance_mode", "False"])
@@ -194,8 +195,23 @@ class Database:
         try:
             ws_admins = self.get_sheet("system_admins")
             if ws_admins:
+                self._ensure_sheet_headers(
+                    ws_admins, ["User ID", "Name", "Added By", "Role"]
+                )
                 records = ws_admins.get_all_records()
-                self.cached_sheet_admins = [int(r['User ID']) for r in records if str(r['User ID']).isdigit()]
+                admin_ids = []
+                logistics_ids = []
+                for record in records:
+                    raw_id = str(record.get("User ID", "")).strip()
+                    if not raw_id.isdigit():
+                        continue
+                    role = str(record.get("Role", "")).strip().lower()
+                    if role in ("logistics", "logistic", "operation", "operations", "ops"):
+                        logistics_ids.append(int(raw_id))
+                    else:
+                        admin_ids.append(int(raw_id))
+                self.cached_sheet_admins = admin_ids
+                self.cached_sheet_logistics = logistics_ids
             
             ws_config = self.get_sheet("system_config")
             if ws_config:
@@ -210,6 +226,21 @@ class Database:
         except Exception as e:
             logger.error(f"System Config Load Fail: {e}")
 
+    def _ensure_sheet_headers(self, ws, headers):
+        """Backfills missing header cells, e.g. adds a new 'Role' column."""
+        try:
+            current = ws.row_values(1)
+        except Exception as e:
+            logger.warning("Header read failed: %s", e)
+            return
+        for index, name in enumerate(headers):
+            if index < len(current) and str(current[index]).strip():
+                continue
+            try:
+                ws.update_cell(1, index + 1, name)
+            except Exception as e:
+                logger.warning("Header migrate failed (%s): %s", name, e)
+
     def is_superadmin(self, user_id):
         return user_id in self.superadmin_ids
 
@@ -217,6 +248,13 @@ class Database:
         return (user_id in self.superadmin_ids or 
                 user_id in self.admin_ids or 
                 user_id in self.cached_sheet_admins)
+
+    def is_logistics(self, user_id):
+        return user_id in getattr(self, "cached_sheet_logistics", [])
+
+    def is_inventory_user(self, user_id):
+        """Inventory is for superadmins and the logistics/operations role."""
+        return self.is_superadmin(user_id) or self.is_logistics(user_id)
 
     def get_all_admin_ids(self):
         """Returns a set of ALL admin IDs (Super + Env + Sheet)."""
@@ -233,10 +271,13 @@ class Database:
             logger.error(f"Set Maint Error: {e}")
             return False
 
-    def add_admin(self, user_id, name, added_by):
+    def add_admin(self, user_id, name, added_by, role="Admin"):
         try:
             ws = self.get_sheet("system_admins")
-            ws.append_row([str(user_id), name, added_by])
+            self._ensure_sheet_headers(
+                ws, ["User ID", "Name", "Added By", "Role"]
+            )
+            ws.append_row([str(user_id), name, added_by, role])
             self.refresh_system_config(force=True)
             return True
         except Exception as e:
@@ -246,12 +287,58 @@ class Database:
     def remove_admin(self, user_id):
         try:
             ws = self.get_sheet("system_admins")
-            cell = ws.find(str(user_id))
+            cell = ws.find(str(user_id), in_column=1)
+            if not cell:
+                return False
             ws.delete_rows(cell.row)
             self.refresh_system_config(force=True)
             return True
         except Exception as e:
             logger.error(f"Del Admin Error: {e}")
+            return False
+
+    def list_sheet_accounts(self):
+        """Returns sheet-managed admin/logistics accounts with names and roles."""
+        ws = self.get_sheet("system_admins")
+        if not ws:
+            return []
+        try:
+            self._ensure_sheet_headers(
+                ws, ["User ID", "Name", "Added By", "Role"]
+            )
+            records = ws.get_all_records()
+        except Exception as e:
+            logger.error("List Accounts Error: %s", e)
+            return []
+
+        accounts = []
+        for record in records:
+            raw_id = str(record.get("User ID", "")).strip()
+            if not raw_id.isdigit():
+                continue
+            accounts.append(
+                {
+                    "id": int(raw_id),
+                    "name": str(record.get("Name", "")).strip(),
+                    "role": str(record.get("Role", "")).strip() or "Admin",
+                    "added_by": str(record.get("Added By", "")).strip(),
+                }
+            )
+        return accounts
+
+    def update_admin_name(self, user_id, name):
+        """Stores the resolved @username/display name for a managed account."""
+        ws = self.get_sheet("system_admins")
+        if not ws:
+            return False
+        try:
+            cell = ws.find(str(user_id), in_column=1)
+            if not cell:
+                return False
+            ws.update_cell(cell.row, 2, name)
+            return True
+        except Exception as e:
+            logger.error("Update Admin Name Error: %s", e)
             return False
 
     def refresh_student_cache(self, force=False):

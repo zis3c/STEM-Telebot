@@ -25,6 +25,20 @@ class FakeWS:
     def get_all_values(self):
         return [list(row) for row in self.rows]
 
+    def get_all_records(self):
+        if not self.rows:
+            return []
+        headers = [str(cell).strip() for cell in self.rows[0]]
+        records = []
+        for row in self.rows[1:]:
+            record = {}
+            for index, header in enumerate(headers):
+                if not header:
+                    continue
+                record[header] = row[index] if index < len(row) else ""
+            records.append(record)
+        return records
+
     def find(self, value, in_column=1):
         target = str(value).strip().upper()
         for idx, row in enumerate(self.rows, start=1):
@@ -115,6 +129,72 @@ class InventoryTests(unittest.TestCase):
         result = db.add_inventory_item("Broken", "Misc", -5, "unit", "Store", 0, "Ali")
         self.assertEqual(result["error"], "negative_qty")
         self.assertEqual(db.get_inventory_items(), [])
+
+
+class RoleConfigTests(unittest.TestCase):
+    def _db(self, records):
+        db = FakeDB({"system_admins": FakeWS(records)})
+        db.superadmin_ids = set()
+        db.admin_ids = set()
+        db.cached_sheet_admins = []
+        db.cached_sheet_logistics = []
+        db.maintenance_mode = False
+        db.last_config_refresh = 0
+        return db
+
+    def test_roles_split_admin_and_logistics(self):
+        db = self._db(
+            [
+                ["User ID", "Name", "Added By", "Role"],
+                ["111", "@alice", "SA:9", "Admin"],
+                ["222", "@bob", "SA:9", "Logistics"],
+                ["333", "@carol", "SA:9", ""],
+            ]
+        )
+        db.refresh_system_config(force=True)
+
+        self.assertIn(111, db.cached_sheet_admins)
+        self.assertIn(333, db.cached_sheet_admins)  # blank role = legacy admin
+        self.assertNotIn(222, db.cached_sheet_admins)
+        self.assertIn(222, db.cached_sheet_logistics)
+
+        self.assertTrue(db.is_logistics(222))
+        self.assertFalse(db.is_admin(222))
+        self.assertTrue(db.is_inventory_user(222))
+        self.assertFalse(db.is_inventory_user(111))
+        self.assertTrue(db.is_admin(111))
+
+    def test_list_sheet_accounts_includes_role_and_name(self):
+        db = self._db(
+            [
+                ["User ID", "Name", "Added By", "Role"],
+                ["111", "@alice", "SA:9", "Admin"],
+                ["222", "@bob", "SA:9", "Logistics"],
+            ]
+        )
+        accounts = db.list_sheet_accounts()
+        self.assertEqual(len(accounts), 2)
+        self.assertEqual(accounts[0]["name"], "@alice")
+        self.assertEqual(accounts[1]["role"], "Logistics")
+
+    def test_legacy_three_column_sheet_still_loads_as_admin(self):
+        db = self._db(
+            [
+                ["User ID", "Name", "Added By"],
+                ["444", "Old Admin", "SA:9"],
+            ]
+        )
+        db.refresh_system_config(force=True)
+        self.assertIn(444, db.cached_sheet_admins)
+
+    def test_add_admin_writes_role_and_splits_cache(self):
+        db = self._db([["User ID", "Name", "Added By", "Role"]])
+        self.assertTrue(db.add_admin(555, "@dave", "SA:9", "Logistics"))
+
+        rows = db.sheets["system_admins"].get_all_values()
+        self.assertEqual(rows[-1], ["555", "@dave", "SA:9", "Logistics"])
+        self.assertIn(555, db.cached_sheet_logistics)
+        self.assertNotIn(555, db.cached_sheet_admins)
 
 
 class InventoryTokenTests(unittest.TestCase):

@@ -337,6 +337,7 @@ async def main():
     filter_sa_inv_dashboard = build_filter("BTN_SA_INV_DASHBOARD")
 
     filter_sa_add = build_filter("BTN_SA_ADD_ADMIN")
+    filter_sa_add_logistics = build_filter("BTN_SA_ADD_LOGISTICS")
     filter_sa_list = build_filter("BTN_SA_LIST_ADMIN")
     filter_sa_del = build_filter("BTN_SA_DEL_ADMIN")
     filter_sa_exit = build_filter("BTN_SA_EXIT")
@@ -370,7 +371,10 @@ async def main():
     )
 
     super_conv = ConversationHandler(
-        entry_points=[CommandHandler("superadmin", superadmin.start)],
+        entry_points=[
+            CommandHandler("superadmin", superadmin.start),
+            CommandHandler("inventory", superadmin.inventory_start),
+        ],
         states={
             states.SUPER_MENU: [
                 MessageHandler(filter_sa_maint, superadmin.toggle_maintenance),
@@ -386,25 +390,19 @@ async def main():
                 MessageHandler(filter_sa_inv_add, superadmin.inventory_add_start),
                 MessageHandler(filter_sa_inv_adjust, superadmin.inventory_adjust_start),
                 MessageHandler(filter_sa_inv_dashboard, superadmin.inventory_dashboard),
-                MessageHandler(filter_back, superadmin.inventory_back_to_super),
+                MessageHandler(filter_back, superadmin.inventory_back),
                 MessageHandler(filter_sa_exit, superadmin.exit),
             ],
-            states.SUPER_INVENTORY_ADD: [
-                MessageHandler(filter_cancel, superadmin.inventory_menu),
+            states.SUPER_INVENTORY_INPUT: [
+                MessageHandler(filter_cancel, superadmin.inventory_cancel),
                 MessageHandler(
                     filters.TEXT & ~filters.COMMAND & ~filter_cancel,
-                    superadmin.inventory_add_save,
-                ),
-            ],
-            states.SUPER_INVENTORY_ADJUST: [
-                MessageHandler(filter_cancel, superadmin.inventory_menu),
-                MessageHandler(
-                    filters.TEXT & ~filters.COMMAND & ~filter_cancel,
-                    superadmin.inventory_adjust_save,
+                    superadmin.inventory_input,
                 ),
             ],
             states.SUPER_ADMIN_MANAGE: [
                 MessageHandler(filter_sa_add, superadmin.add_admin_start),
+                MessageHandler(filter_sa_add_logistics, superadmin.add_logistics_start),
                 MessageHandler(filter_sa_list, superadmin.list_admins),
                 MessageHandler(filter_sa_del, superadmin.del_admin_start),
                 MessageHandler(filter_back, superadmin.back_to_super),

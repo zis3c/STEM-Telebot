@@ -150,6 +150,7 @@ STRINGS = {
         'MSG_CONFIG_REFRESHED': "Configuration Refreshed!",
 
         'BTN_SA_ADD_ADMIN': "Add Admin",
+        'BTN_SA_ADD_LOGISTICS': "Add Logistics",
         'BTN_SA_DEL_ADMIN': "Delete Admin",
         'BTN_SA_LIST_ADMIN': "List Admins",
         'BTN_SA_EXIT': "Exit SuperAdmin",
@@ -163,10 +164,12 @@ STRINGS = {
         'PROMPT_SA_DEL': "Please reply with the *Telegram ID* to remove:",
         'MSG_SA_ADDED': "✅ *Admin added successfully!*",
         'MSG_SA_DELETED': "✅ *Admin removed successfully!*",
+        'MSG_SA_LOGISTICS_ADDED': "✅ *Logistics access added successfully!*",
         'ERR_SA_INVALID_ID': "⚠️ *Invalid ID format. Must be numeric.*",
 
         'ERR_SA_ALREADY_ADMIN': "⚠️ *User is already an Admin.*",
         'MSG_SA_PROMOTED': "🎉 *Congratulations! You have been promoted to Admin.*",
+        'MSG_SA_LOGISTICS_PROMOTED': "🎉 *You now have inventory access (logistics role).*",
         
         'BTN_ADMIN_LIST': "List Members",
         'BTN_ADMIN_SEARCH': "Search Member",
@@ -349,6 +352,7 @@ STRINGS = {
         'BTN_SA_LOGS': "Lihat Log",
         'MSG_CONFIG_REFRESHED': "Konfigurasi Dikemaskini!",
         'BTN_SA_ADD_ADMIN': "Tambah Admin",
+        'BTN_SA_ADD_LOGISTICS': "Tambah Logistik",
         'BTN_SA_DEL_ADMIN': "Padam Admin",
         'BTN_SA_LIST_ADMIN': "Senarai Admin",
         'BTN_SA_EXIT': "Keluar SuperAdmin",
@@ -362,10 +366,12 @@ STRINGS = {
         'PROMPT_SA_DEL': "Sila balas dengan *ID Telegram* untuk dipadam:",
         'MSG_SA_ADDED': "✅ Admin berjaya ditambah!",
         'MSG_SA_DELETED': "✅ Admin berjaya dipadam!",
+        'MSG_SA_LOGISTICS_ADDED': "✅ Akses logistik berjaya ditambah!",
         'ERR_SA_INVALID_ID': "⚠️ Format ID tidak sah.",
         
         'ERR_SA_ALREADY_ADMIN': "⚠️ Pengguna ini sudah menjadi Admin.",
         'MSG_SA_PROMOTED': "🎉 Tahniah! Anda telah dilantik sebagai Admin.",
+        'MSG_SA_LOGISTICS_PROMOTED': "🎉 Anda kini mempunyai akses inventori (peranan logistik).",
         
         'BTN_CONFIRM_YES': "Sahkan Hantar",
         'BTN_CONFIRM_NO': "Batal",
