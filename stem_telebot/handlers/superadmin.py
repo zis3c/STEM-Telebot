@@ -427,7 +427,6 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup=_manage_keyboard(lang, section),
         )
 
-        # Notify the account holder.
         try:
             await context.bot.send_message(
                 chat_id=user_id,

@@ -383,7 +383,6 @@ def _row_is_expired(row_values):
 
 
 def get_user_lang(context: ContextTypes.DEFAULT_TYPE):
-    """Retrieve user language, default to EN."""
     return context.user_data.get('lang', strings.DEFAULT_LANG)
 
 async def run_db_call(func, *args, **kwargs):
@@ -585,7 +584,6 @@ async def receive_matric(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.message.reply_text(strings.get('PROMPT_MATRIC', lang), parse_mode="Markdown", reply_markup=keyboards.get_cancel_menu(lang))
         return states.ASK_MATRIC
 
-    # Global Navigation Check
     nav = await check_keywords(update, context)
     if nav is not None:
         return nav
@@ -630,7 +628,6 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         )
         return states.ASK_IC
 
-    # Global Navigation Check
     nav = await check_keywords(update, context)
     if nav is not None:
         return nav
@@ -693,10 +690,9 @@ async def receive_ic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 db_timestamp = row_values[0]
                 membership_start_raw = row_values[13] if len(row_values) > 13 and str(row_values[13]).strip() else db_timestamp
                 db_name = row_values[2] 
-                db_ic = str(row_values[9]).strip().replace(" ", "") # J is 9
-                db_prog = row_values[4] # E is 4
+                db_ic = str(row_values[9]).strip().replace(" ", "")
+                db_prog = row_values[4]
                 db_prog_short = strings.format_program_short(db_prog)
-                # Col Q (index 16) is Receipt, Col R (index 17) is Status
                 db_status_raw = str(row_values[17]).strip() if len(row_values) > 17 else ""
                 db_status_norm = " ".join(db_status_raw.lower().split())
                 membership_id = str(row_values[15]).strip() if len(row_values) > 15 else ""

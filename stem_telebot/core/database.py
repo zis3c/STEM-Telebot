@@ -158,7 +158,6 @@ class Database:
                 return None
             
             if not self.google_json:
-                # Fallback to local file if env var is missing
                 if os.path.exists("service_account.json"):
                     with open("service_account.json") as f:
                         creds_dict = json.load(f)
@@ -169,7 +168,6 @@ class Database:
                 try:
                     creds_dict = json.loads(self.google_json)
                 except json.JSONDecodeError:
-                     # Fallback to local file on decode error
                     if os.path.exists("service_account.json"):
                         with open("service_account.json") as f:
                             creds_dict = json.load(f)
@@ -584,7 +582,6 @@ class Database:
         if not text or text == "-":
             return "Unknown"
 
-        # Prefer explicit 4-digit year.
         m = re.search(r"(19\d{2}|20\d{2})", text)
         if m:
             return m.group(1)
@@ -758,12 +755,12 @@ class Database:
             row[1] = "bot_add"
             row[2] = name
             row[3] = matric
-            row[4] = prog # Courses
-            row[9] = ic   # IC Number
-            row[17] = "Approved" # Status
+            row[4] = prog
+            row[9] = ic
+            row[17] = "Approved"
             
             sheet.append_row(row)
-            # Invalidate cache to force reload next time (simplest way to get correct row index)
+            # Force reload so row indices stay correct.
             self.last_student_refresh = 0
             return True
         return False
@@ -882,7 +879,7 @@ class Database:
             logger.error(f"Failed to write to log: {e}")
 
     def get_unprocessed_registrations(self):
-        """Finds rows where Resit (Col 8) is present but Status (Col 9) is Empty."""
+        """Finds rows with a receipt but no status."""
         sheet = self.get_sheet("Registrations")
         if not sheet:
             return []
@@ -890,20 +887,16 @@ class Database:
             all_values = sheet.get_all_values()
             unprocessed = []
             
-            # Start from row 2 (index 1) to skip header
             for i, row in enumerate(all_values[1:], start=2):
-                # We need Col Q (index 16) for Receipt.
                 if len(row) <= 16:
                     continue
                 
                 receipt = row[16].strip()
-                # Status is Col R (index 17).
                 status = row[17].strip() if len(row) > 17 else ""
                 status_norm = status.lower()
 
                 # Treat fresh queue statuses as pending candidates.
                 if receipt and (not status or status_norm == "pending admin approval" or status_norm == "pending"):
-                    # Valid registration needing approval
                     unprocessed.append({
                         'row': i,
                         'data': row
@@ -913,7 +906,7 @@ class Database:
             logger.error(f"Error fetching members: {e}")
             return []
     def get_members_by_filter(self, status_filter):
-        """Get members filtered by Status (Col I)."""
+        """Gets members filtered by status."""
         sheet = self.get_sheet("Registrations")
         if not sheet:
             return []
@@ -921,7 +914,6 @@ class Database:
         try:
             rows = sheet.get_all_values()
             filtered = []
-            # Skip header (row 1)
             for i, row in enumerate(rows[1:], start=2):
                 # Skip non-member / malformed rows.
                 if len(row) <= 3:
@@ -956,12 +948,11 @@ class Database:
             logger.error(f"Error filtering members: {e}")
             return []
     def update_status(self, row_index, status):
-        """Updates Column I (9) with status."""
+        """Updates the status column."""
         sheet = self.get_sheet("Registrations")
         if not sheet:
             return False
         try:
-            # Column R (index 18) holds the status.
             sheet.update_cell(row_index, 18, status)
             return True
         except Exception as e:
