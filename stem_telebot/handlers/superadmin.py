@@ -1074,6 +1074,6 @@ async def exit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     message = strings.get('INV_EXIT', lang) if is_inventory else "Superadmin closed."
     await update.message.reply_text(
         message,
-        reply_markup=keyboards.get_main_menu(lang, show_inventory=is_inventory),
+        reply_markup=keyboards.get_main_menu(lang),
     )
     return ConversationHandler.END
