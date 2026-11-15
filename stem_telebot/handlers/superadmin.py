@@ -1,5 +1,6 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, ReplyKeyboardMarkup
 from telegram.ext import ConversationHandler, ContextTypes
+from collections import Counter
 from ..core import stats_web
 from ..core.database import ACTIVITY_LOG_PATH, db
 from ..ui import keyboards, states, strings
@@ -33,6 +34,20 @@ def _short(value, limit=18) -> str:
     if len(text) <= limit:
         return text
     return text[: max(1, limit - 1)].rstrip() + "…"
+
+
+def _suggestions(values, limit=8) -> list[str]:
+    """Most common existing values, deduped and safe to show as buttons."""
+    reserved = set(strings.get_all('BTN_CANCEL')) | set(strings.get_all('BTN_BACK'))
+    counts = Counter(
+        str(value).strip()
+        for value in values
+        if str(value).strip() and str(value).strip() not in reserved
+    )
+    return [
+        value for value, _ in counts.most_common()
+        if len(value) <= 24
+    ][:limit]
 
 
 async def _require_superadmin(update: Update) -> bool:
@@ -692,28 +707,38 @@ async def _send_inventory_prompt(update, context, text, markup=None):
 async def _ask_add_step(update, context, flow):
     lang = get_user_lang(context)
     field = INVENTORY_ADD_FIELDS[flow["step"]]
+    question = strings.get(INVENTORY_ADD_QUESTIONS[field], lang)
+    options = flow.get("suggest", {}).get(field) or []
+    markup = None
+    if options:
+        question += "\n" + strings.get('INV_SUGGEST_HINT', lang)
+        markup = keyboards.get_value_suggestions_menu(options, lang)
     text = strings.get('INV_ADD_STEP', lang).format(
         step=flow["step"] + 1,
         total=len(INVENTORY_ADD_FIELDS),
         label=strings.get(INVENTORY_ADD_LABELS[field], lang),
-        question=strings.get(INVENTORY_ADD_QUESTIONS[field], lang),
+        question=question,
     )
-    await _send_inventory_prompt(update, context, text)
+    await _send_inventory_prompt(update, context, text, markup)
 
 
 async def _ask_adjust_step(update, context, flow):
     lang = get_user_lang(context)
     step = INVENTORY_ADJUST_STEPS[flow["step"]]
+    question = strings.get(INVENTORY_ADJUST_QUESTIONS[step], lang)
+    options = flow.get("suggest", {}).get(step) or []
+    if step == "direction":
+        markup = keyboards.get_inventory_direction_menu(lang)
+    elif options:
+        question += "\n" + strings.get('INV_SUGGEST_HINT', lang)
+        markup = keyboards.get_value_suggestions_menu(options, lang)
+    else:
+        markup = None
     text = strings.get('INV_UPDATE_STEP', lang).format(
         step=flow["step"] + 1,
         total=len(INVENTORY_ADJUST_STEPS),
         label=strings.get(INVENTORY_ADJUST_LABELS[step], lang),
-        question=strings.get(INVENTORY_ADJUST_QUESTIONS[step], lang),
-    )
-    markup = (
-        keyboards.get_inventory_direction_menu(lang)
-        if step == "direction"
-        else keyboards.get_cancel_menu(lang)
+        question=question,
     )
     await _send_inventory_prompt(update, context, text, markup)
 
@@ -721,7 +746,21 @@ async def _ask_adjust_step(update, context, flow):
 async def inventory_add_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_inventory(update):
         return ConversationHandler.END
-    flow = {"mode": "add", "step": 0, "data": {}}
+    try:
+        items = await run_db_call(db.get_inventory_items)
+    except Exception as e:
+        logger.error("Inventory suggestion error: %s", e)
+        items = []
+    flow = {
+        "mode": "add",
+        "step": 0,
+        "data": {},
+        "suggest": {
+            "category": _suggestions(item["category"] for item in items),
+            "unit": _suggestions(item["unit"] for item in items),
+            "location": _suggestions(item["location"] for item in items),
+        },
+    }
     context.user_data["inv_flow"] = flow
     await _ask_add_step(update, context, flow)
     return states.SUPER_INVENTORY_INPUT
@@ -761,7 +800,22 @@ async def inventory_adjust_start(update: Update, context: ContextTypes.DEFAULT_T
         )
     lines.extend(["", strings.get('INV_Q_ITEM', lang)])
 
-    context.user_data["inv_flow"] = {"mode": "adjust", "step": 0, "data": {}}
+    try:
+        log_entries = await run_db_call(db.get_inventory_log, 50)
+    except Exception as e:
+        logger.error("Inventory reason suggestion error: %s", e)
+        log_entries = []
+    reasons = _suggestions(
+        entry["reason"] for entry in log_entries
+        if entry["reason"] not in ("Manual update", "Opening stock")
+    )
+
+    context.user_data["inv_flow"] = {
+        "mode": "adjust",
+        "step": 0,
+        "data": {},
+        "suggest": {"reason": reasons},
+    }
     await update.message.reply_text(
         "\n".join(lines),
         parse_mode="Markdown",
