@@ -469,6 +469,13 @@ async def main():
                     superadmin.del_admin_perform,
                 ),
             ],
+            states.SUPER_DEL_CONFIRM: [
+                MessageHandler(filter_cancel, superadmin.back_to_manage),
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND & ~filter_cancel,
+                    superadmin.del_account_confirm,
+                ),
+            ],
         },
         fallbacks=[CommandHandler("cancel", superadmin.exit)],
         allow_reentry=True,

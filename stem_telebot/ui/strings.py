@@ -74,6 +74,8 @@ STRINGS = {
         'BTN_HELP': "Help",
         'BTN_SETTINGS': "Settings",
         'BTN_CANCEL': "Cancel",
+        'BTN_YES': "Yes",
+        'BTN_NO': "No",
         'BTN_TRY_AGAIN': "Try Again",
         'BTN_BACK': "Back",
         
@@ -197,7 +199,7 @@ STRINGS = {
         'INV_DELETE_CONFIRM': "*Delete Item* 2/2\n`{id}` {name}\n\nThis cannot be undone.",
         'INV_DELETE_SUCCESS': "✅ Deleted `{id}` {name}",
         'INV_DELETE_FAILED': "❌ Delete failed. Try again.",
-        'INV_ERR_CONFIRM': "❌ Tap Confirm or Cancel.",
+        'INV_ERR_CONFIRM': "❌ Tap Yes or No.",
         'INV_LABEL_NAME': "Name",
         'INV_LABEL_CATEGORY': "Category",
         'INV_LABEL_QTY': "Qty",
@@ -250,6 +252,11 @@ STRINGS = {
         'MSG_SA_ACCOUNT_CONFIRM_HINT': "Tap Confirm or Cancel.",
         'ERR_SA_ALREADY_ACCOUNT': "⚠️ Already has access.",
         'MSG_SA_ACCOUNT_DELETED': "✅ Access removed.",
+        'ACC_DELETE_CONFIRM': (
+            "*Confirm Delete*\n`{id}` {name}\n\n"
+            "Remove *{role}*? This cannot be undone."
+        ),
+        'ACC_ERR_CONFIRM': "❌ Tap Yes or No.",
         'ERR_SA_ACCOUNT_NOT_FOUND': "❌ Account not found.",
         'ERR_SA_ACCOUNT_DB': "❌ DB error. Try again.",
         'ERR_SA_NOT_ADMIN': "⚠️ That is a logistics account.",
@@ -351,6 +358,8 @@ STRINGS = {
         'BTN_HELP': "Info",
         'BTN_SETTINGS': "Tetapan",
         'BTN_CANCEL': "Batal",
+        'BTN_YES': "Ya",
+        'BTN_NO': "Tidak",
         'BTN_TRY_AGAIN': "Cuba Lagi",
         'BTN_BACK': "Kembali",
         
@@ -483,7 +492,7 @@ STRINGS = {
         'INV_DELETE_CONFIRM': "*Padam Item* 2/2\n`{id}` {name}\n\nTidak boleh dikembalikan.",
         'INV_DELETE_SUCCESS': "✅ Dipadam `{id}` {name}",
         'INV_DELETE_FAILED': "❌ Gagal padam. Cuba lagi.",
-        'INV_ERR_CONFIRM': "❌ Tekan Sahkan atau Batal.",
+        'INV_ERR_CONFIRM': "❌ Tekan Ya atau Tidak.",
         'INV_LABEL_NAME': "Nama",
         'INV_LABEL_CATEGORY': "Kategori",
         'INV_LABEL_QTY': "Kuantiti",
@@ -536,6 +545,11 @@ STRINGS = {
         'MSG_SA_ACCOUNT_CONFIRM_HINT': "Tekan Sahkan atau Batal.",
         'ERR_SA_ALREADY_ACCOUNT': "⚠️ Sudah ada akses.",
         'MSG_SA_ACCOUNT_DELETED': "✅ Akses dibuang.",
+        'ACC_DELETE_CONFIRM': (
+            "*Sahkan Padam*\n`{id}` {name}\n\n"
+            "Buang *{role}*? Tidak boleh dikembalikan."
+        ),
+        'ACC_ERR_CONFIRM': "❌ Tekan Ya atau Tidak.",
         'ERR_SA_ACCOUNT_NOT_FOUND': "❌ Akaun tidak dijumpai.",
         'ERR_SA_ACCOUNT_DB': "❌ Ralat DB. Cuba lagi.",
         'ERR_SA_NOT_ADMIN': "⚠️ Itu akaun logistik.",
