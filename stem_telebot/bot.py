@@ -340,6 +340,7 @@ async def main():
     filter_sa_add_logistics = build_filter("BTN_SA_ADD_LOGISTICS")
     filter_sa_list = build_filter("BTN_SA_LIST_ADMIN")
     filter_sa_del = build_filter("BTN_SA_DEL_ADMIN")
+    filter_sa_confirm = build_filter("BTN_CONFIRM_ACTION")
     filter_sa_exit = build_filter("BTN_SA_EXIT")
 
     user_conv = ConversationHandler(
@@ -413,6 +414,14 @@ async def main():
                 MessageHandler(
                     filters.TEXT & ~filters.COMMAND & ~filter_cancel,
                     superadmin.add_admin_save,
+                ),
+            ],
+            states.SUPER_ACCOUNT_CONFIRM: [
+                MessageHandler(filter_sa_confirm, superadmin.add_account_confirm),
+                MessageHandler(filter_cancel, superadmin.back_to_manage),
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND,
+                    superadmin.account_confirm_retry,
                 ),
             ],
             states.SUPER_DEL_ID: [

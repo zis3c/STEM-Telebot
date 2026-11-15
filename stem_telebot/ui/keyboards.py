@@ -227,6 +227,16 @@ def get_inventory_direction_menu(lang='EN'):
         one_time_keyboard=True,
     )
 
+
+def get_account_confirm_menu(lang='EN'):
+    return ReplyKeyboardMarkup(
+        [
+            [strings.get('BTN_CONFIRM_ACTION', lang), strings.get('BTN_CANCEL', lang)]
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True,
+    )
+
 def get_program_menu(lang='EN'):
     return ReplyKeyboardMarkup(
         [
