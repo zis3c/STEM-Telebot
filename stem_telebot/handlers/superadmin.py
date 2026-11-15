@@ -5,6 +5,7 @@ from ..core import stats_web
 from ..core.database import ACTIVITY_LOG_PATH, db
 from ..ui import keyboards, states, strings
 import os
+import re
 import psutil
 import time
 import logging
@@ -198,6 +199,17 @@ def _manage_state(section):
     return states.SUPER_ADMIN_MANAGE
 
 
+def _role_has(role_value, keyword):
+    tokens = [
+        token.strip().lower()
+        for token in re.split(r"[,;/|]", str(role_value or ""))
+        if token.strip()
+    ]
+    if not tokens:
+        return keyword == "admin"  # legacy blank role means admin
+    return any(keyword in token for token in tokens)
+
+
 async def manage_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_superadmin(update):
         return ConversationHandler.END
@@ -251,13 +263,13 @@ async def _list_accounts(update, context, section):
     if section == "logistics":
         accounts = [
             account for account in accounts
-            if account["role"].strip().lower().startswith("logist")
+            if _role_has(account["role"], "logist")
         ]
         title_key = 'ROLE_LOGISTICS_PLURAL'
     else:
         accounts = [
             account for account in accounts
-            if not account["role"].strip().lower().startswith("logist")
+            if _role_has(account["role"], "admin")
         ]
         title_key = 'ROLE_ADMIN_PLURAL'
 
@@ -352,14 +364,16 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         
     user_id = int(text)
     
-    if await run_db_call(db.has_sheet_account, user_id):
-        await update.message.reply_text(
-            strings.get('ERR_SA_ALREADY_ACCOUNT', lang),
-            parse_mode="Markdown",
-            reply_markup=_manage_keyboard(lang, section)
-        )
-        return _manage_state(section)
-
+    existing = await run_db_call(db.get_sheet_account, user_id)
+    if existing:
+        keyword = "logist" if role == "Logistics" else "admin"
+        if _role_has(existing["role"], keyword):
+            await update.message.reply_text(
+                strings.get('ERR_SA_ALREADY_ACCOUNT', lang),
+                parse_mode="Markdown",
+                reply_markup=_manage_keyboard(lang, section)
+            )
+            return _manage_state(section)
 
     # Resolve a username/display name so the account is recognizable later.
     label = await _resolve_account_label(context.bot, user_id)
@@ -398,18 +412,10 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
     label = pending["label"]
     role = _account_role(context)
 
-    if await run_db_call(db.has_sheet_account, user_id):
-        await update.message.reply_text(
-            strings.get('ERR_SA_ALREADY_ACCOUNT', lang),
-            parse_mode="Markdown",
-            reply_markup=_manage_keyboard(lang, section),
-        )
-        return _manage_state(section)
-
-
-    if await run_db_call(
-        db.add_admin, user_id, label, f"SA:{update.effective_user.id}", role
-    ):
+    result = await run_db_call(
+        db.grant_role, user_id, label, f"SA:{update.effective_user.id}", role
+    )
+    if result.get("ok"):
         added_msg = (
             strings.get('MSG_SA_LOGISTICS_ADDED', lang)
             if role == "Logistics"
@@ -426,7 +432,7 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup=_manage_keyboard(lang, section),
         )
 
-        # Notify the new account holder.
+        # Notify the account holder.
         try:
             await context.bot.send_message(
                 chat_id=user_id,
@@ -443,8 +449,13 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return _manage_state(section)
 
+    message = (
+        strings.get('ERR_SA_ALREADY_ACCOUNT', lang)
+        if result.get("error") == "already_has_role"
+        else strings.get('ERR_SA_ACCOUNT_DB', lang)
+    )
     await update.message.reply_text(
-        strings.get('ERR_SA_ACCOUNT_DB', lang),
+        message,
         parse_mode="Markdown",
         reply_markup=_manage_keyboard(lang, section),
     )
@@ -519,27 +530,27 @@ async def del_admin_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         )
         return _manage_state(section)
 
-    is_logistics = target["role"].strip().lower().startswith("logist")
-    if section == "logistics" and not is_logistics:
+    section_keyword = "logist" if section == "logistics" else "admin"
+    section_role = "Logistics" if section == "logistics" else "Admin"
+    if not _role_has(target["role"], section_keyword):
+        error_key = (
+            'ERR_SA_NOT_LOGISTICS'
+            if section == "logistics"
+            else 'ERR_SA_NOT_ADMIN'
+        )
         await update.message.reply_text(
-            strings.get('ERR_SA_NOT_LOGISTICS', lang),
+            strings.get(error_key, lang),
             parse_mode="Markdown",
             reply_markup=_manage_keyboard(lang, section),
         )
-        return states.SUPER_LOGISTICS_MANAGE
-    if section == "admin" and is_logistics:
-        await update.message.reply_text(
-            strings.get('ERR_SA_NOT_ADMIN', lang),
-            parse_mode="Markdown",
-            reply_markup=_manage_keyboard(lang, section),
-        )
-        return states.SUPER_ADMIN_MANAGE
+        return _manage_state(section)
 
-    if await run_db_call(db.remove_admin, user_id):
+    result = await run_db_call(db.remove_account_role, user_id, section_role)
+    if result.get("ok"):
         db.log_action(
             update.effective_user.first_name,
-            "REMOVE_ADMIN",
-            f"Removed account {user_id}",
+            "REMOVE_ROLE",
+            f"Removed {section_role} from {user_id}",
         )
         await update.message.reply_text(
             strings.get('MSG_SA_ACCOUNT_DELETED', lang),
@@ -547,8 +558,13 @@ async def del_admin_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             reply_markup=_manage_keyboard(lang, section),
         )
     else:
+        message = (
+            strings.get('ERR_SA_ACCOUNT_NOT_FOUND', lang)
+            if result.get("error") == "not_found"
+            else strings.get('ERR_SA_ACCOUNT_DB', lang)
+        )
         await update.message.reply_text(
-            strings.get('ERR_SA_ACCOUNT_DB', lang),
+            message,
             parse_mode="Markdown",
             reply_markup=_manage_keyboard(lang, section),
         )

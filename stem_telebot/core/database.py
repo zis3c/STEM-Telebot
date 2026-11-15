@@ -38,6 +38,34 @@ def _redact_log_text(value):
     text = re.sub(r"\b\d{6,}\b", "***REDACTED***", text)
     return text
 
+
+def _role_tokens(value):
+    """Split a Role cell into tokens: 'Admin,Logistics' -> ['Admin', 'Logistics']."""
+    return [
+        part.strip()
+        for part in re.split(r"[,;/|]", str(value or ""))
+        if part.strip()
+    ]
+
+
+def _canonical_role(token):
+    lowered = token.strip().lower()
+    if "logist" in lowered or lowered in ("operation", "operations", "ops"):
+        return "Logistics"
+    if "admin" in lowered:
+        return "Admin"
+    return token.strip().title()
+
+
+def _canonical_roles(tokens):
+    roles = []
+    for token in tokens:
+        canonical = _canonical_role(token)
+        if canonical and canonical not in roles:
+            roles.append(canonical)
+    return roles
+
+
 class Database:
     def __init__(self):
         self.sheet_id = os.getenv("SHEET_ID")
@@ -205,10 +233,14 @@ class Database:
                     raw_id = str(record.get("User ID", "")).strip()
                     if not raw_id.isdigit():
                         continue
-                    role = str(record.get("Role", "")).strip().lower()
-                    if role in ("logistics", "logistic", "operation", "operations", "ops"):
+                    roles = _canonical_roles(_role_tokens(record.get("Role", "")))
+                    if not roles:
+                        # Legacy blank role means admin.
+                        admin_ids.append(int(raw_id))
+                        continue
+                    if "Logistics" in roles:
                         logistics_ids.append(int(raw_id))
-                    else:
+                    if "Admin" in roles:
                         admin_ids.append(int(raw_id))
                 self.cached_sheet_admins = admin_ids
                 self.cached_sheet_logistics = logistics_ids
@@ -284,6 +316,42 @@ class Database:
             logger.error(f"Add Admin Error: {e}")
             return False
 
+    def grant_role(self, user_id, name, added_by, role):
+        """Adds a role to an existing account, or creates the account."""
+        try:
+            ws = self.get_sheet("system_admins")
+            if not ws:
+                return {"ok": False, "error": "sheet_unavailable"}
+            self._ensure_sheet_headers(
+                ws, ["User ID", "Name", "Added By", "Role"]
+            )
+            canonical = _canonical_role(role)
+            cell = ws.find(str(user_id), in_column=1)
+            if not cell:
+                ws.append_row([str(user_id), name, added_by, canonical])
+                self.refresh_system_config(force=True)
+                return {"ok": True, "created": True, "roles": [canonical]}
+
+            row = ws.row_values(cell.row)
+            roles = _canonical_roles(
+                _role_tokens(row[3] if len(row) > 3 else "")
+            )
+            if not roles:
+                roles = ["Admin"]  # legacy blank role means admin
+            if canonical in roles:
+                return {"ok": False, "error": "already_has_role", "roles": roles}
+
+            roles.append(canonical)
+            ws.update_cell(cell.row, 4, ",".join(roles))
+            current_name = str(row[1]).strip() if len(row) > 1 else ""
+            if name and current_name in ("", "Unknown"):
+                ws.update_cell(cell.row, 2, name)
+            self.refresh_system_config(force=True)
+            return {"ok": True, "created": False, "roles": roles}
+        except Exception as e:
+            logger.error("Grant Role Error: %s", e)
+            return {"ok": False, "error": "db_error"}
+
     def remove_admin(self, user_id):
         try:
             ws = self.get_sheet("system_admins")
@@ -296,6 +364,37 @@ class Database:
         except Exception as e:
             logger.error(f"Del Admin Error: {e}")
             return False
+
+    def remove_account_role(self, user_id, role):
+        """Removes one role; deletes the row when no roles remain."""
+        try:
+            ws = self.get_sheet("system_admins")
+            if not ws:
+                return {"ok": False, "error": "sheet_unavailable"}
+            canonical = _canonical_role(role)
+            cell = ws.find(str(user_id), in_column=1)
+            if not cell:
+                return {"ok": False, "error": "not_found"}
+
+            row = ws.row_values(cell.row)
+            roles = _canonical_roles(
+                _role_tokens(row[3] if len(row) > 3 else "")
+            )
+            if not roles:
+                roles = ["Admin"]  # legacy blank role means admin
+            if canonical not in roles:
+                return {"ok": False, "error": "role_not_present", "roles": roles}
+
+            roles = [value for value in roles if value != canonical]
+            if roles:
+                ws.update_cell(cell.row, 4, ",".join(roles))
+            else:
+                ws.delete_rows(cell.row)
+            self.refresh_system_config(force=True)
+            return {"ok": True, "roles": roles}
+        except Exception as e:
+            logger.error("Remove Role Error: %s", e)
+            return {"ok": False, "error": "db_error"}
 
     def list_sheet_accounts(self):
         """Returns sheet-managed admin/logistics accounts with names and roles."""
@@ -325,6 +424,16 @@ class Database:
                 }
             )
         return accounts
+
+    def get_sheet_account(self, user_id):
+        try:
+            target = int(user_id)
+        except (TypeError, ValueError):
+            return None
+        for account in self.list_sheet_accounts():
+            if account["id"] == target:
+                return account
+        return None
 
     def has_sheet_account(self, user_id):
         """True if the ID already has a row in system_admins (any role)."""
