@@ -173,7 +173,7 @@ STRINGS = {
 
         'ERR_SA_ALREADY_ADMIN': "⚠️ *User is already an Admin.*",
         'MSG_SA_PROMOTED': "🎉 *Congratulations! You have been promoted to Admin.*",
-        'MSG_SA_LOGISTICS_PROMOTED': "🎉 *You now have inventory access (logistics role).*",
+        'MSG_SA_LOGISTICS_PROMOTED': "🎉 *You now have inventory access.*\nSend /logistics to open it.",
 
         # Inventory (superadmin + logistics role)
         'INV_MENU': "*Inventory*\nSelect:",
@@ -445,7 +445,7 @@ STRINGS = {
         
         'ERR_SA_ALREADY_ADMIN': "⚠️ Pengguna ini sudah menjadi Admin.",
         'MSG_SA_PROMOTED': "🎉 Tahniah! Anda telah dilantik sebagai Admin.",
-        'MSG_SA_LOGISTICS_PROMOTED': "🎉 Anda kini mempunyai akses inventori (peranan logistik).",
+        'MSG_SA_LOGISTICS_PROMOTED': "🎉 *Anda kini mempunyai akses inventori.*\nHantar /logistics untuk membukanya.",
 
         # Inventory (superadmin + logistics role)
         'INV_MENU': "*Inventori*\nPilih:",

@@ -177,6 +177,19 @@ class RoleConfigTests(unittest.TestCase):
         self.assertEqual(accounts[0]["name"], "@alice")
         self.assertEqual(accounts[1]["role"], "Logistics")
 
+    def test_has_sheet_account_detects_existing_ids_only(self):
+        db = self._db(
+            [
+                ["User ID", "Name", "Added By", "Role"],
+                ["111", "@alice", "SA:9", "Admin"],
+                ["222", "@bob", "SA:9", "Logistics"],
+            ]
+        )
+        self.assertTrue(db.has_sheet_account(111))
+        self.assertTrue(db.has_sheet_account("222"))
+        self.assertFalse(db.has_sheet_account(999))
+        self.assertFalse(db.has_sheet_account("not-an-id"))
+
     def test_legacy_three_column_sheet_still_loads_as_admin(self):
         db = self._db(
             [
