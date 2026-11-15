@@ -210,10 +210,24 @@ def get_super_inventory_menu(lang='EN'):
     return ReplyKeyboardMarkup(
         [
             [strings.get('BTN_SA_INV_LIST', lang), strings.get('BTN_SA_INV_ADJUST', lang)],
-            [strings.get('BTN_SA_INV_ADD', lang), strings.get('BTN_SA_INV_DASHBOARD', lang)],
+            [strings.get('BTN_SA_INV_ADD', lang), strings.get('BTN_SA_INV_EDIT', lang)],
+            [strings.get('BTN_SA_INV_DASHBOARD', lang)],
             [strings.get('BTN_BACK', lang)],
         ],
         resize_keyboard=True
+    )
+
+
+def get_inventory_edit_fields_menu(lang='EN'):
+    return ReplyKeyboardMarkup(
+        [
+            [strings.get('INV_LABEL_NAME', lang), strings.get('INV_LABEL_CATEGORY', lang)],
+            [strings.get('INV_LABEL_UNIT', lang), strings.get('INV_LABEL_LOCATION', lang)],
+            [strings.get('INV_LABEL_MIN', lang)],
+            [strings.get('BTN_CANCEL', lang)],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True,
     )
 
 

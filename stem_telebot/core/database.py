@@ -1089,6 +1089,53 @@ class Database:
             "new_qty": new_qty,
         }
 
+    def update_inventory_item_field(self, item_id, field, value, by):
+        """Updates a non-quantity field (name/category/unit/location/min)."""
+        ws = self.get_sheet("Inventory")
+        if not ws:
+            return {"ok": False, "error": "sheet_unavailable"}
+
+        columns = {"name": 2, "category": 3, "unit": 5, "location": 6, "min_qty": 7}
+        column = columns.get(field)
+        if not column:
+            return {"ok": False, "error": "invalid_field"}
+
+        item_id = str(item_id or "").strip().upper()
+        try:
+            cell = ws.find(item_id, in_column=1)
+        except Exception as e:
+            logger.error("Inventory lookup error: %s", e)
+            return {"ok": False, "error": "lookup_failed"}
+        if not cell:
+            return {"ok": False, "error": "not_found"}
+
+        try:
+            row = ws.row_values(cell.row)
+        except Exception as e:
+            logger.error("Inventory row read error: %s", e)
+            return {"ok": False, "error": "lookup_failed"}
+
+        name = str(row[1]).strip() if len(row) > 1 else item_id
+        old_value = str(row[column - 1]).strip() if len(row) >= column else ""
+        display_name = value if field == "name" else name
+        now = datetime.now(KL_TZ).strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            ws.update_cell(cell.row, column, value)
+            ws.update_cell(cell.row, 8, now)
+            ws.update_cell(cell.row, 9, str(by))
+        except Exception as e:
+            logger.error("Inventory edit error: %s", e)
+            return {"ok": False, "error": "update_failed"}
+
+        return {
+            "ok": True,
+            "id": item_id,
+            "name": display_name,
+            "field": field,
+            "old": old_value,
+            "new": value,
+        }
+
     def get_inventory_log(self, limit=50):
         """Returns the most recent inventory movements, newest first."""
         ws = self.get_sheet("InventoryLog")
