@@ -360,6 +360,14 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         return _manage_state(section)
 
+    if role == "Logistics" and db.is_admin(user_id):
+        await update.message.reply_text(
+            strings.get('ERR_SA_LOGISTICS_SEPARATE', lang),
+            parse_mode="Markdown",
+            reply_markup=_manage_keyboard(lang, section),
+        )
+        return _manage_state(section)
+
     # Resolve a username/display name so the account is recognizable later.
     label = await _resolve_account_label(context.bot, user_id)
     context.user_data["add_account_pending"] = {
@@ -400,6 +408,14 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
     if await run_db_call(db.has_sheet_account, user_id):
         await update.message.reply_text(
             strings.get('ERR_SA_ALREADY_ACCOUNT', lang),
+            parse_mode="Markdown",
+            reply_markup=_manage_keyboard(lang, section),
+        )
+        return _manage_state(section)
+
+    if role == "Logistics" and db.is_admin(user_id):
+        await update.message.reply_text(
+            strings.get('ERR_SA_LOGISTICS_SEPARATE', lang),
             parse_mode="Markdown",
             reply_markup=_manage_keyboard(lang, section),
         )
@@ -1054,10 +1070,10 @@ async def inventory_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def exit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     uid = update.effective_user.id if update.effective_user else 0
-    is_logistics = db.is_logistics(uid)
-    message = strings.get('INV_EXIT', lang) if is_logistics else "Superadmin closed."
+    is_inventory = db.is_inventory_user(uid)
+    message = strings.get('INV_EXIT', lang) if is_inventory else "Superadmin closed."
     await update.message.reply_text(
         message,
-        reply_markup=keyboards.get_main_menu(lang, show_inventory=is_logistics),
+        reply_markup=keyboards.get_main_menu(lang, show_inventory=is_inventory),
     )
     return ConversationHandler.END

@@ -70,10 +70,10 @@ def _global_rate_guard(user_id: int, scope: str):
 
 
 def _main_menu(update: Update, lang: str):
-    """Main menu that shows the Inventory button only for logistics accounts."""
+    """Main menu that shows the Inventory button only for inventory users."""
     user = update.effective_user
     return keyboards.get_main_menu(
-        lang, show_inventory=bool(user and db.is_logistics(user.id))
+        lang, show_inventory=bool(user and db.is_inventory_user(user.id))
     )
 
 
