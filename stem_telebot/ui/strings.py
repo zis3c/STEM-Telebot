@@ -243,10 +243,6 @@ STRINGS = {
         'MSG_SA_ACCOUNT_PENDING_NONE': "⚠️ Nothing to confirm.",
         'MSG_SA_ACCOUNT_CONFIRM_HINT': "Tap Confirm or Cancel.",
         'ERR_SA_ALREADY_ACCOUNT': "⚠️ Already has access.",
-        'ERR_SA_LOGISTICS_SEPARATE': (
-            "⚠️ *Admin accounts cannot be logistics.*\n"
-            "Use a separate Telegram account."
-        ),
         'MSG_SA_ACCOUNT_DELETED': "✅ Access removed.",
         'ERR_SA_ACCOUNT_NOT_FOUND': "❌ Account not found.",
         'ERR_SA_ACCOUNT_DB': "❌ DB error. Try again.",
@@ -527,10 +523,6 @@ STRINGS = {
         'MSG_SA_ACCOUNT_PENDING_NONE': "⚠️ Tiada untuk disahkan.",
         'MSG_SA_ACCOUNT_CONFIRM_HINT': "Tekan Sahkan atau Batal.",
         'ERR_SA_ALREADY_ACCOUNT': "⚠️ Sudah ada akses.",
-        'ERR_SA_LOGISTICS_SEPARATE': (
-            "⚠️ *Akaun admin tidak boleh jadi logistik.*\n"
-            "Guna akaun Telegram berasingan."
-        ),
         'MSG_SA_ACCOUNT_DELETED': "✅ Akses dibuang.",
         'ERR_SA_ACCOUNT_NOT_FOUND': "❌ Akaun tidak dijumpai.",
         'ERR_SA_ACCOUNT_DB': "❌ Ralat DB. Cuba lagi.",
