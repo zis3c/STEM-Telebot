@@ -173,6 +173,7 @@ async def _resolve_account_label(bot, user_id, fallback="Unknown"):
 async def list_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_superadmin(update):
         return ConversationHandler.END
+    lang = get_user_lang(context)
     try:
         accounts = await run_db_call(db.list_sheet_accounts)
     except Exception as e:
@@ -181,12 +182,12 @@ async def list_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
     if not accounts:
         await update.message.reply_text(
-            "No secondary accounts found.",
-            reply_markup=get_manage_admins_menu(get_user_lang(context)),
+            strings.get('MSG_SA_LIST_EMPTY', lang),
+            reply_markup=get_manage_admins_menu(lang),
         )
         return states.SUPER_ADMIN_MANAGE
 
-    lines = [f"SECONDARY ACCOUNTS ({len(accounts)})", ""]
+    lines = [strings.get('MSG_SA_LIST_TITLE', lang).format(count=len(accounts))]
     for account in accounts:
         label = account["name"] or "Unknown"
         if not label.startswith("@"):
@@ -196,11 +197,23 @@ async def list_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
             if resolved != label:
                 label = resolved
                 await run_db_call(db.update_admin_name, account["id"], resolved)
-        lines.append(f"{account['id']} - {label} - {account['role']}")
+        role_key = (
+            'ROLE_LOGISTICS'
+            if account["role"].strip().lower().startswith("logist")
+            else 'ROLE_ADMIN'
+        )
+        lines.append(
+            strings.get('MSG_SA_LIST_LINE', lang).format(
+                id=account["id"],
+                name=strings.escape_md(label),
+                role=strings.get(role_key, lang),
+            )
+        )
 
     await update.message.reply_text(
         "\n".join(lines),
-        reply_markup=get_manage_admins_menu(get_user_lang(context)),
+        parse_mode="Markdown",
+        reply_markup=get_manage_admins_menu(lang),
     )
     return states.SUPER_ADMIN_MANAGE
 
@@ -208,13 +221,12 @@ async def list_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 async def _prompt_add_account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     role = context.user_data.get("add_account_role", "Admin")
-    action = (
-        "give inventory access (logistics role)"
-        if role == "Logistics"
-        else "add as Admin"
-    )
+    question_key = 'PROMPT_SA_ADD_LOGISTICS' if role == "Logistics" else 'PROMPT_SA_ADD'
     await update.message.reply_text(
-        f"Add account - step 1/2\n\nSend the Telegram ID to {action}.",
+        strings.get('PROMPT_SA_ACCOUNT_STEP', lang).format(
+            question=strings.get(question_key, lang)
+        ),
+        parse_mode="Markdown",
         reply_markup=keyboards.get_cancel_menu(lang)
     )
     return states.SUPER_ADD_ID
@@ -249,7 +261,7 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     if db.is_admin(user_id) or db.is_logistics(user_id):
         await update.message.reply_text(
-            strings.get('ERR_SA_ALREADY_ADMIN', lang),
+            strings.get('ERR_SA_ALREADY_ACCOUNT', lang),
             parse_mode="Markdown",
             reply_markup=get_manage_admins_menu(lang)
         )
@@ -262,12 +274,14 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         "label": label,
         "role": role,
     }
+    role_key = 'ROLE_LOGISTICS' if role == "Logistics" else 'ROLE_ADMIN'
     await update.message.reply_text(
-        "Add account - step 2/2\n\n"
-        f"ID: {user_id}\n"
-        f"Name: {label}\n"
-        f"Role: {role}\n\n"
-        "Save this account?",
+        strings.get('PROMPT_SA_ACCOUNT_CONFIRM', lang).format(
+            id=user_id,
+            name=strings.escape_md(label),
+            role=strings.get(role_key, lang),
+        ),
+        parse_mode="Markdown",
         reply_markup=keyboards.get_account_confirm_menu(lang),
     )
     return states.SUPER_ACCOUNT_CONFIRM
@@ -280,7 +294,8 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
     pending = context.user_data.pop("add_account_pending", None)
     if not pending:
         await update.message.reply_text(
-            "Nothing to confirm.",
+            strings.get('MSG_SA_ACCOUNT_PENDING_NONE', lang),
+            parse_mode="Markdown",
             reply_markup=get_manage_admins_menu(lang),
         )
         return states.SUPER_ADMIN_MANAGE
@@ -292,7 +307,7 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     if db.is_admin(user_id) or db.is_logistics(user_id):
         await update.message.reply_text(
-            strings.get('ERR_SA_ALREADY_ADMIN', lang),
+            strings.get('ERR_SA_ALREADY_ACCOUNT', lang),
             parse_mode="Markdown",
             reply_markup=get_manage_admins_menu(lang),
         )
@@ -333,7 +348,9 @@ async def add_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE
         return states.SUPER_ADMIN_MANAGE
 
     await update.message.reply_text(
-        "❌ DB Error", reply_markup=get_manage_admins_menu(lang)
+        strings.get('ERR_SA_ACCOUNT_DB', lang),
+        parse_mode="Markdown",
+        reply_markup=get_manage_admins_menu(lang),
     )
     return states.SUPER_ADMIN_MANAGE
 
@@ -343,7 +360,8 @@ async def account_confirm_retry(update: Update, context: ContextTypes.DEFAULT_TY
     if not context.user_data.get("add_account_pending"):
         return await manage_admins(update, context)
     await update.message.reply_text(
-        "Tap Confirm to save or Cancel to discard.",
+        strings.get('MSG_SA_ACCOUNT_CONFIRM_HINT', lang),
+        parse_mode="Markdown",
         reply_markup=keyboards.get_account_confirm_menu(lang),
     )
     return states.SUPER_ACCOUNT_CONFIRM
@@ -371,10 +389,18 @@ async def del_admin_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         
     user_id = int(text)
     if await run_db_call(db.remove_admin, user_id):
-        db.log_action(update.effective_user.first_name, "REMOVE_ADMIN", f"Demoted User {user_id}")
-        await update.message.reply_text(strings.get('MSG_SA_DELETED', lang), parse_mode="Markdown", reply_markup=get_manage_admins_menu(lang))
+        db.log_action(update.effective_user.first_name, "REMOVE_ADMIN", f"Removed account {user_id}")
+        await update.message.reply_text(
+            strings.get('MSG_SA_ACCOUNT_DELETED', lang),
+            parse_mode="Markdown",
+            reply_markup=get_manage_admins_menu(lang),
+        )
     else:
-        await update.message.reply_text("❌ Not found or Error", reply_markup=get_manage_admins_menu(lang))
+        await update.message.reply_text(
+            strings.get('ERR_SA_ACCOUNT_NOT_FOUND', lang),
+            parse_mode="Markdown",
+            reply_markup=get_manage_admins_menu(lang),
+        )
         
     return states.SUPER_ADMIN_MANAGE
 
@@ -408,7 +434,7 @@ async def inventory_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return ConversationHandler.END
     lang = get_user_lang(context)
     await update.message.reply_text(
-        "*Inventory*\nChoose an action:",
+        strings.get('INV_MENU', lang),
         parse_mode="Markdown",
         reply_markup=keyboards.get_super_inventory_menu(lang),
     )
@@ -418,7 +444,8 @@ async def inventory_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def inventory_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_inventory(update):
         await update.message.reply_text(
-            "Access denied. Inventory is for superadmins and the logistics role."
+            strings.get('INV_ACCESS_DENIED', get_user_lang(context)),
+            parse_mode="Markdown",
         )
         return ConversationHandler.END
     context.user_data.pop("inv_flow", None)
@@ -436,7 +463,7 @@ async def inventory_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         return states.SUPER_MENU
     await update.message.reply_text(
-        "Back to main menu.",
+        strings.get('INV_EXIT', lang),
         reply_markup=keyboards.get_main_menu(lang)
     )
     return ConversationHandler.END
@@ -451,30 +478,51 @@ async def inventory_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     except Exception as e:
         logger.error("Inventory list error: %s", e)
         await update.message.reply_text(
-            "❌ Inventory unavailable.",
+            strings.get('INV_ERR_GENERIC', lang).format(error="list_failed"),
+            parse_mode="Markdown",
             reply_markup=keyboards.get_super_inventory_menu(lang),
         )
         return states.SUPER_INVENTORY_MENU
 
     if not items:
         await update.message.reply_text(
-            "No inventory items yet. Use *Add Item* to start.",
+            strings.get('INV_EMPTY', lang),
             parse_mode="Markdown",
             reply_markup=keyboards.get_super_inventory_menu(lang),
         )
         return states.SUPER_INVENTORY_MENU
 
     low_count = sum(1 for item in items if _is_low_stock(item))
-    lines = ["STOCK LEVELS", f"{len(items)} item(s) | {low_count} low/out", ""]
+    lines = [
+        strings.get('INV_LIST_TITLE', lang).format(
+            count=len(items), low=low_count
+        )
+    ]
     for item in items[:60]:
-        flag = " [LOW]" if _is_low_stock(item) else ""
+        if item["qty"] <= 0:
+            flag = " ⛔"
+        elif _is_low_stock(item):
+            flag = " ⚠️"
+        else:
+            flag = ""
         unit = f" {item['unit']}" if item["unit"] else ""
-        lines.append(f"{item['id']}  {item['name']} - {item['qty']}{unit}{flag}")
+        lines.append(
+            strings.get('INV_LIST_LINE', lang).format(
+                id=strings.escape_md(item["id"]),
+                name=strings.escape_md(item["name"]),
+                qty=item["qty"],
+                unit=strings.escape_md(unit),
+                flag=flag,
+            )
+        )
     if len(items) > 60:
-        lines.append(f"...and {len(items) - 60} more")
+        lines.append(
+            strings.get('INV_LIST_MORE', lang).format(count=len(items) - 60)
+        )
 
     await update.message.reply_text(
         "\n".join(lines),
+        parse_mode="Markdown",
         reply_markup=keyboards.get_super_inventory_menu(lang),
     )
     return states.SUPER_INVENTORY_MENU
@@ -482,53 +530,75 @@ async def inventory_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 INVENTORY_ADD_FIELDS = ("name", "category", "qty", "unit", "location", "min_qty")
 
-INVENTORY_ADD_PROMPTS = {
-    "name": "What is the item name?",
-    "category": "What category is it? (send - to skip)",
-    "qty": "How many do you have right now? (whole number)",
-    "unit": "What unit? e.g. pcs, ream (send - to skip)",
-    "location": "Where is it stored? (send - to skip)",
-    "min_qty": "Minimum stock level before warning? (send 0 to disable)",
+INVENTORY_ADD_LABELS = {
+    "name": "INV_LABEL_NAME",
+    "category": "INV_LABEL_CATEGORY",
+    "qty": "INV_LABEL_QTY",
+    "unit": "INV_LABEL_UNIT",
+    "location": "INV_LABEL_LOCATION",
+    "min_qty": "INV_LABEL_MIN",
+}
+
+INVENTORY_ADD_QUESTIONS = {
+    "name": "INV_Q_NAME",
+    "category": "INV_Q_CATEGORY",
+    "qty": "INV_Q_QTY",
+    "unit": "INV_Q_UNIT",
+    "location": "INV_Q_LOCATION",
+    "min_qty": "INV_Q_MIN",
 }
 
 INVENTORY_ADJUST_STEPS = ("item_id", "direction", "qty", "reason")
+
+INVENTORY_ADJUST_LABELS = {
+    "item_id": "INV_LABEL_ITEM",
+    "direction": "INV_LABEL_DIRECTION",
+    "qty": "INV_LABEL_QTY",
+    "reason": "INV_LABEL_REASON",
+}
+
+INVENTORY_ADJUST_QUESTIONS = {
+    "item_id": "INV_Q_ITEM",
+    "direction": "INV_Q_DIRECTION",
+    "qty": "INV_Q_ADJUST_QTY",
+    "reason": "INV_Q_REASON",
+}
 
 
 async def _send_inventory_prompt(update, context, text, markup=None):
     await update.message.reply_text(
         text,
+        parse_mode="Markdown",
         reply_markup=markup or keyboards.get_cancel_menu(get_user_lang(context)),
     )
 
 
 async def _ask_add_step(update, context, flow):
+    lang = get_user_lang(context)
     field = INVENTORY_ADD_FIELDS[flow["step"]]
-    total = len(INVENTORY_ADD_FIELDS)
-    text = (
-        f"Add new item - step {flow['step'] + 1}/{total}\n\n"
-        f"{INVENTORY_ADD_PROMPTS[field]}"
+    text = strings.get('INV_ADD_STEP', lang).format(
+        step=flow["step"] + 1,
+        total=len(INVENTORY_ADD_FIELDS),
+        label=strings.get(INVENTORY_ADD_LABELS[field], lang),
+        question=strings.get(INVENTORY_ADD_QUESTIONS[field], lang),
     )
     await _send_inventory_prompt(update, context, text)
 
 
 async def _ask_adjust_step(update, context, flow):
-    step = INVENTORY_ADJUST_STEPS[flow["step"]]
     lang = get_user_lang(context)
-    if step == "item_id":
-        text = (
-            "Update stock - step 1/4\n\n"
-            "Send the Item ID you want to change (e.g. INV-001)."
-        )
-        markup = keyboards.get_cancel_menu(lang)
-    elif step == "direction":
-        text = "Update stock - step 2/4\n\nAre you adding stock or taking it out?"
-        markup = keyboards.get_inventory_direction_menu(lang)
-    elif step == "qty":
-        text = "Update stock - step 3/4\n\nHow many units?"
-        markup = keyboards.get_cancel_menu(lang)
-    else:
-        text = "Update stock - step 4/4\n\nWhat is the reason? (send - for manual update)"
-        markup = keyboards.get_cancel_menu(lang)
+    step = INVENTORY_ADJUST_STEPS[flow["step"]]
+    text = strings.get('INV_UPDATE_STEP', lang).format(
+        step=flow["step"] + 1,
+        total=len(INVENTORY_ADJUST_STEPS),
+        label=strings.get(INVENTORY_ADJUST_LABELS[step], lang),
+        question=strings.get(INVENTORY_ADJUST_QUESTIONS[step], lang),
+    )
+    markup = (
+        keyboards.get_inventory_direction_menu(lang)
+        if step == "direction"
+        else keyboards.get_cancel_menu(lang)
+    )
     await _send_inventory_prompt(update, context, text, markup)
 
 
@@ -553,22 +623,48 @@ async def inventory_adjust_start(update: Update, context: ContextTypes.DEFAULT_T
 
     if not items:
         await update.message.reply_text(
-            "No inventory items yet. Add one first.",
+            strings.get('INV_EMPTY_ADJUST', lang),
+            parse_mode="Markdown",
             reply_markup=keyboards.get_super_inventory_menu(lang),
         )
         return states.SUPER_INVENTORY_MENU
 
-    lines = ["Update stock - step 1/4", "", "Which item?"]
+    lines = [
+        strings.get('INV_UPDATE_HEADER', lang).format(
+            step=1,
+            total=len(INVENTORY_ADJUST_STEPS),
+            label=strings.get(INVENTORY_ADJUST_LABELS["item_id"], lang),
+        ),
+        "",
+    ]
     for item in items[:20]:
+        if item["qty"] <= 0:
+            flag = " ⛔"
+        elif _is_low_stock(item):
+            flag = " ⚠️"
+        else:
+            flag = ""
         unit = f" {item['unit']}" if item["unit"] else ""
-        lines.append(f"{item['id']} - {item['name']} ({item['qty']}{unit})")
+        lines.append(
+            strings.get('INV_LIST_LINE', lang).format(
+                id=strings.escape_md(item["id"]),
+                name=strings.escape_md(item["name"]),
+                qty=item["qty"],
+                unit=strings.escape_md(unit),
+                flag=flag,
+            )
+        )
     if len(items) > 20:
-        lines.append(f"...and {len(items) - 20} more")
-    lines.extend(["", "Send the Item ID (e.g. INV-001)."])
+        lines.append(
+            strings.get('INV_LIST_MORE', lang).format(count=len(items) - 20)
+        )
+    lines.extend(["", strings.get('INV_Q_ITEM', lang)])
 
     context.user_data["inv_flow"] = {"mode": "adjust", "step": 0, "data": {}}
     await update.message.reply_text(
-        "\n".join(lines), reply_markup=keyboards.get_cancel_menu(lang)
+        "\n".join(lines),
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_cancel_menu(lang),
     )
     return states.SUPER_INVENTORY_INPUT
 
@@ -579,8 +675,10 @@ async def inventory_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def _inventory_add_input(update, context, flow):
+    lang = get_user_lang(context)
     field = INVENTORY_ADD_FIELDS[flow["step"]]
     text = (update.message.text or "").strip()
+    question = strings.get(INVENTORY_ADD_QUESTIONS[field], lang)
 
     if field in ("qty", "min_qty"):
         if text in ("", "-"):
@@ -591,14 +689,14 @@ async def _inventory_add_input(update, context, flow):
             await _send_inventory_prompt(
                 update,
                 context,
-                f"❌ Please send a whole number.\n\n{INVENTORY_ADD_PROMPTS[field]}",
+                strings.get('INV_ERR_NUMBER', lang) + "\n\n" + question,
             )
             return states.SUPER_INVENTORY_INPUT
         if value < 0:
             await _send_inventory_prompt(
                 update,
                 context,
-                f"❌ Number cannot be negative.\n\n{INVENTORY_ADD_PROMPTS[field]}",
+                strings.get('INV_ERR_NEGATIVE', lang) + "\n\n" + question,
             )
             return states.SUPER_INVENTORY_INPUT
     else:
@@ -607,7 +705,7 @@ async def _inventory_add_input(update, context, flow):
             await _send_inventory_prompt(
                 update,
                 context,
-                f"❌ Item name cannot be empty.\n\n{INVENTORY_ADD_PROMPTS[field]}",
+                strings.get('INV_ERR_NAME', lang) + "\n\n" + question,
             )
             return states.SUPER_INVENTORY_INPUT
 
@@ -632,8 +730,11 @@ async def _inventory_add_input(update, context, flow):
     )
     if not result.get("ok"):
         await update.message.reply_text(
-            f"❌ Failed to add item: {result.get('error')}",
-            reply_markup=keyboards.get_super_inventory_menu(get_user_lang(context)),
+            strings.get('INV_ADD_FAILED', lang).format(
+                error=strings.escape_md(result.get('error', 'unknown'))
+            ),
+            parse_mode="Markdown",
+            reply_markup=keyboards.get_super_inventory_menu(lang),
         )
         return states.SUPER_INVENTORY_MENU
 
@@ -644,8 +745,14 @@ async def _inventory_add_input(update, context, flow):
     )
     unit = f" {data['unit']}" if data["unit"] else ""
     await update.message.reply_text(
-        f"✅ Added {result['id']} - {data['name']} ({data['qty']}{unit}).",
-        reply_markup=keyboards.get_super_inventory_menu(get_user_lang(context)),
+        strings.get('INV_ADD_SUCCESS', lang).format(
+            id=strings.escape_md(result["id"]),
+            name=strings.escape_md(data["name"]),
+            qty=data["qty"],
+            unit=strings.escape_md(unit),
+        ),
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_super_inventory_menu(lang),
     )
     return states.SUPER_INVENTORY_MENU
 
@@ -657,7 +764,9 @@ async def _inventory_adjust_input(update, context, flow):
 
     if step == "item_id":
         if not text:
-            await _send_inventory_prompt(update, context, "❌ Send the Item ID, e.g. INV-001.")
+            await _send_inventory_prompt(
+                update, context, strings.get('INV_ERR_ITEM', lang)
+            )
             return states.SUPER_INVENTORY_INPUT
         flow["data"]["item_id"] = text.upper()
     elif step == "direction":
@@ -670,7 +779,7 @@ async def _inventory_adjust_input(update, context, flow):
             await _send_inventory_prompt(
                 update,
                 context,
-                "❌ Tap Stock In (+) or Stock Out (-).",
+                strings.get('INV_ERR_DIRECTION', lang),
                 keyboards.get_inventory_direction_menu(lang),
             )
             return states.SUPER_INVENTORY_INPUT
@@ -678,10 +787,22 @@ async def _inventory_adjust_input(update, context, flow):
         try:
             qty = int(text)
         except ValueError:
-            await _send_inventory_prompt(update, context, "❌ Please send a whole number.")
+            await _send_inventory_prompt(
+                update,
+                context,
+                strings.get('INV_ERR_NUMBER', lang)
+                + "\n\n"
+                + strings.get('INV_Q_ADJUST_QTY', lang),
+            )
             return states.SUPER_INVENTORY_INPUT
         if qty <= 0:
-            await _send_inventory_prompt(update, context, "❌ Quantity must be more than zero.")
+            await _send_inventory_prompt(
+                update,
+                context,
+                strings.get('INV_ERR_POSITIVE', lang)
+                + "\n\n"
+                + strings.get('INV_Q_ADJUST_QTY', lang),
+            )
             return states.SUPER_INVENTORY_INPUT
         flow["data"]["qty"] = qty
     else:
@@ -701,13 +822,19 @@ async def _inventory_adjust_input(update, context, flow):
     if not result.get("ok"):
         error = result.get("error")
         if error == "not_found":
-            message = "❌ Item ID not found. Use List Stock to see IDs."
+            message = strings.get('INV_ERR_NOT_FOUND', lang)
         elif error == "insufficient":
-            message = f"❌ Not enough stock. Current: {result.get('current')}."
+            message = strings.get('INV_ERR_INSUFFICIENT', lang).format(
+                current=result.get('current')
+            )
         else:
-            message = f"❌ Failed: {error}"
+            message = strings.get('INV_ERR_GENERIC', lang).format(
+                error=strings.escape_md(error or 'unknown')
+            )
         await update.message.reply_text(
-            message, reply_markup=keyboards.get_super_inventory_menu(lang)
+            message,
+            parse_mode="Markdown",
+            reply_markup=keyboards.get_super_inventory_menu(lang),
         )
         return states.SUPER_INVENTORY_MENU
 
@@ -716,10 +843,16 @@ async def _inventory_adjust_input(update, context, flow):
         "INVENTORY_ADJUST",
         f"{result['id']} {delta:+d} -> {result['new_qty']} ({data['reason']})",
     )
-    direction = "in" if delta > 0 else "out"
     await update.message.reply_text(
-        f"✅ {result['id']} {result['name']}: "
-        f"{result['current']} -> {result['new_qty']} ({direction} {data['qty']}, {data['reason']})",
+        strings.get('INV_UPDATE_SUCCESS', lang).format(
+            id=strings.escape_md(result["id"]),
+            name=strings.escape_md(result["name"]),
+            current=result["current"],
+            new_qty=result["new_qty"],
+            delta=f"{delta:+d}",
+            reason=strings.escape_md(data["reason"]),
+        ),
+        parse_mode="Markdown",
         reply_markup=keyboards.get_super_inventory_menu(lang),
     )
     return states.SUPER_INVENTORY_MENU
@@ -743,15 +876,15 @@ async def inventory_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE
     base_url = _public_base_url()
     if not base_url:
         await update.message.reply_text(
-            "❌ Set PUBLIC_BASE_URL or WEBHOOK_URL to share the dashboard.",
+            strings.get('INV_DASHBOARD_UNAVAILABLE', lang),
+            parse_mode="Markdown",
             reply_markup=keyboards.get_super_inventory_menu(lang),
         )
         return states.SUPER_INVENTORY_MENU
 
     url = f"{base_url}/inventory/{stats_web.create_inventory_token(ttl_seconds=7 * 24 * 3600)}"
     await update.message.reply_text(
-        "*Inventory Dashboard*\n"
-        "_Read-only link. Share it with the team; it expires in 7 days._",
+        strings.get('INV_DASHBOARD_TITLE', lang),
         parse_mode="Markdown",
         disable_web_page_preview=True,
         reply_markup=InlineKeyboardMarkup(

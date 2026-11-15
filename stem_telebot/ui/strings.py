@@ -170,6 +170,86 @@ STRINGS = {
         'ERR_SA_ALREADY_ADMIN': "⚠️ *User is already an Admin.*",
         'MSG_SA_PROMOTED': "🎉 *Congratulations! You have been promoted to Admin.*",
         'MSG_SA_LOGISTICS_PROMOTED': "🎉 *You now have inventory access (logistics role).*",
+
+        # Inventory (superadmin + logistics role)
+        'INV_MENU': "*Inventory*\nSelect an action:",
+        'INV_LIST_TITLE': "*Stock Levels ({count} items)*\n{low} low/out",
+        'INV_LIST_LINE': "`{id}` — {name} (*{qty}{unit}*){flag}",
+        'INV_LIST_MORE': "_...and {count} more._",
+        'INV_EMPTY': "⚠️ *No Items Yet*\nUse *Add Item* to start.",
+        'INV_EMPTY_ADJUST': "⚠️ *No Items Yet*\nAdd an item first.",
+        'INV_ADD_STEP': "*Add Item*\nStep {step}/{total} — {label}\n\n{question}",
+        'INV_UPDATE_HEADER': "*Update Stock*\nStep {step}/{total} — {label}",
+        'INV_UPDATE_STEP': "*Update Stock*\nStep {step}/{total} — {label}\n\n{question}",
+        'INV_LABEL_NAME': "Name",
+        'INV_LABEL_CATEGORY': "Category",
+        'INV_LABEL_QTY': "Quantity",
+        'INV_LABEL_UNIT': "Unit",
+        'INV_LABEL_LOCATION': "Location",
+        'INV_LABEL_MIN': "Minimum Level",
+        'INV_LABEL_ITEM': "Item",
+        'INV_LABEL_DIRECTION': "Direction",
+        'INV_LABEL_REASON': "Reason",
+        'INV_Q_NAME': "Please type the *item name*:",
+        'INV_Q_CATEGORY': "Please type the *category*:\n(Send `-` to skip)",
+        'INV_Q_QTY': "How many do you have now?\n(Example: `10`)",
+        'INV_Q_UNIT': "Please type the *unit*:\n(Example: `ream` · Send `-` to skip)",
+        'INV_Q_LOCATION': "Where is it stored?\n(Example: `Store Room` · Send `-` to skip)",
+        'INV_Q_MIN': "Minimum stock before a warning?\n(Example: `5` · Send `0` to disable)",
+        'INV_Q_ITEM': "Which item? Send the ID:\n(Example: `INV-001`)",
+        'INV_Q_DIRECTION': "Are you adding or removing stock?",
+        'INV_Q_ADJUST_QTY': "How many units?\n(Example: `5`)",
+        'INV_Q_REASON': "What is the reason?\n(Example: `Used for event` · Send `-` for manual update)",
+        'INV_ADD_SUCCESS': "✅ *Item Added*\n`{id}` — {name} (*{qty}{unit}*)",
+        'INV_ADD_FAILED': "❌ *Could Not Add Item*\nError: `{error}`",
+        'INV_UPDATE_SUCCESS': "✅ *Stock Updated*\n`{id}` — {name}\n{current} → {new_qty} ({delta}, {reason})",
+        'INV_ERR_NUMBER': "❌ *Invalid Number*\nPlease send a whole number.",
+        'INV_ERR_NEGATIVE': "❌ *Invalid Number*\nThe number cannot be negative.",
+        'INV_ERR_NAME': "❌ *Invalid Name*\nThe item name cannot be empty.",
+        'INV_ERR_ITEM': "❌ *Item Required*\nPlease send the item ID, e.g. `INV-001`.",
+        'INV_ERR_DIRECTION': "❌ *Invalid Choice*\nTap *Stock In (+)* or *Stock Out (-)*.",
+        'INV_ERR_POSITIVE': "❌ *Invalid Quantity*\nThe quantity must be more than zero.",
+        'INV_ERR_NOT_FOUND': "❌ *Item Not Found*\nUse *List Stock* to see the item IDs.",
+        'INV_ERR_INSUFFICIENT': "❌ *Not Enough Stock*\nCurrent balance: *{current}*.",
+        'INV_ERR_GENERIC': "❌ *Update Failed*\nError: `{error}`",
+        'INV_ACCESS_DENIED': "*Access Denied*\nYou do not have inventory access.",
+        'INV_EXIT': "Inventory closed.",
+        'INV_DASHBOARD_TITLE': (
+            "*Inventory Dashboard*\n"
+            "_Read-only link. Share it with the team; it expires in 7 days._"
+        ),
+        'INV_DASHBOARD_UNAVAILABLE': (
+            "❌ *Dashboard Unavailable*\n"
+            "Set `PUBLIC_BASE_URL` or `WEBHOOK_URL` first."
+        ),
+
+        # Account management (admin + logistics)
+        'PROMPT_SA_ACCOUNT_STEP': "*Add Account*\nStep 1/2\n\n{question}",
+        'PROMPT_SA_ADD_LOGISTICS': (
+            "Please reply with the *Telegram ID* to give inventory access "
+            "(logistics role):"
+        ),
+        'PROMPT_SA_ACCOUNT_CONFIRM': (
+            "*Confirm Account*\nStep 2/2\n\n"
+            "ID: `{id}`\nName: *{name}*\nRole: *{role}*\n\nAdd this account?"
+        ),
+        'ROLE_ADMIN': "Admin",
+        'ROLE_LOGISTICS': "Logistics",
+        'MSG_SA_LIST_TITLE': "*Secondary Accounts ({count})*",
+        'MSG_SA_LIST_EMPTY': "No secondary accounts found.",
+        'MSG_SA_LIST_LINE': "`{id}` — {name} — *{role}*",
+        'MSG_SA_ACCOUNT_PENDING_NONE': (
+            "⚠️ *Nothing to Confirm*\nNo pending account. Start again."
+        ),
+        'MSG_SA_ACCOUNT_CONFIRM_HINT': (
+            "*Confirm Account*\nTap *Confirm* to save or *Cancel* to discard."
+        ),
+        'ERR_SA_ALREADY_ACCOUNT': (
+            "⚠️ *Already Added*\nThis user already has an admin or logistics role."
+        ),
+        'MSG_SA_ACCOUNT_DELETED': "✅ *Access Removed*\nThe account has been removed.",
+        'ERR_SA_ACCOUNT_NOT_FOUND': "❌ *Not Found*\nThat account does not exist.",
+        'ERR_SA_ACCOUNT_DB': "❌ *Database Error*\nPlease try again.",
         
         'BTN_ADMIN_LIST': "List Members",
         'BTN_ADMIN_SEARCH': "Search Member",
@@ -372,6 +452,86 @@ STRINGS = {
         'ERR_SA_ALREADY_ADMIN': "⚠️ Pengguna ini sudah menjadi Admin.",
         'MSG_SA_PROMOTED': "🎉 Tahniah! Anda telah dilantik sebagai Admin.",
         'MSG_SA_LOGISTICS_PROMOTED': "🎉 Anda kini mempunyai akses inventori (peranan logistik).",
+
+        # Inventory (superadmin + logistics role)
+        'INV_MENU': "*Inventori*\nPilih tindakan:",
+        'INV_LIST_TITLE': "*Tahap Stok ({count} item)*\n{low} rendah/habis",
+        'INV_LIST_LINE': "`{id}` — {name} (*{qty}{unit}*){flag}",
+        'INV_LIST_MORE': "_...dan {count} lagi._",
+        'INV_EMPTY': "⚠️ *Tiada Item Lagi*\nGunakan *Tambah Item* untuk mula.",
+        'INV_EMPTY_ADJUST': "⚠️ *Tiada Item Lagi*\nTambah item dahulu.",
+        'INV_ADD_STEP': "*Tambah Item*\nLangkah {step}/{total} — {label}\n\n{question}",
+        'INV_UPDATE_HEADER': "*Kemas Kini Stok*\nLangkah {step}/{total} — {label}",
+        'INV_UPDATE_STEP': "*Kemas Kini Stok*\nLangkah {step}/{total} — {label}\n\n{question}",
+        'INV_LABEL_NAME': "Nama",
+        'INV_LABEL_CATEGORY': "Kategori",
+        'INV_LABEL_QTY': "Kuantiti",
+        'INV_LABEL_UNIT': "Unit",
+        'INV_LABEL_LOCATION': "Lokasi",
+        'INV_LABEL_MIN': "Tahap Minimum",
+        'INV_LABEL_ITEM': "Item",
+        'INV_LABEL_DIRECTION': "Arah",
+        'INV_LABEL_REASON': "Sebab",
+        'INV_Q_NAME': "Sila taip *nama item*:",
+        'INV_Q_CATEGORY': "Sila taip *kategori*:\n(Hantar `-` untuk langkau)",
+        'INV_Q_QTY': "Berapa banyak yang ada sekarang?\n(Contoh: `10`)",
+        'INV_Q_UNIT': "Sila taip *unit*:\n(Contoh: `ream` · Hantar `-` untuk langkau)",
+        'INV_Q_LOCATION': "Di mana ia disimpan?\n(Contoh: `Bilik Stok` · Hantar `-` untuk langkau)",
+        'INV_Q_MIN': "Stok minimum sebelum amaran?\n(Contoh: `5` · Hantar `0` untuk matikan)",
+        'INV_Q_ITEM': "Item mana? Hantar ID:\n(Contoh: `INV-001`)",
+        'INV_Q_DIRECTION': "Adakah anda menambah atau mengeluarkan stok?",
+        'INV_Q_ADJUST_QTY': "Berapa unit?\n(Contoh: `5`)",
+        'INV_Q_REASON': "Apakah sebabnya?\n(Contoh: `Digunakan untuk program` · Hantar `-` untuk kemas kini manual)",
+        'INV_ADD_SUCCESS': "✅ *Item Ditambah*\n`{id}` — {name} (*{qty}{unit}*)",
+        'INV_ADD_FAILED': "❌ *Gagal Menambah Item*\nRalat: `{error}`",
+        'INV_UPDATE_SUCCESS': "✅ *Stok Dikemas Kini*\n`{id}` — {name}\n{current} → {new_qty} ({delta}, {reason})",
+        'INV_ERR_NUMBER': "❌ *Nombor Tidak Sah*\nSila hantar nombor bulat.",
+        'INV_ERR_NEGATIVE': "❌ *Nombor Tidak Sah*\nNombor tidak boleh negatif.",
+        'INV_ERR_NAME': "❌ *Nama Tidak Sah*\nNama item tidak boleh kosong.",
+        'INV_ERR_ITEM': "❌ *Item Diperlukan*\nSila hantar ID item, cth. `INV-001`.",
+        'INV_ERR_DIRECTION': "❌ *Pilihan Tidak Sah*\nTekan *Stok Masuk (+)* atau *Stok Keluar (-)*.",
+        'INV_ERR_POSITIVE': "❌ *Kuantiti Tidak Sah*\nKuantiti mesti lebih daripada sifar.",
+        'INV_ERR_NOT_FOUND': "❌ *Item Tidak Dijumpai*\nGunakan *Senarai Stok* untuk melihat ID item.",
+        'INV_ERR_INSUFFICIENT': "❌ *Stok Tidak Cukup*\nBaki semasa: *{current}*.",
+        'INV_ERR_GENERIC': "❌ *Kemas Kini Gagal*\nRalat: `{error}`",
+        'INV_ACCESS_DENIED': "*Akses Ditolak*\nAnda tiada akses inventori.",
+        'INV_EXIT': "Inventori ditutup.",
+        'INV_DASHBOARD_TITLE': (
+            "*Dashboard Inventori*\n"
+            "_Pautan baca sahaja. Kongsi dengan pasukan; tamat dalam 7 hari._"
+        ),
+        'INV_DASHBOARD_UNAVAILABLE': (
+            "❌ *Dashboard Tidak Tersedia*\n"
+            "Tetapkan `PUBLIC_BASE_URL` atau `WEBHOOK_URL` dahulu."
+        ),
+
+        # Account management (admin + logistics)
+        'PROMPT_SA_ACCOUNT_STEP': "*Tambah Akaun*\nLangkah 1/2\n\n{question}",
+        'PROMPT_SA_ADD_LOGISTICS': (
+            "Sila balas dengan *ID Telegram* untuk memberi akses inventori "
+            "(peranan logistik):"
+        ),
+        'PROMPT_SA_ACCOUNT_CONFIRM': (
+            "*Sahkan Akaun*\nLangkah 2/2\n\n"
+            "ID: `{id}`\nNama: *{name}*\nPeranan: *{role}*\n\nTambah akaun ini?"
+        ),
+        'ROLE_ADMIN': "Admin",
+        'ROLE_LOGISTICS': "Logistik",
+        'MSG_SA_LIST_TITLE': "*Akaun Sekunder ({count})*",
+        'MSG_SA_LIST_EMPTY': "Tiada akaun sekunder dijumpai.",
+        'MSG_SA_LIST_LINE': "`{id}` — {name} — *{role}*",
+        'MSG_SA_ACCOUNT_PENDING_NONE': (
+            "⚠️ *Tiada Untuk Disahkan*\nTiada akaun tertunda. Mula semula."
+        ),
+        'MSG_SA_ACCOUNT_CONFIRM_HINT': (
+            "*Sahkan Akaun*\nTekan *Sahkan* untuk simpan atau *Batal* untuk buang."
+        ),
+        'ERR_SA_ALREADY_ACCOUNT': (
+            "⚠️ *Sudah Ditambah*\nPengguna ini sudah mempunyai peranan admin atau logistik."
+        ),
+        'MSG_SA_ACCOUNT_DELETED': "✅ *Akses Dibuang*\nAkaun telah dibuang.",
+        'ERR_SA_ACCOUNT_NOT_FOUND': "❌ *Tidak Dijumpai*\nAkaun itu tidak wujud.",
+        'ERR_SA_ACCOUNT_DB': "❌ *Ralat Pangkalan Data*\nSila cuba lagi.",
         
         'BTN_CONFIRM_YES': "Sahkan Hantar",
         'BTN_CONFIRM_NO': "Batal",
@@ -415,6 +575,20 @@ def format_program_short(program: str) -> str:
         return "Dip.MD"
 
     return text
+
+def escape_md(text):
+    """Escape user-provided values before inserting them into Markdown text."""
+    return (
+        str(text or "")
+        .replace("\\", "\\\\")
+        .replace("_", "\\_")
+        .replace("*", "\\*")
+        .replace("`", "\\`")
+        .replace("[", "\\[")
+        .replace("]", "\\]")
+        .replace("(", "\\(")
+    )
+
 
 def get(key, lang='EN'):
     """Get string by key and language, fall back to Default if missing"""
