@@ -153,6 +153,11 @@ STRINGS = {
         'BTN_SA_DEL_ADMIN': "Delete Admin",
         'BTN_SA_LIST_ADMIN': "List Admins",
         'BTN_SA_EXIT': "Exit SuperAdmin",
+        'BTN_SA_INVENTORY': "Inventory",
+        'BTN_SA_INV_LIST': "List Stock",
+        'BTN_SA_INV_ADD': "Add Item",
+        'BTN_SA_INV_ADJUST': "Update Stock",
+        'BTN_SA_INV_DASHBOARD': "Share Dashboard",
         
         'PROMPT_SA_ADD': "Please reply with the *Telegram ID* (User ID) to add as Admin:",
         'PROMPT_SA_DEL': "Please reply with the *Telegram ID* to remove:",
@@ -347,6 +352,11 @@ STRINGS = {
         'BTN_SA_DEL_ADMIN': "Padam Admin",
         'BTN_SA_LIST_ADMIN': "Senarai Admin",
         'BTN_SA_EXIT': "Keluar SuperAdmin",
+        'BTN_SA_INVENTORY': "Inventori",
+        'BTN_SA_INV_LIST': "Senarai Stok",
+        'BTN_SA_INV_ADD': "Tambah Item",
+        'BTN_SA_INV_ADJUST': "Kemas Kini Stok",
+        'BTN_SA_INV_DASHBOARD': "Kongsi Dashboard",
         
         'PROMPT_SA_ADD': "Sila balas dengan *ID Telegram* untuk ditambah:",
         'PROMPT_SA_DEL': "Sila balas dengan *ID Telegram* untuk dipadam:",

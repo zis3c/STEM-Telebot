@@ -17,6 +17,14 @@ ACTIVITY_LOG_PATH = os.path.join(PROJECT_ROOT, "activity.log")
 LAST_MAINT_PATH = os.path.join(PROJECT_ROOT, "last_maint.txt")
 KL_TZ = ZoneInfo("Asia/Kuala_Lumpur")
 
+INVENTORY_HEADERS = [
+    "Item ID", "Name", "Category", "Qty", "Unit", "Location", "Min Qty",
+    "Updated At", "Updated By",
+]
+INVENTORY_LOG_HEADERS = [
+    "Timestamp", "Item ID", "Item", "Delta", "Reason", "Balance After", "By",
+]
+
 
 def _redact_log_text(value):
     if value is None:
@@ -168,6 +176,10 @@ class Database:
                 elif sheet_name == "system_config":
                     ws.append_row(["Key", "Value"])
                     ws.append_row(["maintenance_mode", "False"])
+                elif sheet_name == "Inventory":
+                    ws.append_row(INVENTORY_HEADERS)
+                elif sheet_name == "InventoryLog":
+                    ws.append_row(INVENTORY_LOG_HEADERS)
                 return ws
                 
         except Exception as e:
@@ -844,6 +856,171 @@ class Database:
         except Exception as e:
             logger.error(f"Delete Registration Safe Error: {e}")
             return False
+
+    def get_inventory_items(self):
+        """Returns all inventory rows as normalized dicts."""
+        ws = self.get_sheet("Inventory")
+        if not ws:
+            return []
+        try:
+            rows = ws.get_all_values()
+        except Exception as e:
+            logger.error("Inventory read error: %s", e)
+            return []
+
+        items = []
+        for i, row in enumerate(rows[1:], start=2):
+            item_id = str(row[0]).strip() if len(row) > 0 else ""
+            if not item_id:
+                continue
+            items.append(
+                {
+                    "row": i,
+                    "id": item_id,
+                    "name": str(row[1]).strip() if len(row) > 1 else "",
+                    "category": str(row[2]).strip() if len(row) > 2 else "",
+                    "qty": self._to_int(row[3] if len(row) > 3 else 0),
+                    "unit": str(row[4]).strip() if len(row) > 4 else "",
+                    "location": str(row[5]).strip() if len(row) > 5 else "",
+                    "min_qty": self._to_int(row[6] if len(row) > 6 else 0),
+                    "updated_at": str(row[7]).strip() if len(row) > 7 else "",
+                    "updated_by": str(row[8]).strip() if len(row) > 8 else "",
+                }
+            )
+        return items
+
+    def _to_int(self, raw_value):
+        try:
+            return int(float(str(raw_value).strip() or 0))
+        except (TypeError, ValueError):
+            return 0
+
+    def _append_inventory_log(self, item_id, name, delta, reason, balance, by, timestamp):
+        log_ws = self.get_sheet("InventoryLog")
+        if not log_ws:
+            return
+        try:
+            log_ws.append_row(
+                [timestamp, item_id, name, int(delta), reason, int(balance), by]
+            )
+        except Exception as e:
+            logger.error("Inventory log append error: %s", e)
+
+    def add_inventory_item(self, name, category, qty, unit, location, min_qty, by):
+        """Creates an item with the next INV-### id and logs its opening stock."""
+        ws = self.get_sheet("Inventory")
+        if not ws:
+            return {"ok": False, "error": "sheet_unavailable"}
+
+        name = str(name or "").strip()
+        if not name:
+            return {"ok": False, "error": "invalid_name"}
+
+        qty = self._to_int(qty)
+        min_qty = self._to_int(min_qty)
+        if qty < 0 or min_qty < 0:
+            return {"ok": False, "error": "negative_qty"}
+
+        max_num = 0
+        for item in self.get_inventory_items():
+            match = re.match(r"^INV-(\d+)$", item["id"], re.IGNORECASE)
+            if match:
+                max_num = max(max_num, int(match.group(1)))
+        item_id = f"INV-{max_num + 1:03d}"
+
+        now = datetime.now(KL_TZ).strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            ws.append_row(
+                [item_id, name, str(category or "").strip(), qty, str(unit or "").strip(),
+                 str(location or "").strip(), min_qty, now, str(by)]
+            )
+        except Exception as e:
+            logger.error("Inventory add error: %s", e)
+            return {"ok": False, "error": "append_failed"}
+
+        self._append_inventory_log(item_id, name, qty, "Opening stock", qty, by, now)
+        return {"ok": True, "id": item_id, "name": name, "qty": qty}
+
+    def adjust_inventory(self, item_id, delta, reason, by):
+        """Applies a signed stock delta to one item and records the movement."""
+        # shortcut: read-then-write is not atomic; two superadmins adjusting the
+        # same item at once can lose one update. Upgrade to a Sheets batch/queue
+        # if simultaneous edits become common.
+        ws = self.get_sheet("Inventory")
+        if not ws:
+            return {"ok": False, "error": "sheet_unavailable"}
+
+        item_id = str(item_id or "").strip().upper()
+        delta = self._to_int(delta)
+        if delta == 0:
+            return {"ok": False, "error": "zero_delta"}
+
+        try:
+            cell = ws.find(item_id, in_column=1)
+        except Exception as e:
+            logger.error("Inventory lookup error: %s", e)
+            return {"ok": False, "error": "lookup_failed"}
+        if not cell:
+            return {"ok": False, "error": "not_found"}
+
+        try:
+            row = ws.row_values(cell.row)
+        except Exception as e:
+            logger.error("Inventory row read error: %s", e)
+            return {"ok": False, "error": "lookup_failed"}
+
+        name = str(row[1]).strip() if len(row) > 1 else item_id
+        current = self._to_int(row[3] if len(row) > 3 else 0)
+        new_qty = current + delta
+        if new_qty < 0:
+            return {"ok": False, "error": "insufficient", "current": current}
+
+        now = datetime.now(KL_TZ).strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            ws.update_cell(cell.row, 4, new_qty)
+            ws.update_cell(cell.row, 8, now)
+            ws.update_cell(cell.row, 9, str(by))
+        except Exception as e:
+            logger.error("Inventory update error: %s", e)
+            return {"ok": False, "error": "update_failed"}
+
+        self._append_inventory_log(item_id, name, delta, reason or "Manual update", new_qty, by, now)
+        return {
+            "ok": True,
+            "id": item_id,
+            "name": name,
+            "delta": delta,
+            "current": current,
+            "new_qty": new_qty,
+        }
+
+    def get_inventory_log(self, limit=50):
+        """Returns the most recent inventory movements, newest first."""
+        ws = self.get_sheet("InventoryLog")
+        if not ws:
+            return []
+        try:
+            rows = ws.get_all_values()
+        except Exception as e:
+            logger.error("Inventory log read error: %s", e)
+            return []
+
+        entries = []
+        for row in rows[1:]:
+            if len(row) < 5:
+                continue
+            entries.append(
+                {
+                    "timestamp": str(row[0]).strip(),
+                    "item_id": str(row[1]).strip(),
+                    "item": str(row[2]).strip(),
+                    "delta": self._to_int(row[3]),
+                    "reason": str(row[4]).strip(),
+                    "balance": self._to_int(row[5] if len(row) > 5 else 0),
+                    "by": str(row[6]).strip() if len(row) > 6 else "",
+                }
+            )
+        return entries[-int(limit):][::-1]
 
 
 db = Database()

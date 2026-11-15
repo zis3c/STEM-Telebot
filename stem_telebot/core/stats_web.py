@@ -181,3 +181,20 @@ def read_member_profile_report(token: str) -> Tuple[Optional[dict], Optional[str
         if int(entry.get("exp", 0)) != exp:
             return None, "mismatch"
         return entry.get("payload"), None
+
+
+def create_inventory_token(ttl_seconds: int = 0) -> str:
+    """Signed, stateless dashboard token. ttl_seconds=0 means no expiry."""
+    exp = 0 if not ttl_seconds else int(time.time()) + max(60, int(ttl_seconds))
+    return f"{exp}.{_sign(f'inventory.{exp}')}"
+
+
+def verify_inventory_token(token: str) -> bool:
+    try:
+        exp_raw, sig = str(token).split(".", 1)
+        exp = int(exp_raw)
+    except Exception:
+        return False
+    if not hmac.compare_digest(sig, _sign(f"inventory.{exp}")):
+        return False
+    return exp == 0 or exp >= int(time.time())

@@ -35,7 +35,11 @@ from .core.security_utils import (
 )
 from .handlers import admin, superadmin
 from .handlers import user as handlers
-from .templates import demographic_stats_template, membership_card_template
+from .templates import (
+    demographic_stats_template,
+    inventory_dashboard_template,
+    membership_card_template,
+)
 from .ui import states, strings
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -325,6 +329,12 @@ async def main():
     filter_sa_health = build_filter("BTN_SA_HEALTH")
     filter_sa_refresh = build_filter("BTN_SA_REFRESH")
     filter_sa_logs = build_filter("BTN_SA_LOGS")
+    filter_sa_inventory = build_filter("BTN_SA_INVENTORY")
+
+    filter_sa_inv_list = build_filter("BTN_SA_INV_LIST")
+    filter_sa_inv_add = build_filter("BTN_SA_INV_ADD")
+    filter_sa_inv_adjust = build_filter("BTN_SA_INV_ADJUST")
+    filter_sa_inv_dashboard = build_filter("BTN_SA_INV_DASHBOARD")
 
     filter_sa_add = build_filter("BTN_SA_ADD_ADMIN")
     filter_sa_list = build_filter("BTN_SA_LIST_ADMIN")
@@ -368,7 +378,30 @@ async def main():
                 MessageHandler(filter_sa_admins, superadmin.manage_admins),
                 MessageHandler(filter_sa_refresh, superadmin.refresh_config),
                 MessageHandler(filter_sa_logs, superadmin.view_logs),
+                MessageHandler(filter_sa_inventory, superadmin.inventory_menu),
                 MessageHandler(filter_sa_exit, superadmin.exit),
+            ],
+            states.SUPER_INVENTORY_MENU: [
+                MessageHandler(filter_sa_inv_list, superadmin.inventory_list),
+                MessageHandler(filter_sa_inv_add, superadmin.inventory_add_start),
+                MessageHandler(filter_sa_inv_adjust, superadmin.inventory_adjust_start),
+                MessageHandler(filter_sa_inv_dashboard, superadmin.inventory_dashboard),
+                MessageHandler(filter_back, superadmin.inventory_back_to_super),
+                MessageHandler(filter_sa_exit, superadmin.exit),
+            ],
+            states.SUPER_INVENTORY_ADD: [
+                MessageHandler(filter_cancel, superadmin.inventory_menu),
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND & ~filter_cancel,
+                    superadmin.inventory_add_save,
+                ),
+            ],
+            states.SUPER_INVENTORY_ADJUST: [
+                MessageHandler(filter_cancel, superadmin.inventory_menu),
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND & ~filter_cancel,
+                    superadmin.inventory_adjust_save,
+                ),
             ],
             states.SUPER_ADMIN_MANAGE: [
                 MessageHandler(filter_sa_add, superadmin.add_admin_start),
@@ -628,6 +661,50 @@ async def main():
         )
         return web.Response(text=html, content_type="text/html")
 
+    async def inventory_dashboard_page(request):
+        token = request.match_info.get("token", "").strip()
+        if not stats_web.verify_inventory_token(token):
+            return web.Response(status=404, text="Dashboard link is invalid.")
+
+        try:
+            items = await asyncio.to_thread(admin.db.get_inventory_items)
+            log_entries = await asyncio.to_thread(admin.db.get_inventory_log, 50)
+        except Exception:
+            logger.exception("Inventory dashboard error")
+            return web.Response(status=500, text="Inventory unavailable.")
+
+        total_units = sum(int(item.get("qty", 0)) for item in items)
+        low_stock_count = 0
+        for item in items:
+            qty = int(item.get("qty", 0))
+            min_qty = int(item.get("min_qty", 0))
+            if qty <= 0 or (min_qty > 0 and qty <= min_qty):
+                low_stock_count += 1
+
+        favicon_tag = ""
+        logo_src = ""
+        logo_path = os.path.join(PROJECT_ROOT, "assets", "logostem.png")
+        with suppress(Exception):
+            with open(logo_path, "rb") as logo_file:
+                logo_b64 = base64.b64encode(logo_file.read()).decode("ascii")
+                logo_src = f"data:image/png;base64,{logo_b64}"
+                favicon_tag = (
+                    '<link rel="icon" type="image/png" '
+                    f'href="{logo_src}" />'
+                )
+
+        html = inventory_dashboard_template.render_inventory_dashboard(
+            favicon_tag=favicon_tag,
+            logo_src=logo_src,
+            generated_at=datetime.datetime.now(KL_TZ).strftime("%Y-%m-%d %H:%M:%S"),
+            total_items=len(items),
+            total_units=total_units,
+            low_stock_count=low_stock_count,
+            items=items,
+            log_entries=log_entries,
+        )
+        return web.Response(text=html, content_type="text/html")
+
     public_stats_limiter = SlidingWindowLimiter()
 
     async def public_stats_options(request):
@@ -667,6 +744,7 @@ async def main():
     app.router.add_options("/api/public/stats", public_stats_options)
     app.router.add_get("/stats/demographic/{token}", demographic_report)
     app.router.add_get("/profile/membership/{token}", membership_profile_report)
+    app.router.add_get("/inventory/{token}", inventory_dashboard_page)
 
     async def security_metrics_summary(_):
         summary = SECURITY_METRICS.snapshot()
