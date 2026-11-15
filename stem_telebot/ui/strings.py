@@ -165,15 +165,15 @@ STRINGS = {
         
         'PROMPT_SA_ADD': "Please reply with the *Telegram ID* (User ID) to add as Admin:",
         'PROMPT_SA_DEL': "Please reply with the *Telegram ID* to remove:",
-        'PROMPT_SA_DEL_LOGISTICS': "Please reply with the *Telegram ID* to remove logistics access:",
+        'PROMPT_SA_DEL_LOGISTICS': "Please reply with the *Telegram ID* to remove Logistics:",
         'MSG_SA_ADDED': "✅ *Admin added successfully!*",
         'MSG_SA_DELETED': "✅ *Admin removed successfully!*",
-        'MSG_SA_LOGISTICS_ADDED': "✅ *Logistics access added successfully!*",
+        'MSG_SA_LOGISTICS_ADDED': "✅ *Logistics added successfully!*",
         'ERR_SA_INVALID_ID': "⚠️ *Invalid ID format. Must be numeric.*",
 
         'ERR_SA_ALREADY_ADMIN': "⚠️ *User is already an Admin.*",
         'MSG_SA_PROMOTED': "🎉 *Congratulations! You have been promoted to Admin.*",
-        'MSG_SA_LOGISTICS_PROMOTED': "🎉 *You now have inventory access.*\nSend /logistics to open it.",
+        'MSG_SA_LOGISTICS_PROMOTED': "🎉 *Congratulations! You have been promoted to Logistics.*\nSend /logistics to open the menu.",
 
         # Inventory (superadmin + logistics role)
         'INV_MENU': "*Inventory*\nSelect:",
@@ -437,15 +437,15 @@ STRINGS = {
         
         'PROMPT_SA_ADD': "Sila balas dengan *ID Telegram* untuk ditambah:",
         'PROMPT_SA_DEL': "Sila balas dengan *ID Telegram* untuk dipadam:",
-        'PROMPT_SA_DEL_LOGISTICS': "Sila balas dengan *ID Telegram* untuk buang akses logistik:",
+        'PROMPT_SA_DEL_LOGISTICS': "Sila balas dengan *ID Telegram* untuk buang Logistik:",
         'MSG_SA_ADDED': "✅ Admin berjaya ditambah!",
         'MSG_SA_DELETED': "✅ Admin berjaya dipadam!",
-        'MSG_SA_LOGISTICS_ADDED': "✅ Akses logistik berjaya ditambah!",
+        'MSG_SA_LOGISTICS_ADDED': "✅ Logistik berjaya ditambah!",
         'ERR_SA_INVALID_ID': "⚠️ Format ID tidak sah.",
         
         'ERR_SA_ALREADY_ADMIN': "⚠️ Pengguna ini sudah menjadi Admin.",
         'MSG_SA_PROMOTED': "🎉 Tahniah! Anda telah dilantik sebagai Admin.",
-        'MSG_SA_LOGISTICS_PROMOTED': "🎉 *Anda kini mempunyai akses inventori.*\nHantar /logistics untuk membukanya.",
+        'MSG_SA_LOGISTICS_PROMOTED': "🎉 *Tahniah! Anda telah dilantik sebagai Logistik.*\nHantar /logistics untuk buka menu.",
 
         # Inventory (superadmin + logistics role)
         'INV_MENU': "*Inventori*\nPilih:",
