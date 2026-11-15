@@ -545,35 +545,80 @@ async def del_admin_perform(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         )
         return _manage_state(section)
 
-    result = await run_db_call(db.remove_account_role, user_id, section_role)
+    context.user_data["pending_delete"] = {
+        "id": user_id,
+        "name": target["name"],
+        "role": section_role,
+        "section": section,
+    }
+    role_key = 'ROLE_LOGISTICS' if section == "logistics" else 'ROLE_ADMIN'
+    await update.message.reply_text(
+        strings.get('ACC_DELETE_CONFIRM', lang).format(
+            id=user_id,
+            name=strings.escape_md(_short(target["name"] or "Unknown", 14)),
+            role=strings.get(role_key, lang),
+        ),
+        parse_mode="Markdown",
+        reply_markup=keyboards.get_yes_no_menu(lang),
+    )
+    return states.SUPER_DEL_CONFIRM
+
+
+async def del_account_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await _require_superadmin(update):
+        return ConversationHandler.END
+    lang = get_user_lang(context)
+    section = _manage_section(context)
+    pending = context.user_data.get("pending_delete")
+    if not pending:
+        return await back_to_manage(update, context)
+
+    text = (update.message.text or "").strip()
+    if text in strings.get_all('BTN_NO'):
+        context.user_data.pop("pending_delete", None)
+        await update.message.reply_text(
+            strings.get('ERR_CANCEL', lang),
+            reply_markup=_manage_keyboard(lang, section),
+        )
+        return _manage_state(section)
+
+    if text not in strings.get_all('BTN_YES'):
+        await update.message.reply_text(
+            strings.get('ACC_ERR_CONFIRM', lang),
+            parse_mode="Markdown",
+            reply_markup=keyboards.get_yes_no_menu(lang),
+        )
+        return states.SUPER_DEL_CONFIRM
+
+    context.user_data.pop("pending_delete", None)
+    result = await run_db_call(
+        db.remove_account_role, pending["id"], pending["role"]
+    )
     if result.get("ok"):
         db.log_action(
             update.effective_user.first_name,
             "REMOVE_ROLE",
-            f"Removed {section_role} from {user_id}",
+            f"Removed {pending['role']} from {pending['id']}",
         )
-        await update.message.reply_text(
-            strings.get('MSG_SA_ACCOUNT_DELETED', lang),
-            parse_mode="Markdown",
-            reply_markup=_manage_keyboard(lang, section),
-        )
+        message = strings.get('MSG_SA_ACCOUNT_DELETED', lang)
     else:
         message = (
             strings.get('ERR_SA_ACCOUNT_NOT_FOUND', lang)
             if result.get("error") == "not_found"
             else strings.get('ERR_SA_ACCOUNT_DB', lang)
         )
-        await update.message.reply_text(
-            message,
-            parse_mode="Markdown",
-            reply_markup=_manage_keyboard(lang, section),
-        )
-        
+
+    await update.message.reply_text(
+        message,
+        parse_mode="Markdown",
+        reply_markup=_manage_keyboard(lang, section),
+    )
     return _manage_state(section)
 
 
 async def back_to_manage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.pop("add_account_pending", None)
+    context.user_data.pop("pending_delete", None)
     section = _manage_section(context)
     lang = get_user_lang(context)
     await update.message.reply_text(
@@ -1307,16 +1352,16 @@ async def _inventory_delete_input(update, context, flow):
                 name=strings.escape_md(_short(items[item_id], 14)),
             ),
             parse_mode="Markdown",
-            reply_markup=keyboards.get_account_confirm_menu(lang),
+            reply_markup=keyboards.get_yes_no_menu(lang),
         )
         return states.SUPER_INVENTORY_INPUT
 
-    if text not in strings.get_all('BTN_CONFIRM_ACTION'):
+    if text not in strings.get_all('BTN_YES'):
         await _send_inventory_prompt(
             update,
             context,
             strings.get('INV_ERR_CONFIRM', lang),
-            keyboards.get_account_confirm_menu(lang),
+            keyboards.get_yes_no_menu(lang),
         )
         return states.SUPER_INVENTORY_INPUT
 

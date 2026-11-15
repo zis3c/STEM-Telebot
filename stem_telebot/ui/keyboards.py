@@ -206,6 +206,14 @@ def get_confirm_menu(lang='EN'):
     )
 
 
+def get_yes_no_menu(lang='EN'):
+    return ReplyKeyboardMarkup(
+        [[strings.get('BTN_YES', lang), strings.get('BTN_NO', lang)]],
+        resize_keyboard=True,
+        one_time_keyboard=True,
+    )
+
+
 def get_super_inventory_menu(lang='EN'):
     return ReplyKeyboardMarkup(
         [
