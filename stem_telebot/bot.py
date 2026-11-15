@@ -355,7 +355,6 @@ async def main():
     filter_sa_health = build_filter("BTN_SA_HEALTH")
     filter_sa_refresh = build_filter("BTN_SA_REFRESH")
     filter_sa_logs = build_filter("BTN_SA_LOGS")
-    filter_inventory = build_filter("BTN_INVENTORY")
 
     filter_sa_inv_list = build_filter("BTN_SA_INV_LIST")
     filter_sa_inv_add = build_filter("BTN_SA_INV_ADD")
@@ -404,7 +403,6 @@ async def main():
             CommandHandler("superadmin", superadmin.start),
             CommandHandler("inventory", superadmin.inventory_start),
             CommandHandler(["logistics", "logistic"], superadmin.inventory_start),
-            MessageHandler(filter_inventory, superadmin.inventory_start),
         ],
         states={
             states.SUPER_MENU: [

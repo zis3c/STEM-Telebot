@@ -177,10 +177,29 @@ class RoleConfigTests(unittest.TestCase):
         self.assertEqual(accounts[0]["name"], "@alice")
         self.assertEqual(accounts[1]["role"], "Logistics")
 
-    def test_superadmin_is_not_inventory_user(self):
-        db = self._db([["User ID", "Name", "Added By", "Role"]])
+    def test_superadmin_is_not_inventory_user_even_with_logistics_row(self):
+        db = self._db(
+            [
+                ["User ID", "Name", "Added By", "Role"],
+                ["999", "@sa", "SA:1", "Logistics"],
+            ]
+        )
         db.superadmin_ids = {999}
+        db.refresh_system_config(force=True)
+        self.assertTrue(db.is_logistics(999))
         self.assertFalse(db.is_inventory_user(999))
+
+    def test_env_admin_is_not_inventory_user_even_with_logistics_row(self):
+        db = self._db(
+            [
+                ["User ID", "Name", "Added By", "Role"],
+                ["888", "@env", "SA:1", "Logistics"],
+            ]
+        )
+        db.admin_ids = {888}
+        db.refresh_system_config(force=True)
+        self.assertTrue(db.is_logistics(888))
+        self.assertFalse(db.is_inventory_user(888))
 
     def test_has_sheet_account_detects_existing_ids_only(self):
         db = self._db(
