@@ -27,6 +27,14 @@ def _actor(update: Update) -> str:
     return user.first_name or str(user.id)
 
 
+def _short(value, limit=18) -> str:
+    """Keep message lines short so they do not wrap on small phone screens."""
+    text = str(value or "").strip()
+    if len(text) <= limit:
+        return text
+    return text[: max(1, limit - 1)].rstrip() + "…"
+
+
 async def _require_superadmin(update: Update) -> bool:
     uid = update.effective_user.id if update.effective_user else 0
     if not db.is_superadmin(uid):
@@ -205,7 +213,7 @@ async def list_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         lines.append(
             strings.get('MSG_SA_LIST_LINE', lang).format(
                 id=account["id"],
-                name=strings.escape_md(label),
+                name=strings.escape_md(_short(label, 14)),
                 role=strings.get(role_key, lang),
             )
         )
@@ -221,10 +229,10 @@ async def list_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 async def _prompt_add_account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     role = context.user_data.get("add_account_role", "Admin")
-    question_key = 'PROMPT_SA_ADD_LOGISTICS' if role == "Logistics" else 'PROMPT_SA_ADD'
+    role_key = 'ROLE_LOGISTICS' if role == "Logistics" else 'ROLE_ADMIN'
     await update.message.reply_text(
         strings.get('PROMPT_SA_ACCOUNT_STEP', lang).format(
-            question=strings.get(question_key, lang)
+            role=strings.get(role_key, lang)
         ),
         parse_mode="Markdown",
         reply_markup=keyboards.get_cancel_menu(lang)
@@ -278,7 +286,7 @@ async def add_admin_save(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await update.message.reply_text(
         strings.get('PROMPT_SA_ACCOUNT_CONFIRM', lang).format(
             id=user_id,
-            name=strings.escape_md(label),
+            name=strings.escape_md(_short(label, 14)),
             role=strings.get(role_key, lang),
         ),
         parse_mode="Markdown",
@@ -429,6 +437,24 @@ def _is_low_stock(item):
     return qty <= 0 or (min_qty > 0 and qty <= min_qty)
 
 
+def _inventory_line(item, lang):
+    if item["qty"] <= 0:
+        flag = " ⛔"
+    elif _is_low_stock(item):
+        flag = " ⚠️"
+    else:
+        flag = ""
+    unit = _short(item["unit"], 5)
+    unit_text = f" {unit}" if unit else ""
+    return strings.get('INV_LIST_LINE', lang).format(
+        id=strings.escape_md(item["id"]),
+        name=strings.escape_md(_short(item["name"], 12)),
+        qty=item["qty"],
+        unit=strings.escape_md(unit_text),
+        flag=flag,
+    )
+
+
 async def inventory_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await _require_inventory(update):
         return ConversationHandler.END
@@ -478,7 +504,7 @@ async def inventory_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     except Exception as e:
         logger.error("Inventory list error: %s", e)
         await update.message.reply_text(
-            strings.get('INV_ERR_GENERIC', lang).format(error="list_failed"),
+            strings.get('INV_ERR_LOAD', lang),
             parse_mode="Markdown",
             reply_markup=keyboards.get_super_inventory_menu(lang),
         )
@@ -498,26 +524,11 @@ async def inventory_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             count=len(items), low=low_count
         )
     ]
-    for item in items[:60]:
-        if item["qty"] <= 0:
-            flag = " ⛔"
-        elif _is_low_stock(item):
-            flag = " ⚠️"
-        else:
-            flag = ""
-        unit = f" {item['unit']}" if item["unit"] else ""
+    for item in items[:20]:
+        lines.append(_inventory_line(item, lang))
+    if len(items) > 20:
         lines.append(
-            strings.get('INV_LIST_LINE', lang).format(
-                id=strings.escape_md(item["id"]),
-                name=strings.escape_md(item["name"]),
-                qty=item["qty"],
-                unit=strings.escape_md(unit),
-                flag=flag,
-            )
-        )
-    if len(items) > 60:
-        lines.append(
-            strings.get('INV_LIST_MORE', lang).format(count=len(items) - 60)
+            strings.get('INV_LIST_MORE', lang).format(count=len(items) - 20)
         )
 
     await update.message.reply_text(
@@ -637,26 +648,11 @@ async def inventory_adjust_start(update: Update, context: ContextTypes.DEFAULT_T
         ),
         "",
     ]
-    for item in items[:20]:
-        if item["qty"] <= 0:
-            flag = " ⛔"
-        elif _is_low_stock(item):
-            flag = " ⚠️"
-        else:
-            flag = ""
-        unit = f" {item['unit']}" if item["unit"] else ""
+    for item in items[:8]:
+        lines.append(_inventory_line(item, lang))
+    if len(items) > 8:
         lines.append(
-            strings.get('INV_LIST_LINE', lang).format(
-                id=strings.escape_md(item["id"]),
-                name=strings.escape_md(item["name"]),
-                qty=item["qty"],
-                unit=strings.escape_md(unit),
-                flag=flag,
-            )
-        )
-    if len(items) > 20:
-        lines.append(
-            strings.get('INV_LIST_MORE', lang).format(count=len(items) - 20)
+            strings.get('INV_LIST_MORE', lang).format(count=len(items) - 8)
         )
     lines.extend(["", strings.get('INV_Q_ITEM', lang)])
 
@@ -729,10 +725,9 @@ async def _inventory_add_input(update, context, flow):
         _actor(update),
     )
     if not result.get("ok"):
+        logger.warning("Inventory add failed: %s", result.get("error"))
         await update.message.reply_text(
-            strings.get('INV_ADD_FAILED', lang).format(
-                error=strings.escape_md(result.get('error', 'unknown'))
-            ),
+            strings.get('INV_ADD_FAILED', lang),
             parse_mode="Markdown",
             reply_markup=keyboards.get_super_inventory_menu(lang),
         )
@@ -743,11 +738,11 @@ async def _inventory_add_input(update, context, flow):
         "INVENTORY_ADD",
         f"{result['id']} {data['name']} qty={data['qty']}",
     )
-    unit = f" {data['unit']}" if data["unit"] else ""
+    unit = f" {_short(data['unit'], 6)}" if data["unit"] else ""
     await update.message.reply_text(
         strings.get('INV_ADD_SUCCESS', lang).format(
             id=strings.escape_md(result["id"]),
-            name=strings.escape_md(data["name"]),
+            name=strings.escape_md(_short(data["name"], 14)),
             qty=data["qty"],
             unit=strings.escape_md(unit),
         ),
@@ -828,9 +823,7 @@ async def _inventory_adjust_input(update, context, flow):
                 current=result.get('current')
             )
         else:
-            message = strings.get('INV_ERR_GENERIC', lang).format(
-                error=strings.escape_md(error or 'unknown')
-            )
+            message = strings.get('INV_ERR_GENERIC', lang)
         await update.message.reply_text(
             message,
             parse_mode="Markdown",
@@ -845,12 +838,10 @@ async def _inventory_adjust_input(update, context, flow):
     )
     await update.message.reply_text(
         strings.get('INV_UPDATE_SUCCESS', lang).format(
-            id=strings.escape_md(result["id"]),
-            name=strings.escape_md(result["name"]),
+            name=strings.escape_md(_short(result["name"], 14)),
             current=result["current"],
             new_qty=result["new_qty"],
-            delta=f"{delta:+d}",
-            reason=strings.escape_md(data["reason"]),
+            reason=strings.escape_md(_short(data["reason"], 14)),
         ),
         parse_mode="Markdown",
         reply_markup=keyboards.get_super_inventory_menu(lang),
