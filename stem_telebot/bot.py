@@ -662,6 +662,8 @@ async def main():
             course_vals=course_vals,
             birth_labels=birth_labels,
             birth_vals=birth_vals,
+            periods_data=payload.get("periods"),
+            lang=payload.get("lang", "EN"),
         )
         return web.Response(text=html, content_type="text/html")
 

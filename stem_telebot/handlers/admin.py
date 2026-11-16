@@ -219,8 +219,10 @@ async def stats_registration_full_callback(update: Update, context: ContextTypes
 async def stats_demographic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = get_user_lang(context)
     try:
-        data = await run_db_call(db.get_stats)
         now_kl = datetime.now(KL_TZ)
+        naive_now = now_kl.replace(tzinfo=None)
+        dashboard_data = await run_db_call(db.get_dashboard_stats, now=naive_now)
+        data = await run_db_call(db.get_stats)
         stats_month_year = now_kl.strftime("%B %Y")
         base_url = _public_base_url()
         if not base_url:
@@ -237,6 +239,7 @@ async def stats_demographic(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             "birth_year_distribution": data.get("birth_year_distribution", [])[:12],
             "generated_at": now_kl.strftime("%Y-%m-%d %H:%M:%S"),
             "lang": lang,
+            "periods": dashboard_data.get("periods", {}),
         }
         token = stats_web.create_demographic_report(report_payload, ttl_seconds=1200)
         report_url = f"{base_url}/stats/demographic/{token}"

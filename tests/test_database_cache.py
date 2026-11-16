@@ -97,6 +97,82 @@ class StudentCacheConsumerTests(unittest.TestCase):
         self.assertEqual(stats["active_members"], 2)
         self.assertGreater(stats["cached_at"], 0)
 
+    def test_get_registration_stats_all_filters(self):
+        from datetime import datetime, timedelta
+
+        # Reference anchor: mid-November 2026
+        now = datetime(2026, 11, 16, 14, 30, 0)
+
+        # Row builder helper
+        def _date_row(name, matric, applied_dt, status="Approved"):
+            row = [""] * 18
+            row[0] = applied_dt.strftime("%Y-%m-%d %H:%M:%S")
+            row[2] = name
+            row[3] = matric
+            row[4] = "CS"
+            row[10] = "2000-01-01"
+            row[13] = applied_dt.strftime("%Y-%m-%d")
+            row[17] = status
+            return row
+
+        today_app = _date_row("Today Person", "M01", datetime(2026, 11, 16, 9, 0, 0), "Approved")
+        today_pending = _date_row("Today Pending", "M02", datetime(2026, 11, 16, 10, 0, 0), "Pending")
+        earlier_this_month = _date_row("Month Person", "M03", datetime(2026, 11, 5, 12, 0, 0), "Approved")
+        prev_month_app = _date_row("Oct Person", "M04", datetime(2026, 10, 20, 11, 0, 0), "Approved")
+        prev_month_rej = _date_row("Oct Rejected", "M05", datetime(2026, 10, 22, 16, 0, 0), "Rejected")
+        prev_year_app = _date_row("2025 Person", "M06", datetime(2025, 6, 15, 10, 0, 0), "Approved")
+        old_year_app = _date_row("2024 Person", "M07", datetime(2024, 3, 1, 10, 0, 0), "Approved")
+
+        db = self._db({
+            "M01": [(today_app, 2)],
+            "M02": [(today_pending, 3)],
+            "M03": [(earlier_this_month, 4)],
+            "M04": [(prev_month_app, 5)],
+            "M05": [(prev_month_rej, 6)],
+            "M06": [(prev_year_app, 7)],
+            "M07": [(old_year_app, 8)],
+        })
+
+        # 1. Today filter
+        stats_today = db.get_registration_stats(filter_type="today", now=now)
+        self.assertEqual(stats_today["total_applications"], 2)
+        self.assertEqual(stats_today["approved_count"], 1)
+        self.assertEqual(stats_today["pending_count"], 1)
+        self.assertEqual(stats_today["rejected_count"], 0)
+        self.assertEqual(stats_today["approved_names"], ["Today Person"])
+
+        # 2. Month filter (November 2026)
+        stats_month = db.get_registration_stats(filter_type="month", now=now)
+        self.assertEqual(stats_month["total_applications"], 3)
+        self.assertEqual(stats_month["approved_count"], 2)
+        self.assertEqual(stats_month["pending_count"], 1)
+        self.assertIn("Today Person", stats_month["approved_names"])
+        self.assertIn("Month Person", stats_month["approved_names"])
+
+        # 3. Previous month filter (October 2026)
+        stats_prev_month = db.get_registration_stats(filter_type="prev_month", now=now)
+        self.assertEqual(stats_prev_month["total_applications"], 2)
+        self.assertEqual(stats_prev_month["approved_count"], 1)
+        self.assertEqual(stats_prev_month["rejected_count"], 1)
+        self.assertEqual(stats_prev_month["approved_names"], ["Oct Person"])
+
+        # 4. Previous year filter (2025)
+        stats_prev_year = db.get_registration_stats(filter_type="prev_year", now=now)
+        self.assertEqual(stats_prev_year["total_applications"], 1)
+        self.assertEqual(stats_prev_year["approved_count"], 1)
+        self.assertEqual(stats_prev_year["approved_names"], ["2025 Person"])
+
+        # 5. Dashboard stats with period breakdown
+        dash = db.get_dashboard_stats(now=now)
+        self.assertIn("periods", dash)
+        self.assertEqual(set(dash["periods"].keys()), {"all", "today", "month", "prev_month", "prev_year"})
+        self.assertEqual(dash["periods"]["today"]["approved"], 1)
+        self.assertEqual(dash["periods"]["month"]["approved"], 2)
+        self.assertEqual(dash["periods"]["prev_month"]["approved"], 1)
+        self.assertEqual(dash["periods"]["prev_year"]["approved"], 1)
+        self.assertEqual(dash["periods"]["all"]["approved"], 5)
+        self.assertEqual(dash["periods"]["all"]["total_applications"], 7)
+
 
 if __name__ == "__main__":
     unittest.main()

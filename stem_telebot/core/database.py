@@ -708,6 +708,216 @@ class Database:
             "birth_year_distribution": birth_year_distribution,
         }
 
+    def get_registration_stats(self, filter_type="month", now=None):
+        """Returns registration statistics filtered by period: today, month, prev_month, prev_year."""
+        self.refresh_student_cache()
+        if now is None:
+            now = datetime.now()
+
+        filter_type = (filter_type or "month").strip().lower()
+        if filter_type == "today":
+            start_dt = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_dt = start_dt + timedelta(days=1)
+        elif filter_type == "prev_month":
+            if now.month == 1:
+                start_dt = datetime(now.year - 1, 12, 1, 0, 0, 0)
+            else:
+                start_dt = datetime(now.year, now.month - 1, 1, 0, 0, 0)
+            end_dt = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        elif filter_type == "prev_year":
+            start_dt = datetime(now.year - 1, 1, 1, 0, 0, 0)
+            end_dt = datetime(now.year, 1, 1, 0, 0, 0)
+        else:
+            filter_type = "month"
+            start_dt = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            if now.month == 12:
+                end_dt = start_dt.replace(year=now.year + 1, month=1)
+            else:
+                end_dt = start_dt.replace(month=now.month + 1)
+
+        total_applications = 0
+        approved_count = 0
+        rejected_count = 0
+        pending_count = 0
+        approved_names = []
+
+        for row, _ in (entry for entries in self.student_cache.values() for entry in entries):
+            status = self._normalize_status(row[17] if len(row) > 17 else "")
+            applied_at = self._parse_sheet_date(row[0] if len(row) > 0 else "") or self._parse_sheet_date(row[13] if len(row) > 13 else "")
+
+            if applied_at and start_dt <= applied_at < end_dt:
+                total_applications += 1
+                if status == "approved":
+                    approved_count += 1
+                    name = str(row[2]).strip() if len(row) > 2 else ""
+                    if name:
+                        approved_names.append(name)
+                elif status == "rejected":
+                    rejected_count += 1
+                elif status == "pending":
+                    pending_count += 1
+
+        return {
+            "filter": filter_type,
+            "start_dt": start_dt,
+            "end_dt": end_dt,
+            "total_applications": total_applications,
+            "approved_count": approved_count,
+            "rejected_count": rejected_count,
+            "pending_count": pending_count,
+            "approved_names": approved_names,
+        }
+
+    def get_dashboard_stats(self, now=None):
+        """Computes comprehensive demographic and application stats for all period filters."""
+        self.refresh_student_cache()
+        if now is None:
+            now = datetime.now()
+
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1)
+
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if now.month == 12:
+            next_month_start = month_start.replace(year=now.year + 1, month=1)
+        else:
+            next_month_start = month_start.replace(month=now.month + 1)
+
+        if now.month == 1:
+            prev_month_start = datetime(now.year - 1, 12, 1, 0, 0, 0)
+        else:
+            prev_month_start = datetime(now.year, now.month - 1, 1, 0, 0, 0)
+        prev_month_end = month_start
+
+        prev_year_start = datetime(now.year - 1, 1, 1, 0, 0, 0)
+        prev_year_end = datetime(now.year, 1, 1, 0, 0, 0)
+
+        periods = ("all", "today", "month", "prev_month", "prev_year")
+
+        totals = {p: 0 for p in periods}
+        approved = {p: 0 for p in periods}
+        pending = {p: 0 for p in periods}
+        rejected = {p: 0 for p in periods}
+        course_counts = {p: {} for p in periods}
+        birth_counts = {p: {} for p in periods}
+        members_names = {p: [] for p in periods}
+
+        for row, _ in (entry for entries in self.student_cache.values() for entry in entries):
+            status = self._normalize_status(row[17] if len(row) > 17 else "")
+            applied_at = self._parse_sheet_date(row[0] if len(row) > 0 else "") or self._parse_sheet_date(row[13] if len(row) > 13 else "")
+            name = str(row[2]).strip() if len(row) > 2 else ""
+            course = str(row[4]).strip() if len(row) > 4 and str(row[4]).strip() else "Unknown"
+            birth_year = self._extract_birth_year(row[10] if len(row) > 10 else "")
+
+            matches = {
+                "all": True,
+                "today": bool(applied_at and today_start <= applied_at < today_end),
+                "month": bool(applied_at and month_start <= applied_at < next_month_start),
+                "prev_month": bool(applied_at and prev_month_start <= applied_at < prev_month_end),
+                "prev_year": bool(applied_at and prev_year_start <= applied_at < prev_year_end),
+            }
+
+            for p in periods:
+                if matches[p]:
+                    totals[p] += 1
+                    if status == "approved":
+                        approved[p] += 1
+                        if name:
+                            members_names[p].append(name)
+                        course_counts[p][course] = course_counts[p].get(course, 0) + 1
+                        birth_counts[p][birth_year] = birth_counts[p].get(birth_year, 0) + 1
+                    elif status == "pending":
+                        pending[p] += 1
+                    elif status == "rejected":
+                        rejected[p] += 1
+
+        months_ms = {
+            1: "Januari", 2: "Februari", 3: "Mac", 4: "April",
+            5: "Mei", 6: "Jun", 7: "Julai", 8: "Ogos",
+            9: "September", 10: "Oktober", 11: "November", 12: "Disember"
+        }
+
+        prev_month_num = 12 if now.month == 1 else now.month - 1
+        prev_month_year = now.year - 1 if now.month == 1 else now.year
+        prev_month_name_en = datetime(prev_month_year, prev_month_num, 1).strftime("%B")
+        prev_month_name_ms = months_ms.get(prev_month_num, prev_month_name_en)
+
+        curr_month_name_en = now.strftime("%B")
+        curr_month_name_ms = months_ms.get(now.month, curr_month_name_en)
+
+        descriptions = {
+            "all": {
+                "label_en": "All Time",
+                "label_ms": "Keseluruhan",
+                "period_desc_en": "All Time (Whole DB)",
+                "period_desc_ms": "Keseluruhan (Semua Rekod)",
+            },
+            "today": {
+                "label_en": "Today",
+                "label_ms": "Hari Ini",
+                "period_desc_en": f"Today ({now.strftime('%d %b %Y')})",
+                "period_desc_ms": f"Hari Ini ({now.strftime('%d %b %Y')})",
+            },
+            "month": {
+                "label_en": "This Month",
+                "label_ms": "Bulan Ini",
+                "period_desc_en": f"This Month ({curr_month_name_en} {now.year})",
+                "period_desc_ms": f"Bulan Ini ({curr_month_name_ms} {now.year})",
+            },
+            "prev_month": {
+                "label_en": "Previous Month",
+                "label_ms": "Bulan Lepas",
+                "period_desc_en": f"Previous Month ({prev_month_name_en} {prev_month_year})",
+                "period_desc_ms": f"Bulan Lepas ({prev_month_name_ms} {prev_month_year})",
+            },
+            "prev_year": {
+                "label_en": "Previous Year",
+                "label_ms": "Tahun Lepas",
+                "period_desc_en": f"Previous Year ({now.year - 1})",
+                "period_desc_ms": f"Tahun Lepas ({now.year - 1})",
+            },
+        }
+
+        periods_result = {}
+        for p in periods:
+            safe_total = max(approved[p], 1)
+            c_dist = [
+                {
+                    "label": course,
+                    "count": count,
+                    "pct": round((count / safe_total) * 100.0, 1),
+                }
+                for course, count in sorted(course_counts[p].items(), key=lambda item: item[1], reverse=True)
+            ][:12]
+
+            b_dist = [
+                {
+                    "label": year,
+                    "count": count,
+                    "pct": round((count / safe_total) * 100.0, 1),
+                }
+                for year, count in sorted(
+                    birth_counts[p].items(),
+                    key=lambda item: (item[0] == "Unknown", -item[1], item[0]),
+                )
+            ][:12]
+
+            periods_result[p] = {
+                **descriptions[p],
+                "total_applications": totals[p],
+                "approved": approved[p],
+                "pending": pending[p],
+                "rejected": rejected[p],
+                "course_distribution": c_dist,
+                "birth_year_distribution": b_dist,
+                "members": members_names[p],
+            }
+
+        return {
+            "generated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "periods": periods_result,
+        }
+
     def get_public_stats(self):
         """Returns sanitized public aggregate counts without any PII."""
         if self.student_cache:
